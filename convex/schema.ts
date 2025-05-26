@@ -12,6 +12,7 @@ export default defineSchema({
     isActive: v.boolean(),
     lastLogin: v.optional(v.number()),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
     createdBy: v.optional(v.string()),
     photoUrl: v.optional(v.string()),
     faceDescriptor: v.optional(v.array(v.number())),

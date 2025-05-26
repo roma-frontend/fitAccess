@@ -1,276 +1,385 @@
-// lib/simple-auth.ts (исправленная версия с дополнительными функциями)
-interface User {
+// lib/simple-auth.ts
+import { UserRole } from '@/lib/permissions';
+
+export interface User {
   id: string;
   email: string;
-  role: string;
+  role: UserRole;
   name: string;
 }
 
-interface Session {
+export interface Session {
+  id: string;
   user: User;
-  createdAt: number;
-  lastAccessed: number;
+  createdAt: Date;
+  expiresAt: Date;
 }
 
-interface SessionStats {
-  totalSessions: number;
-  activeSessions: number;
-  expiredSessions: number;
-  averageSessionDuration: number;
-  sessionsByRole: Record<string, number>;
-  recentActivity: Array<{
-    sessionId: string;
-    user: User;
-    lastAccessed: number;
-  }>;
-}
+// Моковые пользователи с правильной типизацией
+const mockUsers: User[] = [
+  {
+    id: 'admin_1',
+    email: 'admin@fitnessstudio.ru',
+    role: 'admin',
+    name: 'Елена Администратор'
+  },
+  {
+    id: 'trainer_1',
+    email: 'alex.petrov@fitnessstudio.ru',
+    role: 'trainer',
+    name: 'Александр Петров'
+  },
+  {
+    id: 'trainer_2',
+    email: 'maria.ivanova@fitnessstudio.ru',
+    role: 'trainer',
+    name: 'Мария Иванова'
+  },
+  {
+    id: 'trainer_3',
+    email: 'dmitry.sidorov@fitnessstudio.ru',
+    role: 'trainer',
+    name: 'Дмитрий Сидоров'
+  },
+  {
+    id: 'manager_1',
+    email: 'manager@fitnessstudio.ru',
+    role: 'manager',
+    name: 'Анна Менеджер'
+  },
+  {
+    id: 'client_1',
+    email: 'anna.smirnova@email.com',
+    role: 'client',
+    name: 'Анна Смирнова'
+  },
+  {
+    id: 'client_2',
+    email: 'igor.volkov@email.com',
+    role: 'client',
+    name: 'Игорь Волков'
+  },
+  {
+    id: 'client_3',
+    email: 'olga.kuznetsova@email.com',
+    role: 'client',
+    name: 'Ольга Кузнецова'
+  },
+  {
+    id: 'client_4',
+    email: 'maxim.fedorov@email.com',
+    role: 'client',
+    name: 'Максим Федоров'
+  },
+  {
+    id: 'client_5',
+    email: 'svetlana.novikova@email.com',
+    role: 'client',
+    name: 'Светлана Новикова'
+  }
+];
 
-interface UserSessionInfo {
-  sessionId: string;
-  session: Session;
-}
-
-// Простое хранилище сессий в памяти
+// Хранилище сессий в памяти
 const sessions = new Map<string, Session>();
 
-export function createSession(user: User): string {
-  const sessionId = generateSessionId();
+// ДОБАВЛЕННАЯ ФУНКЦИЯ: Создание сессии
+export const createSession = (user: User): string => {
+  const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const session: Session = {
+    id: sessionId,
     user,
-    createdAt: Date.now(),
-    lastAccessed: Date.now()
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 дней
   };
-  
+
   sessions.set(sessionId, session);
-  console.log(`✅ Сессия создана: ${sessionId} для пользователя ${user.email}`);
-  console.log(`📊 Всего активных сессий: ${sessions.size}`);
-  console.log(`📋 Список сессий:`, Array.from(sessions.keys()).map(id => id.substring(0, 20) + '...'));
+  console.log(`✅ Session: создана сессия для ${user.email} (${user.role})`);
   
   return sessionId;
-}
+};
 
-export function getSession(sessionId: string): Session | null {
-  console.log(`🔍 Поиск сессии: ${sessionId.substring(0, 20)}...`);
-  console.log(`📊 Всего сессий в хранилище: ${sessions.size}`);
-  console.log(`📋 Доступные сессии:`, Array.from(sessions.keys()).map(id => id.substring(0, 20) + '...'));
+// Аутентификация пользователя
+export const authenticate = (email: string, password: string): Session | null => {
+  console.log(`🔐 Auth: попытка входа для ${email}`);
   
+  // Простая проверка пароля (в реальном приложении будет хеширование)
+  if (password !== 'password123') {
+    console.log('❌ Auth: неверный пароль');
+    return null;
+  }
+
+  const user = mockUsers.find(u => u.email === email);
+  if (!user) {
+    console.log('❌ Auth: пользователь не найден');
+    return null;
+  }
+
+  // Создаем сессию
+  const sessionId = createSession(user);
+  const session = sessions.get(sessionId);
+  
+  return session || null;
+};
+
+// Получение сессии
+export const getSession = (sessionId: string): Session | null => {
   const session = sessions.get(sessionId);
   
   if (!session) {
-    console.log(`❌ Сессия не найдена: ${sessionId.substring(0, 20)}...`);
     return null;
   }
-  
-  // Проверяем срок действия сессии (7 дней)
-  const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 дней в миллисекундах
-  const now = Date.now();
-  
-  if (now - session.createdAt > maxAge) {
-    console.log(`⏰ Сессия истекла: ${sessionId.substring(0, 20)}...`);
+
+  // Проверяем срок действия
+  if (session.expiresAt < new Date()) {
     sessions.delete(sessionId);
+    console.log('⏰ Auth: сессия истекла');
     return null;
   }
+
+  return session;
+};
+
+// Выход из системы
+export const logout = (sessionId: string): boolean => {
+  const deleted = sessions.delete(sessionId);
+  if (deleted) {
+    console.log('👋 Auth: сессия завершена');
+  }
+  return deleted;
+};
+
+// Получение пользователя по ID
+export const getUserById = (userId: string): User | null => {
+  return mockUsers.find(u => u.id === userId) || null;
+};
+
+// Получение пользователя по email
+export const getUserByEmail = (email: string): User | null => {
+  return mockUsers.find(u => u.email === email) || null;
+};
+
+// Получение всех пользователей (только для админов)
+export const getAllUsers = (): User[] => {
+  return [...mockUsers]; // Возвращаем копию массива
+};
+
+// Получение пользователей по роли
+export const getUsersByRole = (role: UserRole): User[] => {
+  return mockUsers.filter(u => u.role === role);
+};
+
+// Создание нового пользователя
+export const createUser = (userData: Omit<User, 'id'>): User => {
+  // Проверяем, что email уникален
+  if (emailExists(userData.email)) {
+    throw new Error('Пользователь с таким email уже существует');
+  }
+
+  // Валидируем роль
+  if (!isValidRole(userData.role)) {
+    throw new Error('Недопустимая роль пользователя');
+  }
+
+  const newUser: User = {
+    ...userData,
+    id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  };
   
-  // Обновляем время последнего доступа
-  session.lastAccessed = now;
+  mockUsers.push(newUser);
+  console.log(`➕ Auth: создан пользователь ${newUser.email} (${newUser.role})`);
+  
+  return newUser;
+};
+
+// Обновление пользователя
+export const updateUser = (userId: string, updates: Partial<Omit<User, 'id'>>): User | null => {
+  const userIndex = mockUsers.findIndex(u => u.id === userId);
+  
+  if (userIndex === -1) {
+    console.log(`❌ Auth: пользователь ${userId} не найден для обновления`);
+    return null;
+  }
+
+  // Проверяем уникальность email при обновлении
+  if (updates.email && updates.email !== mockUsers[userIndex].email) {
+    if (emailExists(updates.email)) {
+      throw new Error('Пользователь с таким email уже существует');
+    }
+  }
+
+  // Валидируем роль при обновлении
+  if (updates.role && !isValidRole(updates.role)) {
+    throw new Error('Недопустимая роль пользователя');
+  }
+
+  mockUsers[userIndex] = { ...mockUsers[userIndex], ...updates };
+  console.log(`📝 Auth: обновлен пользователь ${userId}`);
+  
+  return mockUsers[userIndex];
+};
+
+// Удаление пользователя
+export const deleteUser = (userId: string): boolean => {
+  const userIndex = mockUsers.findIndex(u => u.id === userId);
+  
+  if (userIndex === -1) {
+    console.log(`❌ Auth: пользователь ${userId} не найден для удаления`);
+    return false;
+  }
+
+  const deletedUser = mockUsers.splice(userIndex, 1)[0];
+  
+  // Удаляем все сессии пользователя
+  for (const [sessionId, session] of sessions.entries()) {
+    if (session.user.id === userId) {
+      sessions.delete(sessionId);
+    }
+  }
+  
+  console.log(`🗑️ Auth: удален пользователь ${deletedUser.email}`);
+  return true;
+};
+
+// Проверка существования email
+export const emailExists = (email: string): boolean => {
+  return mockUsers.some(u => u.email === email);
+};
+
+// Валидация роли
+export const isValidRole = (role: string): role is UserRole => {
+  return ['admin', 'manager', 'trainer', 'client'].includes(role);
+};
+
+// Смена пароля (в реальном приложении)
+export const changePassword = (userId: string, oldPassword: string, newPassword: string): boolean => {
+  // В реальном приложении здесь будет проверка старого пароля и хеширование нового
+  console.log(`🔑 Auth: смена пароля для пользователя ${userId}`);
+  
+  // Простая валидация пароля
+  if (newPassword.length < 6) {
+    throw new Error('Пароль должен содержать минимум 6 символов');
+  }
+  
+  // В моковой версии просто возвращаем true
+  return true;
+};
+
+// Сброс пароля
+export const resetPassword = (email: string): string | null => {
+  const user = getUserByEmail(email);
+  if (!user) {
+    console.log(`❌ Auth: пользователь с email ${email} не найден для сброса пароля`);
+    return null;
+  }
+
+  // Генерируем временный пароль
+  const tempPassword = Math.random().toString(36).substr(2, 10);
+  
+  console.log(`🔄 Auth: сгенерирован временный пароль для ${email}: ${tempPassword}`);
+  
+  // В реальном приложении здесь будет отправка email
+  return tempPassword;
+};
+
+// Проверка активности сессии
+export const isSessionActive = (sessionId: string): boolean => {
+  const session = getSession(sessionId);
+  return session !== null;
+};
+
+// Продление сессии
+export const extendSession = (sessionId: string, hours: number = 24): boolean => {
+  const session = sessions.get(sessionId);
+  if (!session) {
+    return false;
+  }
+
+  session.expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000);
   sessions.set(sessionId, session);
   
-  console.log(`✅ Сессия найдена и обновлена: ${sessionId.substring(0, 20)}... для пользователя ${session.user.email}`);
-  return session;
-}
+  console.log(`⏰ Auth: сессия ${sessionId} продлена на ${hours} часов`);
+  return true;
+};
 
-export function deleteSession(sessionId: string): boolean {
-  const deleted = sessions.delete(sessionId);
-  console.log(`🗑️ Сессия ${deleted ? 'удалена' : 'не найдена для удаления'}: ${sessionId.substring(0, 20)}...`);
-  console.log(`📊 Всего активных сессий: ${sessions.size}`);
-  return deleted;
-}
-
-// Исправленная функция - возвращает Map вместо массива
-export function getAllSessions(): Map<string, Session> {
-  return new Map(sessions);
-}
-
-// Новая функция для получения всех сессий как массива
-export function getAllSessionsArray(): Session[] {
-  return Array.from(sessions.values());
-}
-
-// Новая функция для получения статистики сессий
-export function getSessionStats(): SessionStats {
-  const now = Date.now();
-  const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 дней
+// Получение всех активных сессий пользователя
+export const getUserSessions = (userId: string): Session[] => {
+  const userSessions: Session[] = [];
   
-  let activeSessions = 0;
-  let expiredSessions = 0;
-  let totalDuration = 0;
-  const sessionsByRole: Record<string, number> = {};
-  const recentActivity: Array<{
-    sessionId: string;
-    user: User;
-    lastAccessed: number;
-  }> = [];
-
-  // Анализируем все сессии
-  for (const [sessionId, session] of sessions.entries()) {
-    const isExpired = now - session.createdAt > maxAge;
-    
-    if (isExpired) {
-      expiredSessions++;
-    } else {
-      activeSessions++;
-      totalDuration += now - session.createdAt;
-      
-      // Подсчет по ролям
-      const role = session.user.role;
-      sessionsByRole[role] = (sessionsByRole[role] || 0) + 1;
-      
-      // Недавняя активность (последние 24 часа)
-      if (now - session.lastAccessed < 24 * 60 * 60 * 1000) {
-        recentActivity.push({
-          sessionId: sessionId.substring(0, 20) + '...',
-          user: session.user,
-          lastAccessed: session.lastAccessed
-        });
-      }
+  for (const session of sessions.values()) {
+    if (session.user.id === userId && session.expiresAt > new Date()) {
+      userSessions.push(session);
     }
   }
-
-  // Сортируем по времени последней активности
-  recentActivity.sort((a, b) => b.lastAccessed - a.lastAccessed);
-
-  return {
-    totalSessions: sessions.size,
-    activeSessions,
-    expiredSessions,
-    averageSessionDuration: activeSessions > 0 ? totalDuration / activeSessions : 0,
-    sessionsByRole,
-    recentActivity: recentActivity.slice(0, 10) // Последние 10 активностей
-  };
-}
-
-// Новая функция для получения сессий конкретного пользователя
-export function getUserSessions(userId: string): UserSessionInfo[] {
-  const userSessions: UserSessionInfo[] = [];
-  
-  for (const [sessionId, session] of sessions.entries()) {
-    if (session.user.id === userId) {
-      userSessions.push({
-        sessionId,
-        session
-      });
-    }
-  }
-  
-  // Сортируем по времени создания (новые сначала)
-  userSessions.sort((a, b) => b.session.createdAt - a.session.createdAt);
   
   return userSessions;
-}
+};
 
-export function clearAllSessions(): void {
-  const count = sessions.size;
-  sessions.clear();
-  console.log(`🧹 Очищены все сессии: ${count} сессий удалено`);
-}
-
-function generateSessionId(): string {
-  return Math.random().toString(36).substring(2) + 
-         Date.now().toString(36) + 
-         Math.random().toString(36).substring(2);
-}
-
-// Функция для очистки истекших сессий (можно вызывать периодически)
-export function cleanupExpiredSessions(): number {
-  const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 дней
-  const now = Date.now();
-  let cleaned = 0;
-  
-  for (const [sessionId, session] of sessions.entries()) {
-    if (now - session.createdAt > maxAge) {
-      sessions.delete(sessionId);
-      cleaned++;
-    }
-  }
-  
-  if (cleaned > 0) {
-    console.log(`🧹 Очищено истекших сессий: ${cleaned}`);
-  }
-  
-  return cleaned;
-}
-
-// Функция для отладки - показать все сессии
-export function debugSessions(): void {
-  console.log(`\n=== DEBUG SESSIONS ===`);
-  console.log(`📊 Всего сессий: ${sessions.size}`);
-  
-  if (sessions.size === 0) {
-    console.log(`❌ Нет активных сессий`);
-  } else {
-    sessions.forEach((session, sessionId) => {
-      console.log(`🔑 ${sessionId.substring(0, 20)}... -> ${session.user.email} (${session.user.role})`);
-      console.log(`   Создана: ${new Date(session.createdAt).toLocaleString()}`);
-      console.log(`   Последний доступ: ${new Date(session.lastAccessed).toLocaleString()}`);
-    });
-  }
-  console.log(`=== END DEBUG SESSIONS ===\n`);
-}
-
-// Дополнительные утилиты для управления сессиями
-
-// Получить активные сессии (не истекшие)
-export function getActiveSessions(): Map<string, Session> {
-  const activeSessions = new Map<string, Session>();
-  const maxAge = 7 * 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  
-  for (const [sessionId, session] of sessions.entries()) {
-    if (now - session.createdAt <= maxAge) {
-      activeSessions.set(sessionId, session);
-    }
-  }
-  
-  return activeSessions;
-}
-
-// Получить сессии по роли
-export function getSessionsByRole(role: string): Map<string, Session> {
-  const roleSessions = new Map<string, Session>();
-  
-  for (const [sessionId, session] of sessions.entries()) {
-    if (session.user.role === role) {
-      roleSessions.set(sessionId, session);
-    }
-  }
-  
-  return roleSessions;
-}
-
-// Проверить, есть ли активная сессия у пользователя
-export function hasActiveSession(userId: string): boolean {
-  for (const session of sessions.values()) {
-    if (session.user.id === userId) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// Завершить все сессии пользователя
-export function terminateUserSessions(userId: string): number {
-  let terminated = 0;
+// Завершение всех сессий пользователя
+export const logoutAllUserSessions = (userId: string): number => {
+  let deletedCount = 0;
   
   for (const [sessionId, session] of sessions.entries()) {
     if (session.user.id === userId) {
       sessions.delete(sessionId);
-      terminated++;
+      deletedCount++;
     }
   }
   
-  console.log(`🚪 Завершено ${terminated} сессий для пользователя ${userId}`);
-  return terminated;
+  console.log(`👋 Auth: завершено ${deletedCount} сессий для пользователя ${userId}`);
+  return deletedCount;
+};
+
+// Очистка истекших сессий
+export const cleanupExpiredSessions = (): number => {
+  let deletedCount = 0;
+  const now = new Date();
+  
+  for (const [sessionId, session] of sessions.entries()) {
+    if (session.expiresAt < now) {
+      sessions.delete(sessionId);
+      deletedCount++;
+    }
+  }
+  
+  if (deletedCount > 0) {
+    console.log(`🧹 Auth: очищено ${deletedCount} истекших сессий`);
+  }
+  
+  return deletedCount;
+};
+
+// Получение статистики аутентификации
+export const getAuthStats = () => {
+  const now = new Date();
+  const activeSessions = Array.from(sessions.values()).filter(s => s.expiresAt > now);
+  
+  return {
+    totalUsers: mockUsers.length,
+    usersByRole: {
+      admin: mockUsers.filter(u => u.role === 'admin').length,
+      manager: mockUsers.filter(u => u.role === 'manager').length,
+      trainer: mockUsers.filter(u => u.role === 'trainer').length,
+      client: mockUsers.filter(u => u.role === 'client').length
+    },
+    activeSessions: activeSessions.length,
+    totalSessions: sessions.size
+  };
+};
+
+// Инициализация - очистка истекших сессий каждые 30 минут
+if (typeof window === 'undefined') { // Только на сервере
+  setInterval(() => {
+    cleanupExpiredSessions();
+  }, 30 * 60 * 1000); // 30 минут
 }
 
-// Экспорт типов для использования в других файлах
-export type { User, Session, SessionStats, UserSessionInfo };
+// Экспорт для отладки (только в development)
+export const debugAuth = process.env.NODE_ENV === 'development' ? {
+  getAllSessions: () => Array.from(sessions.entries()),
+  clearAllSessions: () => {
+    sessions.clear();
+    console.log('🧹 Debug: все сессии очищены');
+  },
+  addMockUser: (user: Omit<User, 'id'>) => createUser(user),
+  getMockUsers: () => [...mockUsers]
+} : undefined;

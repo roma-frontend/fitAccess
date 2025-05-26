@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import "./globals.css";
 import { ScheduleProvider } from "@/contexts/ScheduleContext";
+import { AuthProvider } from "@/hooks/useAuth";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
@@ -21,8 +22,10 @@ export default function RootLayout({
     <html lang="ru">
       <body className={inter.className}>
         <ConvexClientProvider>
+          <AuthProvider>
           <ScheduleProvider>{children}</ScheduleProvider>
           <Toaster />
+          </AuthProvider>
         </ConvexClientProvider>
       </body>
     </html>
