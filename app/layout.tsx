@@ -18,6 +18,7 @@ import LiveDataMonitor from "@/components/debug/LiveDataMonitor";
 import TestButtons from "@/components/debug/TestButtons";
 import PerformanceMonitor from "@/components/debug/PerformnaceMonitor";
 import DataMonitorDisplay from "@/components/debug/DataMonitorDisplay";
+import DebugInitializer from "@/components/debug/DebugInitializer";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
@@ -58,6 +59,7 @@ export default function RootLayout({
                             {/* ✅ Debug компоненты ВНУТРИ провайдеров */}
                             {process.env.NODE_ENV === 'development' && (
                               <>
+                              <DebugInitializer />
                                 <LiveDataMonitor />
                                 <DataDebugger />
                                 <TestButtons />

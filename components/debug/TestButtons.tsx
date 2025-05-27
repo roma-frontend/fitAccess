@@ -1,4 +1,4 @@
-// components/debug/TestButtons.tsx (исправленная версия)
+// components/debug/TestButtons.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -6,14 +6,42 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchedule } from '@/contexts/ScheduleContext';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // ✅ Добавили useEffect
 import { Plus, Trash2, RefreshCw, Zap, Database } from 'lucide-react';
+import { initDebugCommands } from '@/utils/debugCommands'; // ✅ Добавили импорт
 
 export default function TestButtons() {
   const schedule = useSchedule();
   const dashboard = useDashboard();
   const superAdmin = useSuperAdmin();
   const [loading, setLoading] = useState<string | null>(null);
+
+  // ✅ ДОБАВЛЯЕМ useEffect ЗДЕСЬ
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const debugCommands = initDebugCommands({
+        dashboard,
+        schedule,
+        superAdmin,
+        admin: null, // Если нет admin контекста
+        manager: null, // Если нет manager контекста
+        trainer: null, // Если нет trainer контекста
+      });
+
+      (window as any).fitAccessDebug = debugCommands;
+      
+      console.log('🎯 FitAccess Debug Commands инициализированы:');
+      console.log('• fitAccessDebug.addEvents(count) - добавить события');
+      console.log('• fitAccessDebug.checkSync() - проверить синхронизацию');
+      console.log('• fitAccessDebug.refreshAll() - обновить все данные');
+      console.log('• fitAccessDebug.stressTest(count) - стресс-тест');
+      console.log('• fitAccessDebug.getStats() - получить статистику');
+      console.log('• fitAccessDebug.clearEvents() - очистить события');
+      
+      console.log('📋 Доступные методы Schedule:', Object.keys(schedule));
+      console.log('📋 Доступные методы Dashboard:', Object.keys(dashboard));
+    }
+  }, [dashboard, schedule, superAdmin]); // ✅ Зависимости useEffect
 
   // ✅ ИСПРАВЛЕНО: используем createEvent вместо addEvent
   const addTestEvent = async () => {
@@ -110,7 +138,7 @@ export default function TestButtons() {
       setLoading(null);
     }
   };
-
+  
   const stressTest = async () => {
     setLoading('stress');
     try {
