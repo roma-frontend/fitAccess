@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:trainers": "npx tsx scripts/seedTrainers.ts",
+    "test:convex": "npx tsx scripts/testConvex.ts",
+    "migrate:convex": "npx tsx scripts/migrateConvexData.ts",
+    "convex:dev": "npx convex dev",
+    "convex:deploy": "npx convex deploy"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.14",

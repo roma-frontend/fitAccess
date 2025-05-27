@@ -86,17 +86,19 @@ export default defineSchema({
     .index("by_status", ["status"]),
 
   // Тренеры (обновленная версия для админ панели)
-  trainers: defineTable({
+trainers: defineTable({
+    // Основная информация
     name: v.string(),
     email: v.string(),
     phone: v.string(),
-    password: v.optional(v.string()), // Делаем опциональным для совместимости
+    password: v.optional(v.string()),
     photoUrl: v.optional(v.string()),
+    avatar: v.optional(v.string()),
     bio: v.optional(v.string()),
 
     // Профессиональная информация
-    specializations: v.array(v.string()), // ["Силовые тренировки", "Йога", "Кардио"]
-    experience: v.optional(v.number()), // Лет опыта (делаем опциональным)
+    specializations: v.array(v.string()),
+    experience: v.optional(v.number()),
     certifications: v.optional(v.array(v.string())),
     languages: v.optional(v.array(v.string())),
 
@@ -104,9 +106,9 @@ export default defineSchema({
     rating: v.optional(v.number()),
     totalReviews: v.optional(v.number()),
 
-    // Расписание (обновленное для совместимости с админ панелью)
-    workingHours: v.union(
-      // Новый формат (дни недели)
+    // ✅ ГИБКОЕ РАСПИСАНИЕ - ПОДДЕРЖКА ОБОИХ ФОРМАТОВ
+    workingHours: v.optional(v.union(
+      // Новый формат (по дням недели) - СУЩЕСТВУЮЩИЕ ДАННЫЕ
       v.object({
         monday: v.optional(v.object({ start: v.string(), end: v.string() })),
         tuesday: v.optional(v.object({ start: v.string(), end: v.string() })),
@@ -116,35 +118,37 @@ export default defineSchema({
         saturday: v.optional(v.object({ start: v.string(), end: v.string() })),
         sunday: v.optional(v.object({ start: v.string(), end: v.string() })),
       }),
-      // Старый формат (для админ панели)
+      // Простой формат (для API и новых записей)
       v.object({
         start: v.string(),
         end: v.string(),
         days: v.array(v.number())
       })
-    ),
+    )),
 
-    // Цены и статистика
+    // Цены и статус
     hourlyRate: v.optional(v.number()),
     isActive: v.optional(v.boolean()),
+    status: v.optional(v.string()),
     
-    // Поля для админ панели
+    // Поля для совместимости с админ панелью
     role: v.optional(v.string()),
-    avatar: v.optional(v.string()),
     joinDate: v.optional(v.string()),
-    status: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("suspended"))),
     totalClients: v.optional(v.number()),
     activeClients: v.optional(v.number()),
     totalWorkouts: v.optional(v.number()),
     monthlyRevenue: v.optional(v.number()),
     lastActivity: v.optional(v.string()),
     
+    // Временные метки
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_email", ["email"])
     .index("by_specialization", ["specializations"])
     .index("by_rating", ["rating"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_active", ["isActive"]),
 
   // События/тренировки для расписания
   events: defineTable({

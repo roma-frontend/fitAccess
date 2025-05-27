@@ -76,6 +76,23 @@ export interface Session {
   updatedBy?: string;
 }
 
+export interface Event {
+  _id: string;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  trainerId: string;
+  clientId: string;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  type: 'training' | 'consultation' | 'group';
+  location: string;
+  notes: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+}
+
 // Дефолтные рабочие часы
 const defaultWorkingHours: WorkingHours = {
   monday: { start: '09:00', end: '18:00', isWorking: true },
@@ -393,6 +410,26 @@ export const mockSessions: Session[] = [
     createdAt: '2024-03-27T00:00:00Z',
     createdBy: 'trainer_3'
   }
+];
+
+
+export const mockEvents: Event[] = [
+  {
+    _id: 'event_1',
+    title: 'Персональная тренировка',
+    description: 'Силовая тренировка',
+    startTime: '2024-05-28T10:00:00Z',
+    endTime: '2024-05-28T11:00:00Z',
+    trainerId: 'trainer_1',
+    clientId: 'client_1',
+    status: 'confirmed',
+    type: 'training',
+    location: 'Зал 1',
+    notes: '',
+    createdAt: '2024-05-27T00:00:00Z',
+    createdBy: 'trainer_1',
+    updatedAt: '2024-05-27T00:00:00Z'
+  },
 ];
 
 // Функции для работы с данными

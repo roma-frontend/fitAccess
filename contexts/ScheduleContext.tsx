@@ -3,6 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ScheduleEvent, TrainerSchedule, CreateEventData } from '@/components/admin/schedule/types';
+import { ensureDebugSystem } from '@/utils/cleanTypes';
+// ✅ ИМПОРТИРУЕМ ТИПЫ ИЗ ЕДИНСТВЕННОГО ИСТОЧНИКА
 
 interface ScheduleContextType {
   // Данные
@@ -38,72 +40,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [subscribers, setSubscribers] = useState<((events: ScheduleEvent[]) => void)[]>([]);
 
-  // Загрузка данных с улучшенной обработкой ошибок
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      console.log('🔄 Загрузка данных расписания...');
-      
-      // Сначала пробуем загрузить с API
-      const [eventsResponse, trainersResponse] = await Promise.allSettled([
-        fetch('/api/schedule/events'),
-        fetch('/api/schedule/trainers')
-      ]);
-      
-      let eventsData: ScheduleEvent[] = [];
-      let trainersData: TrainerSchedule[] = [];
-      
-      // Обрабатываем ответ событий
-      if (eventsResponse.status === 'fulfilled' && eventsResponse.value.ok) {
-        eventsData = await eventsResponse.value.json();
-        console.log('✅ События загружены с API:', eventsData.length);
-      } else {
-        console.log('⚠️ API событий недоступен, используем mock данные');
-        eventsData = getMockEvents();
-      }
-      
-      // Обрабатываем ответ тренеров
-      if (trainersResponse.status === 'fulfilled' && trainersResponse.value.ok) {
-        trainersData = await trainersResponse.value.json();
-        console.log('✅ Тренеры загружены с API:', trainersData.length);
-      } else {
-        console.log('⚠️ API тренеров недоступен, используем mock данные');
-        trainersData = getMockTrainers();
-      }
-      
-      // Связываем события с тренерами
-      const updatedTrainers = trainersData.map(trainer => ({
-        ...trainer,
-        events: eventsData.filter(event => event.trainerId === trainer.trainerId)
-      }));
-      
-      setEvents(eventsData);
-      setTrainers(updatedTrainers);
-      
-      // Уведомляем подписчиков
-      notifySubscribers(eventsData);
-      
-      console.log('✅ Данные расписания загружены успешно');
-      
-    } catch (err) {
-      console.error('❌ Критическая ошибка загрузки данных:', err);
-      setError('Ошибка загрузки данных. Используются локальные данные.');
-      
-      // Fallback к mock данным
-      const mockEvents = getMockEvents();
-      const mockTrainers = getMockTrainers();
-      
-      setEvents(mockEvents);
-      setTrainers(mockTrainers);
-      notifySubscribers(mockEvents);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Mock данные для разработки
+  // ✅ ОБЪЯВЛЯЕМ ВСЕ ФУНКЦИИ ПЕРЕД ИСПОЛЬЗОВАНИЕМ
   const getMockEvents = (): ScheduleEvent[] => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -228,7 +165,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     ];
   };
 
-  // Mock данные для клиентов (для получения имен)
   const getMockClients = () => {
     return [
       { id: 'client1', name: 'Анна Смирнова' },
@@ -240,9 +176,44 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     ];
   };
 
+  // ✅ ФУНКЦИЯ УВЕДОМЛЕНИЯ ДРУГИХ КОНТЕКСТОВ ЧЕРЕЗ WINDOW EVENTS
+  const notifyOtherContexts = (updatedEvents: ScheduleEvent[]) => {
+    try {
+      // Уведомляем через window events (избегаем циклической зависимости)
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('schedule-updated', {
+          detail: {
+            events: updatedEvents,
+            timestamp: new Date().toISOString()
+          }
+        });
+        window.dispatchEvent(event);
+        console.log('🔄 Отправлено уведомление о изменении Schedule');
+      }
+
+      // Уведомляем Dashboard через debug систему (если доступна)
+      if (typeof window !== 'undefined' && window.fitAccessDebug?.dashboard) {
+        console.log('🔄 Уведомляем Dashboard об изменениях событий:', updatedEvents.length);
+        
+        if (window.fitAccessDebug.dashboard.syncAllData) {
+          window.fitAccessDebug.dashboard.syncAllData();
+        }
+        
+        if (window.fitAccessDebug.dashboard.refreshStats) {
+          window.fitAccessDebug.dashboard.refreshStats();
+        }
+      }
+    } catch (error) {
+      console.log('⚠️ Не удалось уведомить другие контексты:', error);
+    }
+  };
+
   // Уведомление подписчиков
   const notifySubscribers = (updatedEvents: ScheduleEvent[]) => {
     subscribers.forEach(callback => callback(updatedEvents));
+    
+    // ✅ УВЕДОМЛЯЕМ ДРУГИЕ КОНТЕКСТЫ О ИЗМЕНЕНИЯХ
+    notifyOtherContexts(updatedEvents);
   };
 
   // Вспомогательные функции для получения имен
@@ -256,6 +227,15 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     const mockClients = getMockClients();
     const client = mockClients.find(c => c.id === clientId);
     return client?.name || 'Неизвестный клиент';
+  };
+
+  // Обновление событий в данных тренеров
+  const updateTrainerEvents = (updatedEvents: ScheduleEvent[]) => {
+    const updatedTrainers = trainers.map(trainer => ({
+      ...trainer,
+      events: updatedEvents.filter(event => event.trainerId === trainer.trainerId)
+    }));
+    setTrainers(updatedTrainers);
   };
 
   // CRUD операции с улучшенной обработкой ошибок
@@ -325,10 +305,10 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔄 Обновление события:', eventId);
       
-      // Подготавливаем данные для обновления
+            // Подготавливаем данные для обновления
       const updateData = { ...data };
       
-            // Если обновляется trainerId, добавляем trainerName
+      // Если обновляется trainerId, добавляем trainerName
       if (data.trainerId && !data.trainerName) {
         updateData.trainerName = getTrainerNameById(data.trainerId);
       }
@@ -428,15 +408,6 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     await updateEvent(eventId, { status });
   };
 
-  // Обновление событий в данных тренеров
-  const updateTrainerEvents = (updatedEvents: ScheduleEvent[]) => {
-    const updatedTrainers = trainers.map(trainer => ({
-      ...trainer,
-      events: updatedEvents.filter(event => event.trainerId === trainer.trainerId)
-    }));
-    setTrainers(updatedTrainers);
-  };
-
   // Утилиты для фильтрации
   const getEventsByTrainer = (trainerId: string): ScheduleEvent[] => {
     return events.filter(event => event.trainerId === trainerId);
@@ -474,144 +445,122 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     };
   };
 
-  // Дополнительные утилиты для работы с событиями
-  const getUpcomingEvents = (limit?: number): ScheduleEvent[] => {
-    const now = new Date();
-    const upcoming = events
-      .filter(event => new Date(event.startTime) > now && event.status !== 'cancelled')
-      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  // Загрузка данных с улучшенной обработкой ошибок
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
     
-    return limit ? upcoming.slice(0, limit) : upcoming;
-  };
-
-  const getTodayEvents = (): ScheduleEvent[] => {
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-    
-    return getEventsInDateRange(startOfDay, endOfDay);
-  };
-
-  const getEventsByStatus = (status: ScheduleEvent['status']): ScheduleEvent[] => {
-    return events.filter(event => event.status === status);
-  };
-
-  const getConflictingEvents = (newEvent: {
-    trainerId: string;
-    startTime: string;
-    endTime: string;
-    excludeEventId?: string;
-  }): ScheduleEvent[] => {
-    const newStart = new Date(newEvent.startTime);
-    const newEnd = new Date(newEvent.endTime);
-    
-    return events.filter(event => {
-      if (newEvent.excludeEventId && event._id === newEvent.excludeEventId) {
-        return false;
+    try {
+      console.log('🔄 Загрузка данных расписания...');
+      
+      // Сначала пробуем загрузить с API
+      const [eventsResponse, trainersResponse] = await Promise.allSettled([
+        fetch('/api/schedule/events'),
+        fetch('/api/schedule/trainers')
+      ]);
+      
+      let eventsData: ScheduleEvent[] = [];
+      let trainersData: TrainerSchedule[] = [];
+      
+      // Обрабатываем ответ событий
+      if (eventsResponse.status === 'fulfilled' && eventsResponse.value.ok) {
+        eventsData = await eventsResponse.value.json();
+        console.log('✅ События загружены с API:', eventsData.length);
+      } else {
+        console.log('⚠️ API событий недоступен, используем mock данные');
+        eventsData = getMockEvents();
       }
       
-      if (event.trainerId !== newEvent.trainerId) {
-        return false;
+      // Обрабатываем ответ тренеров
+      if (trainersResponse.status === 'fulfilled' && trainersResponse.value.ok) {
+        trainersData = await trainersResponse.value.json();
+        console.log('✅ Тренеры загружены с API:', trainersData.length);
+      } else {
+        console.log('⚠️ API тренеров недоступен, используем mock данные');
+        trainersData = getMockTrainers();
       }
       
-      if (event.status === 'cancelled') {
-        return false;
-      }
+      // Связываем события с тренерами
+      const updatedTrainers = trainersData.map(trainer => ({
+        ...trainer,
+        events: eventsData.filter(event => event.trainerId === trainer.trainerId)
+      }));
       
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
+      setEvents(eventsData);
+      setTrainers(updatedTrainers);
       
-      // Проверяем пересечение времени
-      return (newStart < eventEnd && newEnd > eventStart);
-    });
-  };
-
-  const isTrainerAvailable = (trainerId: string, startTime: string, endTime: string, excludeEventId?: string): boolean => {
-    const conflicts = getConflictingEvents({ trainerId, startTime, endTime, excludeEventId });
-    return conflicts.length === 0;
-  };
-
-  // Статистика событий
-  const getEventStats = () => {
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    return {
-      total: events.length,
-      today: getTodayEvents().length,
-      thisWeek: events.filter(e => new Date(e.startTime) >= startOfWeek).length,
-      thisMonth: events.filter(e => new Date(e.startTime) >= startOfMonth).length,
-      upcoming: getUpcomingEvents().length,
-      completed: getEventsByStatus('completed').length,
-      cancelled: getEventsByStatus('cancelled').length,
-      confirmed: getEventsByStatus('confirmed').length,
-      scheduled: getEventsByStatus('scheduled').length
-    };
-  };
-
-  // Получение доступных тренеров для определенного времени
-  const getAvailableTrainers = (startTime: string, endTime: string, excludeEventId?: string): TrainerSchedule[] => {
-    return trainers.filter(trainer => {
-      return isTrainerAvailable(trainer.trainerId, startTime, endTime, excludeEventId);
-    });
-  };
-
-  // Получение следующего доступного слота для тренера
-  const getNextAvailableSlot = (trainerId: string, duration: number = 60): { startTime: string; endTime: string } | null => {
-    const now = new Date();
-    const trainer = trainers.find(t => t.trainerId === trainerId);
-    
-    if (!trainer) return null;
-    
-    // Начинаем поиск с текущего времени, округленного до следующего часа
-    const searchStart = new Date(now);
-    searchStart.setMinutes(0, 0, 0);
-    searchStart.setHours(searchStart.getHours() + 1);
-    
-    // Ищем в течение следующих 7 дней
-    for (let day = 0; day < 7; day++) {
-      const currentDay = new Date(searchStart);
-      currentDay.setDate(searchStart.getDate() + day);
+      // Уведомляем подписчиков
+      notifySubscribers(eventsData);
       
-      // Проверяем рабочие часы тренера
-      const dayOfWeek = currentDay.getDay();
-      if (!trainer.workingHours.days.includes(dayOfWeek)) {
-        continue;
-      }
+      console.log('✅ Данные расписания загружены успешно');
       
-      // Устанавливаем начало рабочего дня
-      const [startHour, startMinute] = trainer.workingHours.start.split(':').map(Number);
-      const [endHour, endMinute] = trainer.workingHours.end.split(':').map(Number);
+    } catch (err) {
+      console.error('❌ Критическая ошибка загрузки данных:', err);
+      setError('Ошибка загрузки данных. Используются локальные данные.');
       
-      const workStart = new Date(currentDay);
-      workStart.setHours(startHour, startMinute, 0, 0);
+      // Fallback к mock данным
+      const mockEvents = getMockEvents();
+      const mockTrainers = getMockTrainers();
       
-      const workEnd = new Date(currentDay);
-      workEnd.setHours(endHour, endMinute, 0, 0);
-      
-      // Ищем свободные слоты по часам
-      for (let hour = workStart.getHours(); hour < workEnd.getHours(); hour++) {
-        const slotStart = new Date(currentDay);
-        slotStart.setHours(hour, 0, 0, 0);
-        
-        const slotEnd = new Date(slotStart);
-        slotEnd.setMinutes(slotEnd.getMinutes() + duration);
-        
-        if (slotEnd > workEnd) break;
-        
-        if (isTrainerAvailable(trainerId, slotStart.toISOString(), slotEnd.toISOString())) {
-          return {
-            startTime: slotStart.toISOString(),
-            endTime: slotEnd.toISOString()
-          };
-        }
-      }
+      setEvents(mockEvents);
+      setTrainers(mockTrainers);
+      notifySubscribers(mockEvents);
+    } finally {
+      setLoading(false);
     }
-    
-    return null;
   };
+
+  // ✅ РЕГИСТРАЦИЯ В DEBUG СИСТЕМЕ СРАЗУ ПРИ СОЗДАНИИ КОНТЕКСТА
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    // ✅ ИСПОЛЬЗУЕМ ЕДИНУЮ ФУНКЦИЮ ИНИЦИАЛИЗАЦИИ
+    ensureDebugSystem();
+    
+    const scheduleContext = {
+      events,
+      trainers,
+      loading,
+      error,
+      createEvent,
+      updateEvent,
+      deleteEvent,
+      updateEventStatus,
+      getEventsByTrainer,
+      getEventsInDateRange,
+      searchEvents,
+      refreshData,
+      subscribeToUpdates,
+      getStats: () => ({
+        totalEvents: events.length,
+        activeEvents: events.filter(e => e.status !== 'cancelled').length,
+        trainersCount: trainers.length
+      }),
+      clearAllEvents: () => {
+        setEvents([]);
+        notifySubscribers([]);
+      }
+    };
+    
+    window.fitAccessDebug.schedule = scheduleContext;
+    console.log('✅ Schedule контекст зарегистрирован в debug системе');
+  }
+}, []);
+
+  // ✅ ОБНОВЛЯЕМ ДАННЫЕ В DEBUG СИСТЕМЕ ПРИ ИЗМЕНЕНИЯХ
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.fitAccessDebug?.schedule) {
+      // Обновляем данные в уже зарегистрированном контексте
+      window.fitAccessDebug.schedule.events = events;
+      window.fitAccessDebug.schedule.trainers = trainers;
+      window.fitAccessDebug.schedule.loading = loading;
+      window.fitAccessDebug.schedule.error = error;
+      
+      console.log('🔄 Schedule данные обновлены в debug системе:', {
+        events: events.length,
+        trainers: trainers.length
+      });
+    }
+  }, [events, trainers, loading, error]);
 
   // Загружаем данные при инициализации
   useEffect(() => {
@@ -649,7 +598,7 @@ export function useSchedule() {
   return context;
 }
 
-// Дополнительные хуки для удобства
+// Остальные хуки остаются без изменений...
 export function useScheduleStats() {
   const { events } = useSchedule();
   
@@ -716,7 +665,7 @@ export function useEventConflicts() {
     const newStart = new Date(newEvent.startTime);
     const newEnd = new Date(newEvent.endTime);
     
-        return events.filter(event => {
+    return events.filter(event => {
       if (newEvent.excludeEventId && event._id === newEvent.excludeEventId) {
         return false;
       }
@@ -747,13 +696,12 @@ export function useEventConflicts() {
   };
 }
 
-// Хук для работы с доступностью тренеров
 export function useTrainerAvailability() {
   const { trainers, events } = useSchedule();
   
   const getAvailableTrainers = React.useCallback((startTime: string, endTime: string, excludeEventId?: string) => {
     return trainers.filter(trainer => {
-      const conflicts = events.filter(event => {
+            const conflicts = events.filter(event => {
         if (excludeEventId && event._id === excludeEventId) {
           return false;
         }
@@ -844,7 +792,6 @@ export function useTrainerAvailability() {
   };
 }
 
-// Хук для аналитики расписания
 export function useScheduleAnalytics() {
   const { events, trainers } = useSchedule();
   
@@ -913,7 +860,6 @@ export function useScheduleAnalytics() {
   }, [events, trainers]);
 }
 
-// Хук для работы с уведомлениями о событиях
 export function useEventNotifications() {
   const { events, subscribeToUpdates } = useSchedule();
   const [notifications, setNotifications] = useState<Array<{

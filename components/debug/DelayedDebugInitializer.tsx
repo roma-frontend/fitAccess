@@ -1,8 +1,9 @@
-// components/debug/DelayedDebugInitializer.tsx
+// components/debug/DelayedDebugInitializer.tsx (обновляем импорты)
 "use client";
 
 import { useEffect, useState } from 'react';
 import { initDebugCommands, registerGlobalDebugCommands } from '@/utils/debugCommands';
+import { getContext, isContextAvailable, getAllContextStats } from '@/utils/typeUtils';
 
 export default function DelayedDebugInitializer() {
   const [debugStatus, setDebugStatus] = useState({
@@ -21,35 +22,18 @@ export default function DelayedDebugInitializer() {
         try {
           console.log('🔍 Попытка инициализации debug системы...');
           
-          // ✅ ПРОВЕРЯЕМ ДОСТУПНОСТЬ КОНТЕКСТОВ
-          const schedule = (window as any).fitAccessDebug?.schedule;
-          const dashboard = (window as any).fitAccessDebug?.dashboard;
-          const superAdmin = (window as any).fitAccessDebug?.superAdmin;
+          // ✅ ИСПОЛЬЗУЕМ БЕЗОПАСНЫЕ УТИЛИТЫ ДЛЯ ПРОВЕРКИ КОНТЕКСТОВ
+          const schedule = getContext('schedule');
+          const dashboard = getContext('dashboard');
+          const superAdmin = getContext('superAdmin');
 
-          console.log('🔍 Состояние контекстов:', {
-            fitAccessDebug: !!(window as any).fitAccessDebug,
-            schedule: !!schedule,
-            dashboard: !!dashboard,
-            superAdmin: !!superAdmin,
-            scheduleData: schedule ? {
-              events: schedule.events?.length || 0,
-              trainers: schedule.trainers?.length || 0
-            } : 'не найден',
-            dashboardData: dashboard ? {
-              events: dashboard.events?.length || 0,
-              trainers: dashboard.trainers?.length || 0
-            } : 'не найден',
-            superAdminData: superAdmin ? {
-              trainers: superAdmin.trainers?.length || 0,
-              clients: superAdmin.clients?.length || 0
-            } : 'не найден'
-          });
+          console.log('🔍 Состояние контекстов:', getAllContextStats());
 
           setDebugStatus(prev => ({
             ...prev,
-            schedule: !!schedule,
-            dashboard: !!dashboard,
-            superAdmin: !!superAdmin,
+            schedule: isContextAvailable('schedule'),
+            dashboard: isContextAvailable('dashboard'),
+            superAdmin: isContextAvailable('superAdmin'),
             attempts: prev.attempts + 1
           }));
 
@@ -75,9 +59,9 @@ export default function DelayedDebugInitializer() {
             
             // ✅ АВТОМАТИЧЕСКАЯ ПРОВЕРКА СИНХРОНИЗАЦИИ
             setTimeout(() => {
-              if ((window as any).fitAccessDebug?.checkSync) {
+              if (window.fitAccessDebug?.checkSync) {
                 console.log('🔍 Автоматическая проверка синхронизации...');
-                (window as any).fitAccessDebug.checkSync();
+                window.fitAccessDebug.checkSync();
               }
             }, 1000);
             
@@ -97,7 +81,7 @@ export default function DelayedDebugInitializer() {
 
       // ✅ ПЫТАЕМСЯ ИНИЦИАЛИЗИРОВАТЬ С ИНТЕРВАЛОМ
       const attemptInit = () => {
-        if (debugStatus.attempts >= 15) { // Увеличиваем количество попыток
+        if (debugStatus.attempts >= 15) {
           console.warn('⚠️ Превышено максимальное количество попыток инициализации debug системы');
           setDebugStatus(prev => ({ 
             ...prev, 
@@ -146,7 +130,7 @@ export default function DelayedDebugInitializer() {
           ? '2px solid #ef4444'
           : '1px solid #666',
       transition: 'all 0.3s ease',
-      maxWidth: '300px'
+            maxWidth: '300px'
     }}>
       <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
         🔧 Debug System {debugStatus.initialized ? '✅' : debugStatus.error ? '❌' : '⏳'}
@@ -195,3 +179,4 @@ export default function DelayedDebugInitializer() {
     </div>
   );
 }
+

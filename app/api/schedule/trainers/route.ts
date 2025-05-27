@@ -7,8 +7,15 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 export async function GET(request: NextRequest) {
   try {
     console.log('🔄 Загрузка тренеров для расписания из Convex...');
+    console.log('🔗 Convex URL:', process.env.NEXT_PUBLIC_CONVEX_URL);
     
-    // Получаем тренеров из Convex
+    // ✅ ПРОВЕРЯЕМ ДОСТУПНОСТЬ CONVEX
+    if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+      console.warn('⚠️ NEXT_PUBLIC_CONVEX_URL не настроен, используем mock данные');
+      return NextResponse.json(getMockScheduleTrainers());
+    }
+
+    // ✅ ПЫТАЕМСЯ ПОЛУЧИТЬ ТРЕНЕРОВ ИЗ CONVEX
     const trainersFromConvex = await convex.query("trainers:getActiveTrainers");
     
     if (trainersFromConvex && trainersFromConvex.length > 0) {
@@ -33,16 +40,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(getMockScheduleTrainers());
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Ошибка получения тренеров для расписания из Convex:', error);
-    console.log('🔄 Переключаемся на mock данные...');
     
+    // ✅ ДЕТАЛЬНАЯ ОБРАБОТКА ОШИБОК
+    if (error.message?.includes('Could not find public function')) {
+      console.error('💡 Функция trainers:getActiveTrainers не найдена в Convex');
+      console.error('💡 Убедитесь что:');
+      console.error('   1. Файл convex/trainers.ts существует');
+      console.error('   2. Функция getActiveTrainers экспортирована');
+      console.error('   3. Convex dev сервер запущен: npx convex dev');
+    } else if (error.message?.includes('fetch')) {
+      console.error('💡 Проблема с подключением к Convex');
+      console.error('💡 Проверьте NEXT_PUBLIC_CONVEX_URL в .env.local');
+    }
+    
+    console.log('🔄 Переключаемся на mock данные...');
     return NextResponse.json(getMockScheduleTrainers());
   }
 }
 
-// Mock данные для расписания
+// ✅ РАСШИРЕННЫЕ MOCK ДАННЫЕ
 function getMockScheduleTrainers() {
+  console.log('📋 Используем mock данные для тренеров расписания');
+  
   return [
     {
       trainerId: 'trainer1',
@@ -52,7 +73,7 @@ function getMockScheduleTrainers() {
       workingHours: {
         start: '09:00',
         end: '18:00',
-        days: [1, 2, 3, 4, 5]
+        days: [1, 2, 3, 4, 5] // пн-пт
       }
     },
     {
@@ -63,7 +84,7 @@ function getMockScheduleTrainers() {
       workingHours: {
         start: '08:00',
         end: '17:00',
-        days: [1, 2, 3, 4, 5, 6]
+        days: [1, 2, 3, 4, 5, 6] // пн-сб
       }
     },
     {
@@ -74,7 +95,7 @@ function getMockScheduleTrainers() {
       workingHours: {
         start: '10:00',
         end: '19:00',
-        days: [1, 2, 3, 4, 5, 6, 0]
+        days: [1, 2, 3, 4, 5, 6, 0] // каждый день
       }
     },
     {
@@ -85,7 +106,7 @@ function getMockScheduleTrainers() {
       workingHours: {
         start: '07:00',
         end: '16:00',
-        days: [1, 2, 3, 4, 5, 6]
+        days: [1, 2, 3, 4, 5, 6] // пн-сб
       }
     },
     {
@@ -96,7 +117,7 @@ function getMockScheduleTrainers() {
       workingHours: {
         start: '14:00',
         end: '22:00',
-        days: [1, 2, 3, 4, 5, 6]
+        days: [1, 2, 3, 4, 5, 6] // пн-сб
       }
     }
   ];
