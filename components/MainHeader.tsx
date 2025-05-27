@@ -1,6 +1,7 @@
 // components/MainHeader.tsx (обновленная версия)
 "use client";
 
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 
+
 interface AuthStatus {
   authenticated: boolean;
   user?: {
@@ -42,11 +44,13 @@ interface AuthStatus {
   dashboardUrl?: string;
 }
 
+
 interface MainHeaderProps {
   authStatus: AuthStatus | null;
   isLoading: boolean;
   onLogout: () => void;
 }
+
 
 export default function MainHeader({
   authStatus,
@@ -55,6 +59,7 @@ export default function MainHeader({
 }: MainHeaderProps) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
 
   const getRoleDisplayName = (role: string): string => {
     switch (role) {
@@ -73,11 +78,13 @@ export default function MainHeader({
     }
   };
 
+
   const handleDashboardRedirect = () => {
     if (authStatus?.dashboardUrl) {
       router.push(authStatus.dashboardUrl);
     }
   };
+
 
   if (isLoading) {
     return (
@@ -97,6 +104,7 @@ export default function MainHeader({
       </header>
     );
   }
+
 
   return (
     <>
@@ -124,6 +132,7 @@ export default function MainHeader({
               </div>
             </div>
 
+
             {/* Правая часть */}
             <div className="flex items-center space-x-4">
               {authStatus?.authenticated ? (
@@ -142,6 +151,7 @@ export default function MainHeader({
                       </Badge>
                     </Button>
 
+
                     {/* Тренеры */}
                     <Button
                       onClick={() => router.push("/trainers")}
@@ -154,6 +164,7 @@ export default function MainHeader({
                     </Button>
                   </div>
 
+
                   {/* Основная кнопка дашборда */}
                   <Button
                     onClick={handleDashboardRedirect}
@@ -162,6 +173,7 @@ export default function MainHeader({
                     <span>Перейти в дашборд</span>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
+
 
                   {/* Профиль пользователя */}
                   <DropdownMenu>
@@ -227,11 +239,13 @@ export default function MainHeader({
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
 
+
                       <DropdownMenuItem onClick={handleDashboardRedirect}>
                         <Shield className="mr-2 h-4 w-4" />
                         Мой дашборд
                         <ExternalLink className="ml-auto h-3 w-3" />
                       </DropdownMenuItem>
+
 
                       <DropdownMenuItem
                         onClick={() => router.push("/trainer/profile")}
@@ -240,7 +254,9 @@ export default function MainHeader({
                         Мой профиль
                       </DropdownMenuItem>
 
+
                       <DropdownMenuSeparator />
+
 
                       <DropdownMenuItem
                         onClick={onLogout}
@@ -251,18 +267,6 @@ export default function MainHeader({
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-
-                  {/* Debug кнопка для разработки */}
-                  {process.env.NODE_ENV === "development" && (
-                    <Button
-                      onClick={() => router.push("/debug-auth")}
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs text-gray-500 hidden xl:flex"
-                    >
-                      Debug
-                    </Button>
-                  )}
                 </>
               ) : (
                 <>
@@ -277,6 +281,7 @@ export default function MainHeader({
                       🤖 Демо вход
                     </Button>
 
+
                     <Button
                       onClick={() => router.push("/face-login")}
                       variant="outline"
@@ -286,6 +291,7 @@ export default function MainHeader({
                       Умный вход
                     </Button>
 
+
                     <Button
                       onClick={() => router.push("/member-login")}
                       className="bg-blue-600 hover:bg-blue-700 text-white transition-all duration-200"
@@ -293,6 +299,7 @@ export default function MainHeader({
                       Войти
                     </Button>
                   </div>
+
 
                   {/* Debug кнопка для разработки */}
                   {process.env.NODE_ENV === "development" && (
@@ -307,6 +314,7 @@ export default function MainHeader({
                   )}
                 </>
               )}
+
 
               {/* Мобильное меню */}
               <Button
@@ -325,6 +333,7 @@ export default function MainHeader({
           </div>
         </div>
       </header>
+
 
       {/* Упрощенное мобильное меню */}
       {mobileMenuOpen && (
@@ -358,6 +367,7 @@ export default function MainHeader({
                   </div>
                 </div>
 
+
                 {/* Основная кнопка */}
                 <Button
                   onClick={() => {
@@ -369,6 +379,7 @@ export default function MainHeader({
                   Перейти в дашборд
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
+
 
                 {/* Дополнительные действия */}
                 <div className="space-y-2">
@@ -383,6 +394,7 @@ export default function MainHeader({
                     <Settings className="mr-2 h-4 w-4" />
                     Настройки профиля
                   </Button>
+
 
                   <Button
                     variant="ghost"
@@ -411,6 +423,7 @@ export default function MainHeader({
                   🤖 Демо умного входа
                 </Button>
 
+
                 <Button
                   onClick={() => {
                     router.push("/face-login");
@@ -421,6 +434,7 @@ export default function MainHeader({
                 >
                   Умный вход
                 </Button>
+
 
                 <Button
                   onClick={() => {
@@ -439,3 +453,6 @@ export default function MainHeader({
     </>
   );
 }
+
+
+

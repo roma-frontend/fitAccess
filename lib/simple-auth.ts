@@ -13,10 +13,17 @@ export interface Session {
   user: User;
   createdAt: Date;
   expiresAt: Date;
+  lastAccessed: Date;
 }
 
 // Моковые пользователи с правильной типизацией
 const mockUsers: User[] = [
+  {
+    id: 'super_admin_1',
+    email: 'romangulanyan@gmail.com',
+    role: 'super-admin',
+    name: 'Роман Гуланян'
+  },
   {
     id: 'admin_1',
     email: 'admin@fitnessstudio.ru',
@@ -48,31 +55,31 @@ const mockUsers: User[] = [
     name: 'Анна Менеджер'
   },
   {
-    id: 'client_1',
+    id: 'member_1',
     email: 'anna.smirnova@email.com',
-    role: 'client',
+    role: 'member',
     name: 'Анна Смирнова'
   },
   {
-    id: 'client_2',
+    id: 'client_1',
     email: 'igor.volkov@email.com',
     role: 'client',
     name: 'Игорь Волков'
   },
   {
-    id: 'client_3',
+    id: 'client_2',
     email: 'olga.kuznetsova@email.com',
     role: 'client',
     name: 'Ольга Кузнецова'
   },
   {
-    id: 'client_4',
+    id: 'client_3',
     email: 'maxim.fedorov@email.com',
     role: 'client',
     name: 'Максим Федоров'
   },
   {
-    id: 'client_5',
+    id: 'client_4',
     email: 'svetlana.novikova@email.com',
     role: 'client',
     name: 'Светлана Новикова'
@@ -82,14 +89,16 @@ const mockUsers: User[] = [
 // Хранилище сессий в памяти
 const sessions = new Map<string, Session>();
 
-// ДОБАВЛЕННАЯ ФУНКЦИЯ: Создание сессии
+// Создание сессии
 export const createSession = (user: User): string => {
   const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const now = new Date();
   const session: Session = {
     id: sessionId,
     user,
-    createdAt: new Date(),
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 дней
+    createdAt: now,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 дней
+    lastAccessed: now
   };
 
   sessions.set(sessionId, session);
@@ -102,7 +111,18 @@ export const createSession = (user: User): string => {
 export const authenticate = (email: string, password: string): Session | null => {
   console.log(`🔐 Auth: попытка входа для ${email}`);
   
-  // Простая проверка пароля (в реальном приложении будет хеширование)
+  // Специальная проверка для супер-админа
+  if (email === 'romangulanyan@gmail.com' && password === 'Hovik-1970') {
+    const user = mockUsers.find(u => u.email === email);
+    if (user) {
+      const sessionId = createSession(user);
+      const session = sessions.get(sessionId);
+      console.log(`✅ Auth: супер-админ авторизован`);
+      return session || null;
+    }
+  }
+  
+  // Простая проверка пароля для остальных (в реальном приложении будет хеширование)
   if (password !== 'password123') {
     console.log('❌ Auth: неверный пароль');
     return null;
@@ -135,6 +155,10 @@ export const getSession = (sessionId: string): Session | null => {
     console.log('⏰ Auth: сессия истекла');
     return null;
   }
+
+  // Обновляем время последнего доступа
+  session.lastAccessed = new Date();
+  sessions.set(sessionId, session);
 
   return session;
 };
@@ -247,7 +271,7 @@ export const emailExists = (email: string): boolean => {
 
 // Валидация роли
 export const isValidRole = (role: string): role is UserRole => {
-  return ['admin', 'manager', 'trainer', 'client'].includes(role);
+  return ['super-admin', 'admin', 'manager', 'trainer', 'member', 'client'].includes(role);
 };
 
 // Смена пароля (в реальном приложении)
@@ -356,9 +380,11 @@ export const getAuthStats = () => {
   return {
     totalUsers: mockUsers.length,
     usersByRole: {
+      'super-admin': mockUsers.filter(u => u.role === 'super-admin').length,
       admin: mockUsers.filter(u => u.role === 'admin').length,
       manager: mockUsers.filter(u => u.role === 'manager').length,
       trainer: mockUsers.filter(u => u.role === 'trainer').length,
+      member: mockUsers.filter(u => u.role === 'member').length,
       client: mockUsers.filter(u => u.role === 'client').length
     },
     activeSessions: activeSessions.length,
@@ -381,5 +407,10 @@ export const debugAuth = process.env.NODE_ENV === 'development' ? {
     console.log('🧹 Debug: все сессии очищены');
   },
   addMockUser: (user: Omit<User, 'id'>) => createUser(user),
-  getMockUsers: () => [...mockUsers]
+  getMockUsers: () => [...mockUsers],
+  getSessionsCount: () => sessions.size,
+  getActiveSessionsCount: () => {
+    const now = new Date();
+    return Array.from(sessions.values()).filter(s => s.expiresAt > now).length;
+  }
 } : undefined;

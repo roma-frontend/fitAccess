@@ -1,6 +1,7 @@
 // app/page.tsx (обновленная версия с новым header)
 "use client";
 
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import MainHeader from "@/components/MainHeader";
@@ -33,8 +34,18 @@ import {
   Target,
   Flame,
   Loader2,
+  Wrench,
+  BarChart3,
+  FileText,
+  ShieldCheck,
+  Cog,
+  Activity,
+  Code,
+  Download,
+  Database,
 } from "lucide-react";
 import { memo } from "react";
+
 
 interface AuthStatus {
   authenticated: boolean;
@@ -47,24 +58,29 @@ interface AuthStatus {
   dashboardUrl?: string;
 }
 
+
 // Мемоизированные компоненты остаются без изменений
 const TrainerCard = memo(({ trainer }: { trainer: any }) => {
   const router = useRouter();
   const IconComponent = trainer.icon;
 
+
   const handleCardClick = () => {
     router.push(trainer.link);
   };
+
 
   const handleProfileClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(trainer.link);
   };
 
+
   const handleBookingClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(trainer.bookingLink);
   };
+
 
   return (
     <Card
@@ -97,6 +113,7 @@ const TrainerCard = memo(({ trainer }: { trainer: any }) => {
         </div>
       </div>
 
+
       <CardContent className="p-6">
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -105,6 +122,7 @@ const TrainerCard = memo(({ trainer }: { trainer: any }) => {
             />
             <span>{trainer.experience}</span>
           </div>
+
 
           <div className="flex flex-wrap gap-2">
             {trainer.badges.map((badge: string, index: number) => (
@@ -117,9 +135,11 @@ const TrainerCard = memo(({ trainer }: { trainer: any }) => {
             ))}
           </div>
 
+
           <p className="text-sm text-gray-600 transition-colors duration-300 group-hover:text-gray-700">
             {trainer.description}
           </p>
+
 
           <div className="flex items-center justify-between pt-4">
             <div className="text-lg font-bold text-gray-900 transition-all duration-300 group-hover:scale-105">
@@ -146,26 +166,32 @@ const TrainerCard = memo(({ trainer }: { trainer: any }) => {
   );
 });
 
+
 TrainerCard.displayName = "TrainerCard";
+
 
 const ProgramCard = memo(({ program }: { program: any }) => {
   const router = useRouter();
   const IconComponent = program.icon;
 
+
   const handleCardClick = () => {
     router.push(program.link);
   };
+
 
   const handleDetailsClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     router.push(program.link);
   };
 
+
   const handleBookClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     const bookingLink = `${program.link}?action=book`;
     router.push(bookingLink);
   };
+
 
   return (
     <Card
@@ -178,7 +204,7 @@ const ProgramCard = memo(({ program }: { program: any }) => {
         >
           <IconComponent className="h-8 w-8 text-white transition-transform duration-300 group-hover:scale-110" />
         </div>
-                <h3 className="text-lg font-semibold mb-2 transition-all duration-300 group-hover:scale-105">
+        <h3 className="text-lg font-semibold mb-2 transition-all duration-300 group-hover:scale-105">
           {program.title}
         </h3>
         <p className="text-sm text-gray-600 mb-4 transition-colors duration-300 group-hover:text-gray-700">
@@ -188,6 +214,7 @@ const ProgramCard = memo(({ program }: { program: any }) => {
           <Clock className="h-4 w-4" />
           <span>{program.duration}</span>
         </div>
+
 
         <div className="flex gap-2">
           <button
@@ -208,12 +235,15 @@ const ProgramCard = memo(({ program }: { program: any }) => {
   );
 });
 
+
 ProgramCard.displayName = "ProgramCard";
+
 
 export default function HomePage() {
   const router = useRouter();
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
 
   // Проверка авторизации при загрузке страницы
   useEffect(() => {
@@ -222,11 +252,14 @@ export default function HomePage() {
         const response = await fetch("/api/auth/check");
         const data = await response.json();
 
+
         console.log("Статус авторизации на главной:", data);
+
 
         // Если пользователь авторизован через JWT, мигрируем на сессии
         if (data.authenticated && data.system === "jwt-fallback") {
           console.log("Обнаружен JWT токен, выполняем миграцию на сессии...");
+
 
           try {
             const migrateResponse = await fetch(
@@ -236,7 +269,9 @@ export default function HomePage() {
               }
             );
 
+
             const migrateData = await migrateResponse.json();
+
 
             if (migrateData.success) {
               console.log("Миграция на сессии выполнена успешно");
@@ -276,14 +311,17 @@ export default function HomePage() {
       }
     };
 
+
     checkAuth();
   }, []);
+
 
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/auth/logout", {
         method: "POST",
       });
+
 
       if (response.ok) {
         setAuthStatus({ authenticated: false });
@@ -294,11 +332,13 @@ export default function HomePage() {
     }
   };
 
+
   const handleDashboardRedirect = () => {
     if (authStatus?.dashboardUrl) {
       router.push(authStatus.dashboardUrl);
     }
   };
+
 
   // Данные тренеров (остаются без изменений)
   const trainers = [
@@ -411,6 +451,7 @@ export default function HomePage() {
     },
   ];
 
+
   // Данные программ (остаются без изменений)
   const programs = [
     {
@@ -465,6 +506,7 @@ export default function HomePage() {
     },
   ];
 
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
@@ -476,14 +518,16 @@ export default function HomePage() {
     );
   }
 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       {/* Новый красивый header */}
-      <MainHeader 
-        authStatus={authStatus} 
-        isLoading={isLoading} 
-        onLogout={handleLogout} 
+      <MainHeader
+        authStatus={authStatus}
+        isLoading={isLoading}
+        onLogout={handleLogout}
       />
+
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}
@@ -507,6 +551,7 @@ export default function HomePage() {
             )}
           </h1>
 
+
           {authStatus?.authenticated ? (
             <div className="space-y-6">
               <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -518,7 +563,7 @@ export default function HomePage() {
                   {authStatus.user?.role === "manager" && "Менеджер"}
                   {authStatus.user?.role === "trainer" && "Тренер"}
                 </strong>
-                                . Перейдите в свой дашборд для управления системой.
+                . Перейдите в свой дашборд для управления системой.
               </p>
               <Button
                 onClick={handleDashboardRedirect}
@@ -536,6 +581,7 @@ export default function HomePage() {
                 биометрическим доступом, записью к тренерам, магазином и
                 аналитикой.
               </p>
+
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
@@ -559,6 +605,7 @@ export default function HomePage() {
           )}
         </div>
 
+
         {/* Карточки входа - показываем только неавторизованным пользователям */}
         {!authStatus?.authenticated && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
@@ -578,6 +625,7 @@ export default function HomePage() {
               </CardContent>
             </Card>
 
+
             <Card className="hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
               <CardContent className="p-8 text-center">
                 <Shield className="h-16 w-16 text-green-600 mx-auto mb-4 transition-transform duration-300 hover:scale-110" />
@@ -596,6 +644,7 @@ export default function HomePage() {
             </Card>
           </div>
         )}
+
 
         {/* Features */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
@@ -625,6 +674,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
+
           <Card className="hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
             <CardHeader>
               <Calendar className="h-8 w-8 text-green-600 mb-2 transition-transform duration-300 hover:scale-110" />
@@ -650,6 +700,7 @@ export default function HomePage() {
               </ul>
             </CardContent>
           </Card>
+
 
           <Card className="hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
             <CardHeader>
@@ -678,6 +729,7 @@ export default function HomePage() {
           </Card>
         </div>
 
+
         {/* Секция тренеров */}
         <div className="mb-16">
           <div className="text-center mb-12">
@@ -696,11 +748,13 @@ export default function HomePage() {
             </div>
           </div>
 
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {trainers.map((trainer, index) => (
-              <TrainerCard key={trainer.name} trainer={trainer}  />
+              <TrainerCard key={trainer.name} trainer={trainer} />
             ))}
           </div>
+
 
           <div className="text-center mt-12">
             <Button
@@ -713,6 +767,7 @@ export default function HomePage() {
             </Button>
           </div>
         </div>
+
 
         {/* Секция программ */}
         <div className="mb-16">
@@ -731,11 +786,13 @@ export default function HomePage() {
             </div>
           </div>
 
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {programs.map((program, index) => (
               <ProgramCard key={program.title} program={program} />
             ))}
           </div>
+
 
           <div className="text-center mt-12">
             <Button
@@ -748,6 +805,7 @@ export default function HomePage() {
             </Button>
           </div>
         </div>
+
 
         {/* Быстрые действия для пользователей */}
         <div className="mb-16">
@@ -775,6 +833,7 @@ export default function HomePage() {
                     <span className="text-sm font-medium">Мой дашборд</span>
                   </Button>
 
+
                   <Button
                     onClick={() => router.push("/trainers")}
                     variant="outline"
@@ -783,6 +842,7 @@ export default function HomePage() {
                     <Users className="h-6 w-6 mb-2 text-green-600" />
                     <span className="text-sm font-medium">Тренеры</span>
                   </Button>
+
 
                   <Button
                     onClick={() => router.push("/programs")}
@@ -804,6 +864,7 @@ export default function HomePage() {
                     <span className="text-sm font-medium">Выбрать тренера</span>
                   </Button>
 
+
                   <Button
                     onClick={() => router.push("/member-login")}
                     variant="outline"
@@ -813,13 +874,14 @@ export default function HomePage() {
                     <span className="text-sm font-medium">Мои тренировки</span>
                   </Button>
 
+
                   <Button
                     onClick={() => router.push("/programs")}
                     variant="outline"
                     className="h-20 flex flex-col items-center justify-center bg-white hover:bg-purple-50 transition-all duration-300 hover:scale-105"
                   >
                     <Heart className="h-6 w-6 mb-2 text-purple-600" />
-                                        <span className="text-sm font-medium">
+                    <span className="text-sm font-medium">
                       Групповые занятия
                     </span>
                   </Button>
@@ -829,74 +891,243 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* Quick Access для разработчиков - показываем только неавторизованным или админам */}
-        {(!authStatus?.authenticated ||
-          ["admin", "super-admin"].includes(authStatus?.user?.role || "")) && (
-          <Card className="mb-16 border-2 border-dashed border-blue-300 bg-blue-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-blue-600" />
-                Панель разработчика
-              </CardTitle>
-              <CardDescription>
-                Быстрая настройка и тестирование системы
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Button
-                  onClick={() => router.push("/setup-users")}
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center hover:bg-blue-50 transition-all duration-300 hover:scale-105"
-                >
-                  <Users className="h-6 w-6 mb-2 text-blue-600" />
-                  <span className="text-sm">Создать пользователей</span>
-                </Button>
 
-                <Button
-                  onClick={() => router.push("/setup-demo-data")}
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center hover:bg-green-50 transition-all duration-300 hover:scale-105"
-                >
-                  <Zap className="h-6 w-6 mb-2 text-green-600" />
-                  <span className="text-sm">Демо-данные</span>
-                </Button>
+        {/* Quick Access для разработчиков - показываем админам и супер-админам */}
+        {authStatus?.authenticated &&
+          ["admin", "super-admin"].includes(authStatus?.user?.role || "") && (
+            <Card className="mb-16 border-2 border-dashed border-blue-300 bg-blue-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-blue-600" />
+                  Панель разработчика
+                </CardTitle>
+                <CardDescription>
+                  Быстрая настройка и тестирование системы
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Основные функции для всех админов */}
+                  <Button
+                    onClick={() => router.push("/setup-users")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-blue-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <Users className="h-6 w-6 mb-2 text-blue-600" />
+                    <span className="text-sm">Создать пользователей</span>
+                  </Button>
 
-                <Button
-                  onClick={() => router.push("/admin")}
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center hover:bg-purple-50 transition-all duration-300 hover:scale-105"
-                >
-                  <Shield className="h-6 w-6 mb-2 text-purple-600" />
-                  <span className="text-sm">Админ-панель</span>
-                </Button>
 
-                <Button
-                  onClick={() => router.push("/create-admin")}
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center hover:bg-orange-50 transition-all duration-300 hover:scale-105"
-                >
-                  <UserCheck className="h-6 w-6 mb-2 text-orange-600" />
-                  <span className="text-sm">Создать админа</span>
-                </Button>
-              </div>
+                  <Button
+                    onClick={() => router.push("/setup-demo-data")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-green-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <Zap className="h-6 w-6 mb-2 text-green-600" />
+                    <span className="text-sm">Демо-данные</span>
+                  </Button>
 
-              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <h4 className="font-medium text-yellow-800 mb-2">
-                  🚀 Быстрый старт:
-                </h4>
-                <ol className="text-sm text-yellow-700 space-y-1">
-                  <li>1. Создайте пользователей (админ, тренеры, персонал)</li>
-                  <li>
-                    2. Добавьте демо-данные (участники, продукты, занятия)
-                  </li>
-                  <li>3. Войдите в админ-панель для управления системой</li>
-                  <li>4. Протестируйте все функции под разными ролями</li>
-                </ol>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
+                  <Button
+                    onClick={() => router.push("/admin")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-purple-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <Shield className="h-6 w-6 mb-2 text-purple-600" />
+                    <span className="text-sm">Админ-панель</span>
+                  </Button>
+
+
+                  {/* Новые умные функции для всех админов */}
+                  <Button
+                    onClick={() => router.push("/dev/database-health")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-cyan-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <Database className="h-6 w-6 mb-2 text-cyan-600" />
+                    <span className="text-sm">Здоровье БД</span>
+                  </Button>
+
+
+                  <Button
+                    onClick={() => router.push("/dev/system-analytics")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-indigo-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <BarChart3 className="h-6 w-6 mb-2 text-indigo-600" />
+                    <span className="text-sm">Системная аналитика</span>
+                  </Button>
+
+
+                  <Button
+                    onClick={() => router.push("/dev/backup-restore")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-emerald-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <Download className="h-6 w-6 mb-2 text-emerald-600" />
+                    <span className="text-sm">Бэкап/Восстановление</span>
+                  </Button>
+
+
+                  <Button
+                    onClick={() => router.push("/dev/api-tester")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-amber-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <Code className="h-6 w-6 mb-2 text-amber-600" />
+                    <span className="text-sm">API Тестер</span>
+                  </Button>
+
+
+                  <Button
+                    onClick={() => router.push("/dev/performance-monitor")}
+                    variant="outline"
+                    className="h-20 flex flex-col items-center justify-center hover:bg-rose-50 transition-all duration-300 hover:scale-105"
+                  >
+                    <Activity className="h-6 w-6 mb-2 text-rose-600" />
+                    <span className="text-sm">Мониторинг производительности</span>
+                  </Button>
+
+
+                  {/* Функции только для супер-админа */}
+                  {authStatus?.user?.role === "super-admin" && (
+                    <>
+                      <Button
+                        onClick={() => router.push("/create-admin")}
+                        variant="outline"
+                        className="h-20 flex flex-col items-center justify-center hover:bg-orange-50 transition-all duration-300 hover:scale-105"
+                      >
+                        <UserCheck className="h-6 w-6 mb-2 text-orange-600" />
+                        <span className="text-sm">Создать админа</span>
+                      </Button>
+
+
+                      <Button
+                        onClick={() => router.push("/dev/system-config")}
+                        variant="outline"
+                        className="h-20 flex flex-col items-center justify-center hover:bg-red-50 transition-all duration-300 hover:scale-105"
+                      >
+                        <Cog className="h-6 w-6 mb-2 text-red-600" />
+                        <span className="text-sm">Системные настройки</span>
+                      </Button>
+
+
+                      <Button
+                        onClick={() => router.push("/dev/security-audit")}
+                        variant="outline"
+                        className="h-20 flex flex-col items-center justify-center hover:bg-violet-50 transition-all duration-300 hover:scale-105"
+                      >
+                        <ShieldCheck className="h-6 w-6 mb-2 text-violet-600" />
+                        <span className="text-sm">Аудит безопасности</span>
+                      </Button>
+
+
+                      <Button
+                        onClick={() => router.push("/dev/logs-viewer")}
+                        variant="outline"
+                        className="h-20 flex flex-col items-center justify-center hover:bg-slate-50 transition-all duration-300 hover:scale-105"
+                      >
+                        <FileText className="h-6 w-6 mb-2 text-slate-600" />
+                        <span className="text-sm">Просмотр логов</span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+
+                {/* Умные быстрые действия */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      🚀 Быстрый старт
+                    </h4>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={async () => {
+                          // Автоматическая настройка всего за один клик
+                          const steps = [
+                            () => router.push("/setup-users"),
+                            () => setTimeout(() => router.push("/setup-demo-data"), 2000),
+                            () => setTimeout(() => router.push("/admin"), 4000)
+                          ];
+                          steps.forEach(step => step());
+                        }}
+                        size="sm"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        Автонастройка (1 клик)
+                      </Button>
+                    </div>
+                  </div>
+
+
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      📊 Быстрая диагностика
+                    </h4>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={() => router.push("/dev/health-check")}
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        Проверить систему
+                      </Button>
+                    </div>
+                  </div>
+
+
+                  <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <h4 className="font-medium text-purple-800 mb-2 flex items-center gap-2">
+                      <Wrench className="h-4 w-4" />
+                      🔧 Инструменты
+                    </h4>
+                    <div className="space-y-2">
+                      <Button
+                        onClick={() => router.push("/dev/tools")}
+                        size="sm"
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                      >
+                        Открыть тулбокс
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <h4 className="font-medium text-yellow-800 mb-2">
+                    🚀 Пошаговая настройка:
+                  </h4>
+                  <ol className="text-sm text-yellow-700 space-y-1">
+                    <li>1. Создайте пользователей (админ, тренеры, персонал)</li>
+                    <li>2. Добавьте демо-данные (участники, продукты, занятия)</li>
+                    <li>3. Проверьте здоровье базы данных</li>
+                    <li>4. Войдите в админ-панель для управления системой</li>
+                    <li>5. Протестируйте все функции под разными ролями</li>
+                    <li>6. Настройте мониторинг и бэкапы</li>
+                  </ol>
+                </div>
+
+
+                {/* Статус системы */}
+                <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Статус системы:</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-green-600 font-medium">Работает</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+
+
 
         {/* CTA */}
         <div className="text-center">
@@ -951,6 +1182,13 @@ export default function HomePage() {
   );
 }
 
-                      
+
+
+
+
+
+
+
+
 
 

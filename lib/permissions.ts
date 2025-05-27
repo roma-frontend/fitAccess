@@ -371,4 +371,4 @@ export const getAccessibleResources = (userRole: UserRole | undefined): Resource
   ) as Resource[];
 };
 
-// Функция для проверки, может ли пользователь выполнить
+// Функция для проверки, может ли пользователь выполнить действие над рес
