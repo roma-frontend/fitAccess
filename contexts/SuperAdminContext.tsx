@@ -84,6 +84,7 @@ export interface SuperAdminContextType {
   trainers: TrainerData[];
   clients: ClientData[];
   stats: SuperAdminStats;
+  error: string | null;
   loading: boolean;
   refreshData: () => Promise<void>;
   getTrainerClients: (trainerId: string) => ClientData[];
@@ -130,6 +131,7 @@ export function SuperAdminProvider({
   const [trainers, setTrainers] = useState<TrainerData[]>([]);
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTrainer, setSelectedTrainer] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({
@@ -140,6 +142,7 @@ export function SuperAdminProvider({
   // Загрузка данных с улучшенной обработкой ошибок
   const loadData = async () => {
     setLoading(true);
+    setError(null); // ← Сбрасываем ошибку при новой загрузке
 
     try {
       console.log("🔄 Загрузка данных супер-админа...");
@@ -179,6 +182,10 @@ export function SuperAdminProvider({
       console.log("✅ Данные супер-админа загружены успешно");
     } catch (err) {
       console.error("❌ Критическая ошибка загрузки данных супер-админа:", err);
+      
+      // ← Устанавливаем ошибку
+      const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка загрузки данных';
+      setError(errorMessage);
 
       // Fallback к mock данным
       setTrainers(getMockTrainers());
@@ -618,6 +625,7 @@ export function SuperAdminProvider({
     clients,
     stats,
     loading,
+    error,
     refreshData,
     getTrainerClients,
     getTrainerStats,

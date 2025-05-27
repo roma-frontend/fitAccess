@@ -10,21 +10,27 @@ export interface Trainer {
   email: string;
   phone: string;
   role: string;
-  avatar: string;
+  avatar?: string;
   joinDate: string;
   status: 'active' | 'inactive' | 'suspended';
   specializations: string[];
+  experience?: number;
   rating: number;
   totalClients: number;
   activeClients: number;
   totalWorkouts: number;
+  totalSessions?: number;
   monthlyRevenue: number;
+  hourlyRate?: number;
+  certifications?: string[];
   workingHours: {
     start: string;
     end: string;
     days: number[];
   };
   lastActivity: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Client {
@@ -40,9 +46,12 @@ export interface Client {
   membershipExpiry: string;
   totalSessions: number;
   lastVisit: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ScheduleEvent {
+  id?: string;
   _id: string;
   title: string;
   description?: string;
@@ -87,6 +96,7 @@ export interface Analytics {
   revenue: {
     total: number;
     monthly: number;
+    thisMonth?: number; // Добавляем это поле
     growth: number;
     byProduct: Array<{ name: string; revenue: number }>;
     trend: Array<{ date: string; amount: number }>;
