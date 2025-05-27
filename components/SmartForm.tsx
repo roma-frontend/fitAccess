@@ -133,25 +133,6 @@ export const SmartForm: React.FC<SmartFormProps> = ({
     const fieldValidation = validationStates[fieldName];
 
     switch (fieldName) {
-      case 'role':
-        return (
-          <div key={fieldName}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Роль *
-            </label>
-            <select
-              value={formData[fieldName] || 'admin'}
-              onChange={(e) => handleFieldChange(fieldName, e.target.value)}
-              className="w-full h-11 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            >
-              <option value="admin">Администратор</option>
-              <option value="super-admin">Супер Администратор</option>
-              <option value="manager">Менеджер</option>
-              <option value="trainer">Тренер</option>
-            </select>
-          </div>
-        );
 
       case 'name':
         return (
