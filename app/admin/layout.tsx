@@ -150,7 +150,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-3 md:space-y-0">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
                 <Shield className="h-6 w-6 text-white" />
@@ -162,7 +162,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </div>
             
             <div className="flex items-center space-x-4">
-              <div className={`hidden md:flex items-center space-x-2 px-3 py-1 bg-gradient-to-r ${systemStatus.bgColor} rounded-full`}>
+              <div className={`hidden lg:flex items-center space-x-2 px-3 py-1 bg-gradient-to-r ${systemStatus.bgColor} rounded-full`}>
                 <StatusIcon className={`h-4 w-4 ${systemStatus.color} ${scheduleLoading ? 'animate-pulse' : ''}`} />
                 <div className="text-sm">
                   <span className={`font-medium ${systemStatus.color}`}>{systemStatus.text}</span>

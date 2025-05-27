@@ -4,7 +4,10 @@ import { getSession } from '@/lib/simple-auth';
 import jwt from 'jsonwebtoken';
 
 const getDashboardForRole = (role: string): string => {
-  switch (role) {
+  // Нормализуем роль
+  const normalizedRole = role.replace(/_/g, '-').toLowerCase();
+  
+  switch (normalizedRole) {
     case 'member':
       return '/member-dashboard';
     case 'admin':

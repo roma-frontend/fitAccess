@@ -86,8 +86,17 @@ const mockUsers: User[] = [
   }
 ];
 
-// Хранилище сессий в памяти
-const sessions = new Map<string, Session>();
+// Глобальное хранилище сессий
+declare global {
+  var __sessions: Map<string, Session> | undefined;
+}
+
+// Инициализируем глобальное хранилище сессий
+const sessions = globalThis.__sessions ?? new Map<string, Session>();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalThis.__sessions = sessions;
+}
 
 // Создание сессии
 export const createSession = (user: User): string => {
@@ -102,7 +111,8 @@ export const createSession = (user: User): string => {
   };
 
   sessions.set(sessionId, session);
-  console.log(`✅ Session: создана сессия для ${user.email} (${user.role})`);
+  console.log(`✅ Session: создана сессия для ${user.email} (${user.role}), ID: ${sessionId.substring(0, 20)}...`);
+  console.log(`📊 Session: всего сессий в хранилище: ${sessions.size}`);
   
   return sessionId;
 };
@@ -143,11 +153,21 @@ export const authenticate = (email: string, password: string): Session | null =>
 
 // Получение сессии
 export const getSession = (sessionId: string): Session | null => {
+  console.log(`🔍 getSession: поиск сессии ${sessionId.substring(0, 20)}...`);
+  console.log(`📊 getSession: всего сессий в хранилище: ${sessions.size}`);
+  
+  // Выводим все ключи сессий для отладки
+  const allKeys = Array.from(sessions.keys());
+  console.log(`🔑 getSession: ключи сессий (первые 20 символов):`, allKeys.map(key => key.substring(0, 20)));
+  
   const session = sessions.get(sessionId);
   
   if (!session) {
+    console.log(`❌ getSession: сессия ${sessionId.substring(0, 20)}... не найдена`);
     return null;
   }
+
+  console.log(`✅ getSession: сессия найдена для ${session.user.email} (${session.user.role})`);
 
   // Проверяем срок действия
   if (session.expiresAt < new Date()) {
@@ -372,6 +392,8 @@ export const cleanupExpiredSessions = (): number => {
   return deletedCount;
 };
 
+// Продолжение lib/simple-auth.ts
+
 // Получение статистики аутентификации
 export const getAuthStats = () => {
   const now = new Date();
@@ -412,5 +434,37 @@ export const debugAuth = process.env.NODE_ENV === 'development' ? {
   getActiveSessionsCount: () => {
     const now = new Date();
     return Array.from(sessions.values()).filter(s => s.expiresAt > now).length;
-  }
+  },
+  // Новые методы для отладки
+  getSessionById: (sessionId: string) => sessions.get(sessionId),
+  getAllSessionIds: () => Array.from(sessions.keys()),
+  forceCreateSession: (user: User) => createSession(user),
+  getSessionsMap: () => sessions
 } : undefined;
+
+// Дополнительная функция для отладки middleware
+export const debugSessionAccess = (sessionId: string) => {
+  console.log(`🔍 Debug: проверка доступа к сессии ${sessionId.substring(0, 20)}...`);
+  console.log(`📊 Debug: размер хранилища сессий: ${sessions.size}`);
+  console.log(`🗂️ Debug: тип хранилища:`, typeof sessions);
+  console.log(`🔑 Debug: все ключи сессий:`, Array.from(sessions.keys()).map(k => k.substring(0, 20)));
+  
+  const session = sessions.get(sessionId);
+  console.log(`📋 Debug: результат поиска сессии:`, !!session);
+  
+  if (session) {
+    console.log(`👤 Debug: данные пользователя:`, {
+      id: session.user.id,
+      email: session.user.email,
+      role: session.user.role,
+      name: session.user.name
+    });
+    console.log(`⏰ Debug: время создания:`, session.createdAt);
+    console.log(`⏰ Debug: время истечения:`, session.expiresAt);
+    console.log(`⏰ Debug: последний доступ:`, session.lastAccessed);
+    console.log(`✅ Debug: сессия активна:`, session.expiresAt > new Date());
+  }
+  
+  return session;
+};
+

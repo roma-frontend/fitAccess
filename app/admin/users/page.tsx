@@ -1,10 +1,10 @@
-// app/admin/users/page.tsx (финальная версия)
+// app/admin/users/page.tsx (обновленная версия с улучшенным дизайном)
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Users, BarChart3, Zap } from "lucide-react";
+import { ArrowLeft, Users, BarChart3, Zap, Sparkles } from "lucide-react";
 
 // Импорт всех компонентов
 import { UserStats } from "@/components/admin/users/UserStats";
@@ -72,7 +72,7 @@ export default function UsersManagementPage() {
     });
   }, [users, searchTerm, roleFilter, statusFilter]);
 
-  // Handlers
+  // Handlers (остаются те же)
   const handleCreateUser = async (userData: {
     email: string;
     password: string;
@@ -81,7 +81,7 @@ export default function UsersManagementPage() {
   }) => {
     try {
       const response = await fetch('/api/admin/users', {
-                method: 'POST',
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
@@ -189,38 +189,60 @@ export default function UsersManagementPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка пользователей...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="text-center space-y-4">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+            <Sparkles className="w-6 h-6 text-blue-500 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-gray-700">Загрузка пользователей</h3>
+            <p className="text-gray-500">Подготавливаем данные для вас...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Animated Background Elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-600/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      </div>
+
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
+      <header className="relative bg-white/80 backdrop-blur-xl shadow-lg border-b border-white/20 sticky top-0 z-50">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center space-x-6">
               <Button 
                 variant="ghost" 
                 onClick={() => window.location.href = '/admin'}
-                className="flex items-center gap-2"
+                className="flex items-center gap-3 hover:bg-blue-50 transition-all duration-200 group"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Назад
+                <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+                <span className="font-medium">Назад</span>
               </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                  <Users className="h-6 w-6 text-white" />
+              
+              <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
+              
+              <div className="hidden xl:flex items-center space-x-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl blur-lg opacity-30"></div>
+                  <div className="relative p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Управление пользователями</h1>
-                  <p className="text-sm text-gray-600">Создание и управление учетными записями</p>
+                  <h1 className="text-lg xl:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                    Управление пользователями
+                  </h1>
+                  <p className="hidden 2xl:inline-block text-sm text-gray-600 mt-1">
+                    Создание и управление учетными записями • {users.length} пользователей
+                  </p>
                 </div>
               </div>
             </div>
@@ -236,35 +258,49 @@ export default function UsersManagementPage() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats */}
         <div className="mb-8">
           <UserStats users={users} />
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
-            <TabsTrigger value="users" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Пользователи
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Аналитика
-            </TabsTrigger>
-            <TabsTrigger value="actions" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Действия
-            </TabsTrigger>
-            <TabsTrigger value="hierarchy" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Роли
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="users" className="space-y-8">
+          <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-2 shadow-lg border border-white/20">
+            <TabsList className="grid w-full grid-cols-4 bg-transparent gap-2">
+              <TabsTrigger 
+                value="users" 
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all duration-200"
+              >
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Пользователи</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="analytics" 
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all duration-200"
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Аналитика</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="actions" 
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all duration-200"
+              >
+                <Zap className="h-4 w-4" />
+                <span className="hidden sm:inline">Действия</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="hierarchy" 
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-md data-[state=active]:text-blue-600 transition-all duration-200"
+              >
+                <Sparkles className="h-4 w-4" />
+                <span className="hidden sm:inline">Роли</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Users Tab */}
-          <TabsContent value="users" className="space-y-6">
+          <TabsContent value="users" className="space-y-8">
             <UserFilters
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -286,12 +322,12 @@ export default function UsersManagementPage() {
           </TabsContent>
 
           {/* Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-6">
+          <TabsContent value="analytics" className="space-y-8">
             <UserAnalytics users={users} />
           </TabsContent>
 
           {/* Quick Actions Tab */}
-          <TabsContent value="actions" className="space-y-6">
+          <TabsContent value="actions" className="space-y-8">
             <QuickActions
               users={users}
               userRole={userRole}
@@ -300,14 +336,14 @@ export default function UsersManagementPage() {
           </TabsContent>
 
           {/* Role Hierarchy Tab */}
-          <TabsContent value="hierarchy" className="space-y-6">
+          <TabsContent value="hierarchy" className="space-y-8">
             <RoleHierarchy />
           </TabsContent>
         </Tabs>
       </main>
 
-      {/* Edit Dialog */}
-      <EditUserDialog
+            {/* Edit Dialog */}
+            <EditUserDialog
         user={editingUser}
         userRole={userRole}
         onClose={() => setEditingUser(null)}
@@ -317,3 +353,4 @@ export default function UsersManagementPage() {
   );
 }
 
+      
