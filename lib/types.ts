@@ -1,5 +1,4 @@
 // lib/types.ts
-// Дополнительные типы для системы
 
 export type UserRole = 'admin' | 'manager' | 'trainer' | 'client';
 export type UserStatus = 'active' | 'inactive' | 'suspended';
