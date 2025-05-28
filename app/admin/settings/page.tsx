@@ -29,7 +29,8 @@ import {
   Upload,
   AlertTriangle,
   CheckCircle,
-  Info
+  Info,
+  ArrowLeft
 } from "lucide-react";
 import { GeneralSettings } from '@/components/admin/settings/GeneralSettings';
 import { NotificationSettings } from '@/components/admin/settings/Notificationsettings';
@@ -39,6 +40,8 @@ import { AppearanceSettings } from '@/components/admin/settings/AppearanceSettin
 import { IntegrationSettings } from '@/components/admin/settings/IntegrationSettings';
 import { SystemSettings } from '@/components/admin/settings/SystemSettings';
 import { BackupSettings } from '@/components/admin/settings/BackupSettings';
+import { useRouter } from 'next/navigation';
+import { AdminSecondHeader, MobileActionGroup, ResponsiveButton } from '@/components/admin/users/AdminSecondHeader';
 
 // Типы для настроек
 export interface SystemConfig {
@@ -173,6 +176,7 @@ export default function SettingsPage() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
+  const router = useRouter()
 
   useEffect(() => {
     loadSettings();
@@ -411,79 +415,58 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Settings className="h-6 w-6" />
-              Настройки системы
-            </h1>
-            <p className="text-gray-600">
-              Управление конфигурацией и параметрами системы
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            {/* Статус сохранения */}
-            <div className="flex items-center gap-2 text-sm">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Header */}
+      <AdminSecondHeader
+        title="Настройки системы"
+        description="Управление конфигурацией"
+        icon={Settings}
+        actions={
+          <MobileActionGroup>
+            {/* Статус сохранения - скрыт на мобильном */}
+            <div className="hidden sm:flex items-center text-sm mr-3">
               {hasUnsavedChanges ? (
                 <div className="flex items-center gap-1 text-orange-600">
                   <AlertTriangle className="h-4 w-4" />
-                  Есть несохраненные изменения
+                  <span className="hidden md:inline">Несохранено</span>
                 </div>
               ) : lastSaved ? (
                 <div className="flex items-center gap-1 text-green-600">
                   <CheckCircle className="h-4 w-4" />
-                  Сохранено {lastSaved.toLocaleTimeString('ru')}
+                  <span className="hidden md:inline">Сохранено</span>
                 </div>
               ) : null}
             </div>
 
-            {/* Действия */}
-            <Button variant="outline" onClick={loadSettings}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Обновить
-            </Button>
+            <ResponsiveButton 
+              variant="outline" 
+              onClick={exportSettings}
+              hideTextOnMobile
+            >
+              <Download className="h-4 w-4" />
+              <span className="sm:ml-2">Экспорт</span>
+            </ResponsiveButton>
             
-            <Button variant="outline" onClick={exportSettings}>
-              <Download className="h-4 w-4 mr-2" />
-              Экспорт
-            </Button>
-            
-            <Button variant="outline" onClick={() => document.getElementById('import-file')?.click()}>
-              <Upload className="h-4 w-4 mr-2" />
-              Импорт
-            </Button>
-                        <input
-              id="import-file"
-              type="file"
-              accept=".json"
-              onChange={importSettings}
-              className="hidden"
-            />
-            
-            <Button 
+            <ResponsiveButton 
               onClick={saveSettings}
               disabled={saving || !hasUnsavedChanges}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               {saving ? (
                 <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Сохранение...
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="sm:ml-2">Сохранение...</span>
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Сохранить
+                  <Save className="h-4 w-4" />
+                  <span className="sm:ml-2">Сохранить</span>
                 </>
               )}
-            </Button>
-          </div>
-        </div>
-      </div>
+            </ResponsiveButton>
+          </MobileActionGroup>
+        }
+      />
 
       {/* Предупреждение о несохраненных изменениях */}
       {hasUnsavedChanges && (

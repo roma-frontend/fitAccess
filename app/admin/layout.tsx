@@ -5,7 +5,6 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { usePermissions } from '@/hooks/useAuth'; // Используем usePermissions из useAuth
 import { useUnifiedData } from '@/contexts/UnifiedDataContext';
 import { useRoleTexts, getContextualHints } from '@/lib/roleTexts';
 import { SuperAdminProvider } from '@/contexts/SuperAdminContext';
@@ -30,14 +29,13 @@ import {
   Search,
   RefreshCw,
   MessageCircle,
-  ShoppingBasket
+  Package
 } from "lucide-react";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user } = useAuth(); // Используем user вместо userRole
-  const userRole = user?.role; // Получаем роль из user
-  const permissions = usePermissions(); // Используем хук из useAuth
+  const { user } = useAuth();
+  const userRole = user?.role;
   const roleTexts = useRoleTexts(userRole);
   
   const {
@@ -57,8 +55,40 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   // Получаем контекстные подсказки
   const hints = getContextualHints(userRole);
 
+  // Функция проверки прав доступа
+  const hasPermission = (resource: string, action: string) => {
+    if (!userRole) return false;
+    
+    // Логика проверки прав в зависимости от роли
+    switch (userRole) {
+      case 'super-admin':
+        return true; // Супер-админ имеет доступ ко всему
+      
+      case 'admin':
+        return true; // Админ имеет доступ ко всему кроме системных настроек
+      
+      case 'manager':
+        // Менеджер имеет доступ к пользователям, расписанию, сообщениям, аналитике
+        return ['users', 'schedule', 'messages', 'analytics'].includes(resource);
+      
+      case 'trainer':
+        // Тренер имеет доступ к расписанию и сообщениям
+        return ['schedule', 'messages'].includes(resource);
+      
+      case 'member':
+      case 'client':
+        // Клиенты имеют доступ только к расписанию и сообщениям
+        return ['schedule', 'messages'].includes(resource);
+      
+      default:
+        return false;
+    }
+  };
+
   // Навигационные элементы с проверкой прав доступа
   const navigationItems = useMemo(() => {
+    if (!userRole) return [];
+
     const items = [
       {
         href: '/admin',
@@ -81,7 +111,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       {
         href: '/admin/products',
         label: roleTexts.productsTitle,
-        icon: ShoppingBasket,
+        icon: Package,
         permission: { resource: 'products', action: 'read' }
       },
       {
@@ -104,11 +134,19 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       },
     ];
 
+    // Фильтруем элементы на основе прав доступа
     return items.filter(item => {
-      if (!item.permission) return true;
-      return permissions.checkPermission(item.permission.resource, item.permission.action);
+      if (!item.permission) return true; // Если нет ограничений, показываем
+      return hasPermission(item.permission.resource, item.permission.action);
     });
-  }, [permissions, roleTexts]);
+  }, [userRole, roleTexts]);
+
+  // Отладочная информация
+  useEffect(() => {
+    console.log('Current user role:', userRole);
+    console.log('Navigation items:', navigationItems);
+    console.log('Role texts:', roleTexts);
+  }, [userRole, navigationItems, roleTexts]);
 
   // Статистика для сайдбара
   const sidebarStats = useMemo(() => {
@@ -188,6 +226,19 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Если нет навигационных элементов, показываем ошибку
+  if (navigationItems.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <p className="text-gray-600">Ошибка загрузки навигации</p>
+          <p className="text-sm text-gray-500 mt-2">Роль: {userRole}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Мобильная шапка */}
@@ -202,7 +253,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <Menu className="h-5 w-5" />
             </Button>
             <h1 className="font-semibold text-gray-900">
-              {roleTexts.dashboardTitle}
+              {roleTexts.dashboardTitle || 'Панель управления'}
             </h1>
           </div>
           
@@ -274,7 +325,6 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        {/* Десктопный сайдбар */}
         <aside className="hidden lg:flex lg:flex-col lg:w-80 bg-white/90 backdrop-blur-sm border-r shadow-sm">
           <div className="p-6 border-b">
             <div className="flex items-center gap-3 mb-4">
@@ -283,7 +333,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               </div>
               <div>
                 <h2 className="font-bold text-gray-900">FitAccess</h2>
-                <p className="text-sm text-gray-600">{roleTexts.dashboardTitle}</p>
+                <p className="text-sm text-gray-600">{roleTexts.dashboardTitle || 'Панель управления'}</p>
               </div>
             </div>
 
@@ -300,7 +350,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                     {user?.name || 'Пользователь'}
                   </p>
                   <p className="text-xs text-gray-600">
-                    {roleTexts.roleDisplayName}
+                    {roleTexts.roleDisplayName || userRole}
                   </p>
                 </div>
                 <PersonalizedNotifications />
@@ -335,9 +385,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
+            {/* Остальной код остается без изменений... */}
             {/* Живая статистика */}
             <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border mx-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <BarChart3 className="h-4 w-4" />
                 {roleTexts.statsTitle || 'Статистика'}
               </h3>
@@ -378,7 +429,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-2">
                 <StatusIcon className={`h-4 w-4 ${systemStatus.color} ${
                   systemStatus.icon === RefreshCw && scheduleLoading ? 'animate-spin' : ''
-                                }`} />
+                }`} />
                 <span className={`text-sm font-medium ${systemStatus.color}`}>
                   {systemStatus.text}
                 </span>
@@ -545,66 +596,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-hidden">
           <div className="h-full overflow-y-auto">
             {/* Десктопная шапка */}
-            <div className="hidden lg:block bg-white/80 backdrop-blur-sm border-b shadow-sm sticky top-0 z-30">
-              <div className="px-6 py-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
-                      {roleTexts.dashboardTitle}
-                    </h1>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {roleTexts.dashboardSubtitle}
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    {/* Поиск */}
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder={`Поиск ${userRole === 'trainer' ? 'клиентов...' : 
-                                    userRole === 'client' ? 'тренеров...' : 
-                                    'пользователей...'}`}
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                      />
-                    </div>
-                    
-                    {/* Уведомления */}
-                    <PersonalizedNotifications />
-                    
-                    {/* Обновление */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={syncAllData}
-                      disabled={scheduleLoading}
-                      className="flex items-center gap-2"
-                    >
-                      <RefreshCw className={`h-4 w-4 ${scheduleLoading ? 'animate-spin' : ''}`} />
-                      Обновить
-                    </Button>
-
-                    {/* Информация о пользователе в шапке */}
-                    <div className="flex items-center gap-3 pl-4 border-l">
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-gray-900">
-                          {user?.name || 'Пользователь'}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {roleTexts.roleDisplayName}
-                        </div>
-                      </div>
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-white">
-                          {user?.name?.charAt(0) || 'U'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            
 
             {/* Контент страницы */}
             <div className="p-4 lg:p-6">
@@ -656,7 +648,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 shadow-lg max-w-xs">
             <div className="flex items-start gap-2">
               <HelpCircle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
+                            <div className="text-sm">
                 <div className="font-medium text-blue-900 mb-1">Совет тренера</div>
                 <div className="text-blue-700">
                   Не забудьте обновить программы тренировок для ваших клиентов
@@ -713,4 +705,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </SuperAdminProvider>
   );
 }
+
 

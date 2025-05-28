@@ -16,6 +16,8 @@ import { RoleHierarchy } from "@/components/admin/users/RoleHierarchy";
 import { QuickActions } from "@/components/admin/users/QuickActions";
 import { UserAnalytics } from "@/components/admin/users/UserAnalytics";
 import { User, UserRole } from "@/components/admin/users/UserCard";
+import { useRouter } from 'next/navigation';
+import { AdminSecondHeader, MobileActionGroup } from '@/components/admin/users/AdminSecondHeader';
 
 export default function UsersManagementPage() {
   // State
@@ -24,6 +26,7 @@ export default function UsersManagementPage() {
   const [userRole, setUserRole] = useState<UserRole>('member');
   const [canCreate, setCanCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const router = useRouter()
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -212,50 +215,21 @@ export default function UsersManagementPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-xl shadow-lg border-b border-white/20 sticky top-0 z-50">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/5 to-purple-600/5"></div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center space-x-6">
-              <Button 
-                variant="ghost" 
-                onClick={() => window.location.href = '/admin'}
-                className="flex items-center gap-3 hover:bg-blue-50 transition-all duration-200 group"
-              >
-                <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
-                <span className="font-medium">Назад</span>
-              </Button>
-              
-              <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
-              
-              <div className="hidden xl:flex items-center space-x-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl blur-lg opacity-30"></div>
-                  <div className="relative p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg">
-                    <Users className="h-5 w-5 text-white" />
-                  </div>
-                </div>
-                <div>
-                  <h1 className="text-lg xl:text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                    Управление пользователями
-                  </h1>
-                  <p className="hidden 2xl:inline-block text-sm text-gray-600 mt-1">
-                    Создание и управление учетными записями • {users.length} пользователей
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {canCreate && (
+      {/* Header - упрощенный в едином стиле */}
+      <AdminSecondHeader
+        title="Управление пользователями"
+        icon={Users}
+        actions={
+          canCreate ? (
+            <MobileActionGroup>
               <CreateUserDialog 
                 userRole={userRole}
                 onCreateUser={handleCreateUser}
               />
-            )}
-          </div>
-        </div>
-      </header>
+            </MobileActionGroup>
+          ) : undefined
+        }
+      />
 
       {/* Main Content */}
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

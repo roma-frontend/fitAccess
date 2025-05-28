@@ -13,6 +13,7 @@ import { ProductGrid } from "@/components/admin/products/ProductGrid";
 import { ProductForm } from "@/components/admin/products/ProductForm";
 import { ProductQuickActions } from "@/components/admin/products/ProductQuickActions";
 import { Product, ProductFormData } from "@/components/admin/products/types";
+import { useRouter } from 'next/navigation';
 
 export default function ProductsManagementPage() {
   // State
@@ -26,6 +27,8 @@ export default function ProductsManagementPage() {
   const [categoryFilter, setCategoryFilter] = useState<Product['category'] | 'all'>('all');
   const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'low-stock' | 'out-of-stock'>('all');
   const [popularFilter, setPopularFilter] = useState<'all' | 'popular' | 'regular'>('all');
+
+  const router = useRouter()
 
   // Load products
   useEffect(() => {
@@ -210,7 +213,7 @@ export default function ProductsManagementPage() {
             <div className="flex items-center space-x-4">
               <Button 
                 variant="ghost" 
-                onClick={() => window.location.href = '/admin'}
+                onClick={() => router.back()}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />

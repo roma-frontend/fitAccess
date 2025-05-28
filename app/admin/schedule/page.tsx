@@ -13,6 +13,7 @@ import {
   Download,
   Filter,
   TrendingUp,
+  ArrowLeft,
 } from "lucide-react";
 
 // Импорт компонентов
@@ -30,6 +31,12 @@ import {
   CreateEventData,
 } from "@/components/admin/schedule/types";
 import { QuickMessageModal } from "@/components/admin/messaging/QuickMessageModal";
+import { useRouter } from "next/navigation";
+import {
+  AdminSecondHeader,
+  MobileActionGroup,
+  ResponsiveButton,
+} from "@/components/admin/users/AdminSecondHeader";
 
 export default function SchedulePage() {
   const [events, setEvents] = useState<ScheduleEvent[]>([]);
@@ -51,6 +58,7 @@ export default function SchedulePage() {
   const [showQuickMessage, setShowQuickMessage] = useState(false);
   const [messageRecipients, setMessageRecipients] = useState<any[]>([]);
   const [messageRelatedTo, setMessageRelatedTo] = useState<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
     loadScheduleData();
@@ -532,35 +540,36 @@ export default function SchedulePage() {
   }
 
   return (
-    <div className="p-6">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Управление расписанием
-            </h1>
-            <p className="text-gray-600">
-              Планирование и контроль всех событий
-            </p>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            <Button
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Header */}
+      <AdminSecondHeader
+        title="Расписание"
+        description="Планирование событий"
+        icon={Calendar}
+        actions={
+          <MobileActionGroup>
+            <ResponsiveButton
               variant="outline"
               onClick={loadScheduleData}
               disabled={loading}
+              hideTextOnMobile
             >
               <RefreshCw
-                className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
               />
-              Обновить
-            </Button>
-            <Button variant="outline" onClick={exportSchedule}>
-              <Download className="h-4 w-4 mr-2" />
-              Экспорт
-            </Button>
-            <Button
+              <span className="sm:ml-2">Обновить</span>
+            </ResponsiveButton>
+
+            <ResponsiveButton
+              variant="outline"
+              onClick={exportSchedule}
+              hideTextOnMobile
+            >
+              <Download className="h-4 w-4" />
+              <span className="sm:ml-2">Экспорт</span>
+            </ResponsiveButton>
+
+            <ResponsiveButton
               onClick={() => {
                 setEditingEvent(null);
                 setFormInitialDate(undefined);
@@ -569,12 +578,12 @@ export default function SchedulePage() {
               }}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Создать событие
-            </Button>
-          </div>
-        </div>
-      </div>
+              <Plus className="h-4 w-4" />
+              <span className="sm:ml-2">Создать</span>
+            </ResponsiveButton>
+          </MobileActionGroup>
+        }
+      />
 
       {/* Отладочная панель - только для разработки */}
       {process.env.NODE_ENV === "development" && (

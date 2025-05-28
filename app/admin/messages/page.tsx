@@ -27,6 +27,9 @@ import {
   Forward,
   Trash2,
   Settings,
+  ArrowLeft,
+  RefreshCw,
+  Router,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -41,6 +44,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+import {
+  AdminSecondHeader,
+  MobileActionGroup,
+  ResponsiveButton,
+} from "@/components/admin/users/AdminSecondHeader";
 
 // Типы для сообщений
 interface Message {
@@ -116,6 +125,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [currentUserId] = useState("current-user");
   const [currentUserRole] = useState("super-admin");
+  const router = useRouter();
 
   // Состояние для создания нового сообщения
   const [showNewMessage, setShowNewMessage] = useState(false);
@@ -446,40 +456,42 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="p-6">
-      {/* Page Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <MessageSquare className="h-6 w-6" />
-              Центр сообщений
-              {unreadCount > 0 && (
-                <Badge variant="destructive" className="ml-2">
-                  {unreadCount}
-                </Badge>
-              )}
-            </h1>
-            <p className="text-gray-600">
-              Управление сообщениями и уведомлениями
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Header */}
+      <AdminSecondHeader
+        title={
+          <div className="flex items-center gap-2">
+            <span>Сообщения</span>
+            {unreadCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {unreadCount}
+              </Badge>
+            )}
           </div>
+        }
+        description="Управление сообщениями"
+        icon={MessageSquare}
+        actions={
+          <MobileActionGroup>
+            <ResponsiveButton
+              variant="outline"
+              onClick={loadMessages}
+              hideTextOnMobile
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="sm:ml-2">Обновить</span>
+            </ResponsiveButton>
 
-          <div className="flex items-center space-x-3">
-            <Button variant="outline" onClick={loadMessages}>
-              <Search className="h-4 w-4 mr-2" />
-              Обновить
-            </Button>
-            <Button
+            <ResponsiveButton
               onClick={() => setShowNewMessage(true)}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Новое сообщение
-            </Button>
-          </div>
-        </div>
-      </div>
+              <Plus className="h-4 w-4" />
+              <span className="sm:ml-2">Новое</span>
+            </ResponsiveButton>
+          </MobileActionGroup>
+        }
+      />
 
       <Tabs defaultValue="messages" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">

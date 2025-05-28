@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { DebugSystemTest } from "@/components/debug/DebugSystemTest";
+import { ArrowLeft, Bug, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AdminSecondHeader, MobileActionGroup, ResponsiveButton } from "@/components/admin/users/AdminSecondHeader";
 
 export default function DebugPage() {
   const [systemInfo, setSystemInfo] = useState({
@@ -16,6 +19,7 @@ export default function DebugPage() {
     notifications: 0,
     lastUpdate: null as Date | null
   });
+  const router = useRouter()
 
   const updateSystemInfo = () => {
     if (typeof window !== 'undefined' && window.fitAccessDebug) {
@@ -40,13 +44,30 @@ export default function DebugPage() {
   }, []);
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">🔧 Система отладки FitAccess</h1>
-        <p className="text-gray-600 mt-2">
-          Комплексная панель для мониторинга и тестирования всех компонентов системы
-        </p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      {/* Header */}
+      <AdminSecondHeader
+        title="Отладка"
+        description="Мониторинг системы"
+        icon={Bug}
+        actions={
+          <MobileActionGroup>
+            <div className="hidden sm:flex">
+              <Badge variant="outline" className="bg-green-50 text-green-700">
+                🟢 Система активна
+              </Badge>
+            </div>
+            
+            <ResponsiveButton 
+              onClick={updateSystemInfo} 
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span className="sm:ml-2">Обновить</span>
+            </ResponsiveButton>
+          </MobileActionGroup>
+        }
+      />
 
       {/* Общая информация о системе */}
       <Card className="mb-6">
