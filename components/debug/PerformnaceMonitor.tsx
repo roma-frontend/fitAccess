@@ -1,7 +1,7 @@
 // components/debug/PerformanceMonitor.tsx
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,28 +27,49 @@ export default function PerformanceMonitor() {
 
   const renderStartRef = useRef<number>(0);
   const updateCountRef = useRef<number>(0);
+  const isInitializedRef = useRef<boolean>(false);
 
-  // Мониторинг производительности рендеринга
-  useEffect(() => {
-    renderStartRef.current = performance.now();
+  // ✅ ИСПРАВЛЯЕМ БЕСКОНЕЧНЫЙ ЦИКЛ
+  const updateMetrics = useCallback(() => {
+    const renderTime = performance.now() - renderStartRef.current;
     updateCountRef.current += 1;
+    
+    setMetrics(prev => ({
+      ...prev,
+      renderTime: Math.round(renderTime * 100) / 100,
+      componentUpdates: updateCountRef.current,
+      memoryUsage: (performance as any).memory ? 
+        Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024) : 0,
+      lastUpdate: new Date()
+    }));
+  }, []);
 
-    return () => {
-      const renderTime = performance.now() - renderStartRef.current;
-      
-      setMetrics(prev => ({
-        ...prev,
-        renderTime: Math.round(renderTime * 100) / 100,
-        componentUpdates: updateCountRef.current,
-        memoryUsage: (performance as any).memory ? 
-          Math.round((performance as any).memory.usedJSHeapSize / 1024 / 1024) : 0,
-        lastUpdate: new Date()
-      }));
-    };
-  });
+  // ✅ ПРАВИЛЬНОЕ ИСПОЛЬЗОВАНИЕ useEffect
+  useEffect(() => {
+    if (!isInitializedRef.current) {
+      renderStartRef.current = performance.now();
+      isInitializedRef.current = true;
+    }
+
+    // Обновляем метрики только при изменении видимости
+    if (isVisible) {
+      updateMetrics();
+    }
+  }, [isVisible, updateMetrics]);
+
+  // ✅ ОТДЕЛЬНЫЙ useEffect ДЛЯ ПЕРИОДИЧЕСКОГО ОБНОВЛЕНИЯ
+  useEffect(() => {
+    if (!isVisible) return;
+
+    const interval = setInterval(() => {
+      updateMetrics();
+    }, 1000); // Обновляем каждую секунду
+
+    return () => clearInterval(interval);
+  }, [isVisible, updateMetrics]);
 
   // Мониторинг времени загрузки данных
-  const measureDataFetch = async (fetchFunction: () => Promise<any>) => {
+  const measureDataFetch = useCallback(async (fetchFunction: () => Promise<any>) => {
     const start = performance.now();
     try {
       await fetchFunction();
@@ -59,13 +80,13 @@ export default function PerformanceMonitor() {
         dataFetchTime: Math.round(fetchTime * 100) / 100
       }));
     }
-  };
+  }, []);
 
-  const getPerformanceStatus = (value: number, thresholds: [number, number]) => {
+  const getPerformanceStatus = useCallback((value: number, thresholds: [number, number]) => {
     if (value <= thresholds[0]) return 'good';
     if (value <= thresholds[1]) return 'warning';
     return 'critical';
-  };
+  }, []);
 
   const renderTimeStatus = getPerformanceStatus(metrics.renderTime, [16, 50]);
   const memoryStatus = getPerformanceStatus(metrics.memoryUsage, [50, 100]);

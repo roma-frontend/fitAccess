@@ -1,7 +1,7 @@
 // contexts/AdminContext.tsx (исправленная версия)
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 
 interface AdminStats {
   totalUsers: number;
@@ -14,15 +14,13 @@ interface AdminStats {
   systemStatus: "healthy" | "warning" | "critical";
 }
 
-
 interface AdminContextType {
   stats: AdminStats;
   loading: boolean;
   error: string | null;
   refreshStats: () => Promise<void>;
-  refreshData: () => Promise<void>; // ← Добавляем для единообразия
+  refreshData: () => Promise<void>;
 }
-
 
 const defaultStats: AdminStats = {
   totalUsers: 0,
@@ -46,7 +44,8 @@ export function AdminProvider({ children }: AdminProviderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  // ✅ ИСПОЛЬЗУЕМ useCallback ДЛЯ ПРЕДОТВРАЩЕНИЯ ПЕРЕСОЗДАНИЯ ФУНКЦИИ
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -58,10 +57,10 @@ export function AdminProvider({ children }: AdminProviderProps) {
 
       // Мок данные для демонстрации
       const mockStats: AdminStats = {
-        totalUsers: 1247 + Math.floor(Math.random() * 10), // Небольшие изменения для демонстрации
+        totalUsers: 1247 + Math.floor(Math.random() * 10),
         totalManagers: 8,
-        systemLoad: Math.random() * 0.9 + 0.1, // 10-100%
-        systemAlerts: Math.floor(Math.random() * 5), // 0-4 уведомления
+        systemLoad: Math.random() * 0.9 + 0.1,
+        systemAlerts: Math.floor(Math.random() * 5),
         activeUsers: 156 + Math.floor(Math.random() * 20),
         monthlyRevenue: 2850000 + Math.floor(Math.random() * 100000),
         newRegistrations: 23 + Math.floor(Math.random() * 5),
@@ -76,18 +75,20 @@ export function AdminProvider({ children }: AdminProviderProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []); // ✅ ПУСТОЙ МАССИВ ЗАВИСИМОСТЕЙ
 
-  const refreshStats = async () => {
+  // ✅ ТАКЖЕ ИСПОЛЬЗУЕМ useCallback ДЛЯ refreshStats
+  const refreshStats = useCallback(async () => {
     console.log('🔄 Обновление статистики администратора...');
     await fetchStats();
-  };
+  }, [fetchStats]);
 
-  // Алиас для единообразия с другими контекстами
-  const refreshData = async () => {
+  // ✅ ТАКЖЕ ИСПОЛЬЗУЕМ useCallback ДЛЯ refreshData
+  const refreshData = useCallback(async () => {
     await refreshStats();
-  };
+  }, [refreshStats]);
 
+  // ✅ ТЕПЕРЬ useEffect НЕ БУДЕТ ВЫЗЫВАТЬ БЕСКОНЕЧНЫЙ ЦИКЛ
   useEffect(() => {
     fetchStats();
 
@@ -95,15 +96,16 @@ export function AdminProvider({ children }: AdminProviderProps) {
     const interval = setInterval(fetchStats, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchStats]); // ✅ fetchStats теперь стабильная функция
 
-  const value: AdminContextType = {
+  // ✅ МЕМОИЗИРУЕМ VALUE ОБЪЕКТ
+  const value: AdminContextType = React.useMemo(() => ({
     stats,
     loading,
     error,
     refreshStats,
-    refreshData // ← Добавляем для единообразия
-  };
+    refreshData
+  }), [stats, loading, error, refreshStats, refreshData]);
 
   return (
     <AdminContext.Provider value={value}>

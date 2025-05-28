@@ -69,7 +69,7 @@ export function Charts({ data }: ChartsProps) {
             </svg>
             
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 -ml-8">
+            <div className="absolute left-5 top-0 h-full flex flex-col justify-between text-xs text-gray-500 -ml-8">
               <span>{maxValue}</span>
               <span>{Math.round(maxValue * 0.75)}</span>
               <span>{Math.round(maxValue * 0.5)}</span>
@@ -149,7 +149,7 @@ export function Charts({ data }: ChartsProps) {
   }));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
       <LineChart 
         data={userTrendData} 
         title="Регистрации пользователей" 

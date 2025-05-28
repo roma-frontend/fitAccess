@@ -26,13 +26,13 @@ export function ProductGrid({ products, onEdit, onDelete }: ProductGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {products.map((product) => (
         <ProductCard
           key={product._id}
           product={product}
           onEdit={onEdit}
-          onDelete={onDelete}
+        onDelete={onDelete}
         />
       ))}
     </div>

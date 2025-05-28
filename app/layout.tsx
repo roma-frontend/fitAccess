@@ -27,7 +27,6 @@ import ContextTester from "@/components/debug/ContextTester";
 import "@/utils/debugTest";
 import "@/utils/finalTest";
 import "@/utils/cleanTypes";
-import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
@@ -54,10 +53,9 @@ export default function RootLayout({
                     <AdminProvider>
                       <ManagerProvider>
                         <TrainerProvider>
-                          <ThemeProvider>                         <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+                          <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
                             {children}
                           </div>
-                          </ThemeProvider> 
                           <Toaster />
                           
                           {/* ✅ Debug система - только в development режиме */}
