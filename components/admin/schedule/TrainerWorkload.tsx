@@ -99,16 +99,17 @@ export function TrainerWorkload({
     return colors[status];
   };
 
-  const getEventTypeIcon = (type: ScheduleEvent["type"]) => {
-    const icons = {
-      training: "🏋️",
-      consultation: "💬",
-      meeting: "🤝",
-      break: "☕",
-      other: "📋",
-    };
-    return icons[type];
+const getEventTypeIcon = (type: ScheduleEvent["type"]) => {
+  const icons = {
+    training: "🏋️",
+    consultation: "💬",
+    group: "👥",
+    meeting: "🤝",
+    break: "☕",
+    other: "📋",
   };
+  return icons[type];
+};
 
   return (
     <Card>

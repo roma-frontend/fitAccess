@@ -115,8 +115,9 @@ export function CalendarView({
 
   const getEventTypeColor = (type: ScheduleEvent['type']) => {
     const colors = {
-      training: 'bg-blue-100 text-blue-800 border-blue-200',
-      consultation: 'bg-green-100 text-green-800 border-green-200',
+    training: 'bg-blue-100 text-blue-800 border-blue-200',
+    consultation: 'bg-green-100 text-green-800 border-green-200',
+    group: 'bg-indigo-100 text-indigo-800 border-indigo-200',
       meeting: 'bg-purple-100 text-purple-800 border-purple-200',
       break: 'bg-gray-100 text-gray-800 border-gray-200',
       other: 'bg-orange-100 text-orange-800 border-orange-200'

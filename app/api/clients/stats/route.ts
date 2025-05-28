@@ -2075,10 +2075,10 @@ export function createClientScorecard(clients: ExtendedClient[], sessions: Sessi
   const growthRate = totalClients > 0 ? (newClients / totalClients) * 100 : 0;
   
   const growthMetrics = [
-    { metric: 'Рост клиентской базы (%)', value: growthRate, target: 10, performance: Math.min(100, (growthRate / 10) * 100) },
-    { metric: 'Новые клиенты (30 дней)', value: newClients, target: 20, performance: Math.min(100, (newClients / 20) * 100) },
-    { metric: 'Конверсия пробных (%)', value: trialClients.length > 0 ? (activeClients / (activeClients + trialClients)) * 100 : 100, target: 70, performance: Math.min(100, ((trialClients.length > 0 ? (activeClients / (activeClients + trialClients)) * 100 : 100) / 70) * 100) }
-  ];
+      { metric: 'Рост клиентской базы (%)', value: growthRate, target: 10, performance: Math.min(100, (growthRate / 10) * 100) },
+      { metric: 'Новые клиенты (30 дней)', value: newClients, target: 20, performance: Math.min(100, (newClients / 20) * 100) },
+      { metric: 'Конверсия пробных (%)', value: trialClients > 0 ? (activeClients / (activeClients + trialClients)) * 100 : 100, target: 70, performance: Math.min(100, ((trialClients > 0 ? (activeClients / (activeClients + trialClients)) * 100 : 100) / 70) * 100) }
+    ];
   const growthScore = growthMetrics.reduce((sum: number, m) => sum + m.performance, 0) / growthMetrics.length;
 
   // Категория 2: Удержание и лояльность
@@ -2231,7 +2231,7 @@ export function createClientScorecard(clients: ExtendedClient[], sessions: Sessi
   }
 
   // Специфичные действия по метрикам
-  if (trialClients.length > activeClients * 0.3) {
+  if (trialClients > activeClients * 0.3) {
     actionItems.push({
       priority: 'high',
       action: 'Усилить работу с конверсией пробных клиентов',

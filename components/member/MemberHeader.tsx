@@ -76,11 +76,6 @@ export default function MemberHeader({
   // Навигационные элементы
   const navItems = [
     {
-      label: "Дашборд",
-      href: "/member-dashboard",
-      icon: Home
-    },
-    {
       label: "Мои записи",
       href: "/member-dashboard/my-bookings",
       icon: Calendar,

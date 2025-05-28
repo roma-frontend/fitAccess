@@ -1,10 +1,11 @@
-// contexts/ScheduleContext.tsx (исправленная версия)
+// contexts/ScheduleContext.tsx (исправленная версия без конфликтов)
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ScheduleEvent, TrainerSchedule, CreateEventData } from '@/components/admin/schedule/types';
 import { ensureDebugSystem } from '@/utils/cleanTypes';
-// ✅ ИМПОРТИРУЕМ ТИПЫ ИЗ ЕДИНСТВЕННОГО ИСТОЧНИКА
+
+// ✅ УБИРАЕМ ДУБЛИРУЮЩИЕ ОБЪЯВЛЕНИЯ ТИПОВ
 
 interface ScheduleContextType {
   // Данные
@@ -68,7 +69,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
         description: 'Утренняя практика йоги',
         type: 'training',
         startTime: new Date(today.getTime() + 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000).toISOString(),
-        endTime: new Date(today.getTime() + 24 * 60 * 60 * 1000 + 10 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(today.getTime() + 24 * 60 * 60 * 1000 + 10 * 60 * 60        * 1000).toISOString(),
         trainerId: 'trainer2',
         trainerName: 'Мария Иванова',
         status: 'scheduled',
@@ -305,7 +306,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔄 Обновление события:', eventId);
       
-            // Подготавливаем данные для обновления
+      // Подготавливаем данные для обновления
       const updateData = { ...data };
       
       // Если обновляется trainerId, добавляем trainerName
@@ -435,7 +436,7 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
     await loadData();
   };
 
-  // Подписка на обновления
+   // Подписка на обновления
   const subscribeToUpdates = (callback: (events: ScheduleEvent[]) => void): (() => void) => {
     setSubscribers(prev => [...prev, callback]);
     
@@ -511,54 +512,48 @@ export function ScheduleProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ✅ РЕГИСТРАЦИЯ В DEBUG СИСТЕМЕ СРАЗУ ПРИ СОЗДАНИИ КОНТЕКСТА
-useEffect(() => {
-  if (typeof window !== 'undefined') {
-    // ✅ ИСПОЛЬЗУЕМ ЕДИНУЮ ФУНКЦИЮ ИНИЦИАЛИЗАЦИИ
-    ensureDebugSystem();
-    
-    const scheduleContext = {
-      events,
-      trainers,
-      loading,
-      error,
-      createEvent,
-      updateEvent,
-      deleteEvent,
-      updateEventStatus,
-      getEventsByTrainer,
-      getEventsInDateRange,
-      searchEvents,
-      refreshData,
-      subscribeToUpdates,
-      getStats: () => ({
-        totalEvents: events.length,
-        activeEvents: events.filter(e => e.status !== 'cancelled').length,
-        trainersCount: trainers.length
-      }),
-      clearAllEvents: () => {
-        setEvents([]);
-        notifySubscribers([]);
-      }
-    };
-    
-    window.fitAccessDebug.schedule = scheduleContext;
-    console.log('✅ Schedule контекст зарегистрирован в debug системе');
-  }
-}, []);
-
-  // ✅ ОБНОВЛЯЕМ ДАННЫЕ В DEBUG СИСТЕМЕ ПРИ ИЗМЕНЕНИЯХ
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.fitAccessDebug?.schedule) {
-      // Обновляем данные в уже зарегистрированном контексте
-      window.fitAccessDebug.schedule.events = events;
-      window.fitAccessDebug.schedule.trainers = trainers;
-      window.fitAccessDebug.schedule.loading = loading;
-      window.fitAccessDebug.schedule.error = error;
+    if (typeof window !== 'undefined') {
+      // ✅ ИСПОЛЬЗУЕМ ЕДИНУЮ ФУНКЦИЮ ИНИЦИАЛИЗАЦИИ
+      ensureDebugSystem();
       
-      console.log('🔄 Schedule данные обновлены в debug системе:', {
-        events: events.length,
-        trainers: trainers.length
-      });
+      const scheduleContext = {
+        events,
+        trainers,
+        loading,
+        error,
+        createEvent,
+        updateEvent,
+        deleteEvent,
+        updateEventStatus,
+        getEventsByTrainer,
+        getEventsInDateRange,
+        searchEvents,
+        refreshData,
+        subscribeToUpdates,
+        getStats: () => ({
+          totalEvents: events.length,
+          activeEvents: events.filter(e => e.status !== 'cancelled').length,
+          trainersCount: trainers.length,
+          todayEvents: events.filter(e => {
+            const today = new Date();
+            const eventDate = new Date(e.startTime);
+            return eventDate.toDateString() === today.toDateString();
+          }).length,
+          upcomingEvents: events.filter(e => 
+            new Date(e.startTime) > new Date() && e.status !== 'cancelled'
+          ).length
+        }),
+        clearAllEvents: () => {
+          setEvents([]);
+          setTrainers(prev => prev.map(t => ({ ...t, events: [] })));
+          notifySubscribers([]);
+        }
+      };
+      
+      // ✅ БЕЗОПАСНАЯ РЕГИСТРАЦИЯ БЕЗ КОНФЛИКТОВ ТИПОВ
+      window.fitAccessDebug.schedule = scheduleContext;
+      console.log('✅ Schedule контекст зарегистрирован в debug системе');
     }
   }, [events, trainers, loading, error]);
 
@@ -598,7 +593,7 @@ export function useSchedule() {
   return context;
 }
 
-// Остальные хуки остаются без изменений...
+// ✅ ОСТАЛЬНЫЕ ХУКИ БЕЗ ИЗМЕНЕНИЙ
 export function useScheduleStats() {
   const { events } = useSchedule();
   
@@ -701,7 +696,7 @@ export function useTrainerAvailability() {
   
   const getAvailableTrainers = React.useCallback((startTime: string, endTime: string, excludeEventId?: string) => {
     return trainers.filter(trainer => {
-            const conflicts = events.filter(event => {
+      const conflicts = events.filter(event => {
         if (excludeEventId && event._id === excludeEventId) {
           return false;
         }
@@ -839,79 +834,72 @@ export function useScheduleAnalytics() {
       }
     });
     
-    // Общая статистика
-    const totalEvents = events.length;
-    const activeEvents = events.filter(e => e.status !== 'cancelled').length;
-    const completedEvents = events.filter(e => e.status === 'completed').length;
-    const upcomingEvents = events.filter(e => new Date(e.startTime) > now && e.status !== 'cancelled').length;
+        // Статистика по типам событий
+    const eventTypeStats = events.reduce((acc, event) => {
+      if (event.status !== 'cancelled') {
+        acc[event.type] = (acc[event.type] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Статистика загруженности по дням недели
+    const weeklyUtilization = Array.from({ length: 7 }, (_, day) => {
+      const dayEvents = events.filter(event => {
+        const eventDate = new Date(event.startTime);
+        return eventDate.getDay() === day && event.status !== 'cancelled';
+      });
+      
+      return {
+        day,
+        dayName: ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][day],
+        events: dayEvents.length,
+        hours: dayEvents.reduce((total, event) => {
+          const start = new Date(event.startTime);
+          const end = new Date(event.endTime);
+          return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        }, 0)
+      };
+    });
+    
+    // Статистика по месяцам
+    const monthlyStats = Array.from({ length: 12 }, (_, month) => {
+      const monthEvents = events.filter(event => {
+        const eventDate = new Date(event.startTime);
+        return eventDate.getMonth() === month && event.status !== 'cancelled';
+      });
+      
+      return {
+        month,
+        monthName: [
+          'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+          'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'
+        ][month],
+        events: monthEvents.length,
+        revenue: monthEvents.length * 1500 // Примерная стоимость тренировки
+      };
+    });
     
     return {
       trainerStats,
       timeStats,
-      overview: {
-        totalEvents,
-        activeEvents,
-        completedEvents,
-        upcomingEvents,
-        completionRate: totalEvents > 0 ? (completedEvents / totalEvents) * 100 : 0,
-        utilizationRate: trainers.length > 0 ? (activeEvents / (trainers.length * 40)) * 100 : 0
+      eventTypeStats,
+      weeklyUtilization,
+      monthlyStats,
+      summary: {
+        totalEvents: events.length,
+        activeEvents: events.filter(e => e.status !== 'cancelled').length,
+        completionRate: events.length > 0 ? 
+          (events.filter(e => e.status === 'completed').length / events.length) * 100 : 0,
+        averageEventsPerTrainer: trainers.length > 0 ? 
+          events.length / trainers.length : 0,
+        peakHour: Object.entries(timeStats.busyHours)
+          .sort(([,a], [,b]) => b - a)[0]?.[0] || '10',
+        peakDay: Object.entries(timeStats.busyDays)
+          .sort(([,a], [,b]) => b - a)[0]?.[0] || '1'
       }
     };
   }, [events, trainers]);
 }
 
-export function useEventNotifications() {
-  const { events, subscribeToUpdates } = useSchedule();
-  const [notifications, setNotifications] = useState<Array<{
-    id: string;
-    type: 'upcoming' | 'conflict' | 'cancellation';
-    message: string;
-    eventId: string;
-    timestamp: Date;
-  }>>([]);
-  
-  useEffect(() => {
-    const unsubscribe = subscribeToUpdates((updatedEvents) => {
-      const now = new Date();
-      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
-      
-      // Проверяем предстоящие события
-      const upcomingEvents = updatedEvents.filter(event => {
-        const eventTime = new Date(event.startTime);
-        return eventTime <= oneHourFromNow && eventTime > now && event.status === 'confirmed';
-      });
-      
-      const newNotifications = upcomingEvents.map(event => ({
-        id: `upcoming_${event._id}`,
-        type: 'upcoming' as const,
-        message: `Тренировка "${event.title}" начнется через ${Math.round((new Date(event.startTime).getTime() - now.getTime()) / (1000 * 60))} минут`,
-        eventId: event._id,
-        timestamp: now
-      }));
-      
-      setNotifications(prev => {
-        // Удаляем старые уведомления и добавляем новые
-        const filtered = prev.filter(n => n.type !== 'upcoming');
-        return [...filtered, ...newNotifications];
-      });
-    });
-    
-    return unsubscribe;
-  }, [subscribeToUpdates]);
-  
-  const dismissNotification = (notificationId: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== notificationId));
-  };
-  
-  const clearAllNotifications = () => {
-    setNotifications([]);
-  };
-  
-  return {
-    notifications,
-    dismissNotification,
-    clearAllNotifications
-  };
-}
 
 

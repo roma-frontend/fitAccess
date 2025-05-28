@@ -1,4 +1,4 @@
-// components/admin/SuperAdminAnalytics.tsx
+// components/admin/SuperAdminAnalytics.tsx (исправленная версия)
 "use client";
 
 import { useState } from "react";
@@ -43,7 +43,7 @@ export default function SuperAdminAnalytics() {
       const totalEvents = trainerEvents.length;
 
       const completionRate =
-        totalEvents > 0 ? (completedEvents / totalEvents) * 100 : 0;
+                totalEvents > 0 ? (completedEvents / totalEvents) * 100 : 0;
       const cancellationRate =
         totalEvents > 0 ? (cancelledEvents / totalEvents) * 100 : 0;
 
@@ -239,7 +239,7 @@ export default function SuperAdminAnalytics() {
         </Card>
       </div>
 
-      {/* Top Performers - остальной код остается таким же */}
+      {/* Top Performers */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader>
@@ -253,7 +253,7 @@ export default function SuperAdminAnalytics() {
               <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-3">
                 {topMetrics.mostActiveTrainer?.name
                   .split(" ")
-                  .map((n) => n[0])
+                  .map((n: string) => n[0])
                   .join("")}
               </div>
               <h3 className="font-semibold text-gray-900">
@@ -272,8 +272,92 @@ export default function SuperAdminAnalytics() {
           </CardContent>
         </Card>
 
-        {/* Остальные карточки топ-исполнителей аналогично */}
-        {/* ... */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Target className="h-5 w-5 text-blue-600" />
+              Лучший рейтинг
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-3">
+                {topMetrics.highestRated?.name
+                  .split(" ")
+                  .map((n: string) => n[0])
+                  .join("")}
+              </div>
+              <h3 className="font-semibold text-gray-900">
+                {topMetrics.highestRated?.name}
+              </h3>
+              <p className="text-sm text-gray-600 mb-2">
+                {topMetrics.highestRated?.role}
+              </p>
+              <p className="text-2xl font-bold text-blue-600">
+                {topMetrics.highestRated?.rating}⭐
+              </p>
+              <p className="text-xs text-gray-500">рейтинг</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5 text-purple-600" />
+              Больше клиентов
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-3">
+                {topMetrics.mostClients?.name
+                  .split(" ")
+                  .map((n: string) => n[0])
+                  .join("")}
+              </div>
+              <h3 className="font-semibold text-gray-900">
+                {topMetrics.mostClients?.name}
+              </h3>
+              <p className="text-sm text-gray-600 mb-2">
+                {topMetrics.mostClients?.role}
+              </p>
+              <p className="text-2xl font-bold text-purple-600">
+                {topMetrics.mostClients?.activeClients}
+              </p>
+              <p className="text-xs text-gray-500">активных клиентов</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Activity className="h-5 w-5 text-orange-600" />
+              Лучшая эффективность
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xl mx-auto mb-3">
+                {topMetrics.bestCompletion?.name
+                  .split(" ")
+                  .map((n: string) => n[0])
+                  .join("")}
+              </div>
+              <h3 className="font-semibold text-gray-900">
+                {topMetrics.bestCompletion?.name}
+              </h3>
+              <p className="text-sm text-gray-600 mb-2">
+                {topMetrics.bestCompletion?.role}
+              </p>
+              <p className="text-2xl font-bold text-orange-600">
+                {topMetrics.bestCompletion?.completionRate.toFixed(1)}%
+              </p>
+              <p className="text-xs text-gray-500">завершение</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Detailed Analytics */}
@@ -312,11 +396,11 @@ export default function SuperAdminAnalytics() {
                         className="border-b hover:bg-gray-50"
                       >
                         <td className="p-3">
-                          <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                               {trainer.name
                                 .split(" ")
-                                .map((n) => n[0])
+                                .map((n: string) => n[0])
                                 .join("")}
                             </div>
                             <div>
@@ -694,3 +778,5 @@ export default function SuperAdminAnalytics() {
     </div>
   );
 }
+
+

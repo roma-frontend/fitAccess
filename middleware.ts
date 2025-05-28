@@ -39,7 +39,7 @@ const publicRoutes = [
   '/quick-test',
   '/test-shop',
   '/debug-auth-status',
-  '/test-navigation'
+  '/test-calendar-sync'
 ];
 
 const memberRoutes = [

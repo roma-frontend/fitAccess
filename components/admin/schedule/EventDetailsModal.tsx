@@ -68,6 +68,11 @@ export function EventDetailsModal({
         color: "bg-green-100 text-green-800",
         icon: "💬",
       },
+      group: {
+        name: "Групповая тренировка",
+        color: "bg-indigo-100 text-indigo-800",
+        icon: "👥",
+      },
       meeting: {
         name: "Встреча",
         color: "bg-purple-100 text-purple-800",
@@ -319,9 +324,9 @@ export function EventDetailsModal({
                   <div>
                     <span className="text-sm text-gray-600">Повторение:</span>
                     <div className="font-medium">
-                      {event.recurring.type === "daily" && "Ежедневно"}
-                      {event.recurring.type === "weekly" && "Еженедельно"}
-                      {event.recurring.type === "monthly" && "Ежемесячно"}
+                      {event.recurring.pattern === "daily" && "Ежедневно"}
+                      {event.recurring.pattern === "weekly" && "Еженедельно"}
+                      {event.recurring.pattern === "monthly" && "Ежемесячно"}
                       {event.recurring.interval > 1 &&
                         ` (каждые ${event.recurring.interval})`}
                     </div>

@@ -3,17 +3,17 @@
 
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  hasPermission, 
-  canManageRole, 
+import {
+  hasPermission,
+  canManageRole,
   getCreatableRoles,
   filterDataByPermissions,
   canAccessObject,
-  UserRole, 
-  Resource, 
+  UserRole,
+  Resource,
   Action,
   ROLE_HIERARCHY,
-  PERMISSIONS 
+  PERMISSIONS
 } from '@/lib/permissions';
 
 export const usePermissions = () => {
@@ -25,25 +25,92 @@ export const usePermissions = () => {
 
     return {
       // Базовые проверки прав
-      can: (resource: Resource, action: Action) => 
+      can: (resource: Resource, action: Action) =>
         hasPermission(userRole, resource, action),
 
       // Проверка доступа к объекту
       canAccess: (objectOwnerId: string | undefined, resource: Resource, action: Action) =>
-        canAccessObject(userRole, userId, objectOwnerId, resource, action),
+        userRole && userId ? canAccessObject(userRole, userId, objectOwnerId, resource, action) : false,
 
       // Управление ролями
-      canManage: (targetRole: UserRole) => 
-        canManageRole(userRole, targetRole),
+      canManage: (targetRole: UserRole) =>
+        userRole ? canManageRole(userRole, targetRole) : false,
 
-      // hooks/usePermissions.ts (продолжение)
-      creatableRoles: getCreatableRoles(userRole),
+      creatableRoles: userRole ? getCreatableRoles(userRole) : [],
 
-      // Фильтрация данных
-      filterData: <T extends { role?: string; trainerId?: string; clientId?: string; ownerId?: string }>(
-        data: T[], 
+      // Исправленная фильтрация данных - делаем ее более гибкой
+      filterData: <T extends Record<string, any>>(
+        data: T[],
         resource: Resource
-      ) => filterDataByPermissions(data, userRole, userId, resource),
+      ): T[] => {
+        // Если нет роли пользователя, возвращаем пустой массив
+        if (!userRole || !userId) {
+          return [];
+        }
+
+        // Админы видят все
+        if (userRole === 'admin') {
+          return data;
+        }
+
+        // Менеджеры видят все, кроме других админов
+        if (userRole === 'manager') {
+          return data.filter(item => {
+            // Если у объекта есть роль и это админ, скрываем
+            if (item.role === 'admin') return false;
+            return true;
+          });
+        }
+
+        // Тренеры видят только свои данные и данные своих клиентов
+        if (userRole === 'trainer') {
+          return data.filter(item => {
+            // Если это тренер - показываем только если это он сам
+            if (resource === 'trainers') {
+              return item.id === userId;
+            }
+
+            // Если это клиенты - показываем только своих
+            if (resource === 'clients') {
+              return item.trainerId === userId;
+            }
+
+            // Если это расписание - показываем только свои события
+            if (resource === 'schedule') {
+              return item.trainerId === userId;
+            }
+
+            // Для остальных ресурсов - показываем все
+            return true;
+          });
+        }
+
+        // Клиенты видят только свои данные
+        if (userRole === 'client') {
+          return data.filter(item => {
+            // Клиенты видят только себя в списке клиентов
+            if (resource === 'clients') {
+              return item.id === userId;
+            }
+
+            // Клиенты видят только свои события в расписании
+            if (resource === 'schedule') {
+              return item.clientId === userId;
+            }
+
+            // Тренеров не видят
+            if (resource === 'trainers') {
+              return false;
+            }
+
+            // Для остальных ресурсов - показываем все
+            return true;
+          });
+        }
+
+        // По умолчанию возвращаем пустой массив
+        return [];
+      },
 
       // Проверка уровня доступа
       hasHigherRole: (targetRole: UserRole) => {
@@ -60,7 +127,7 @@ export const usePermissions = () => {
       // Получение уровня пользователя
       getUserLevel: () => userRole ? ROLE_HIERARCHY[userRole] : 0,
 
-      // Проверка на роли (исправлено для существующих ролей)
+      // Проверка на роли
       isAdmin: () => userRole === 'admin',
       isManager: () => userRole === 'manager',
       isTrainer: () => userRole === 'trainer',
@@ -98,10 +165,10 @@ export const usePermissions = () => {
   return permissions;
 };
 
-// Специализированные хуки для конкретных ресурсов
+// Остальные хуки остаются без изменений...
 export const useUserPermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canCreateUser: permissions.can('users', 'create'),
     canEditUser: permissions.can('users', 'update'),
@@ -111,21 +178,21 @@ export const useUserPermissions = () => {
     canImportUsers: permissions.can('users', 'import'),
     creatableRoles: permissions.creatableRoles,
     canManageRole: permissions.canManage,
-    canEditOwnProfile: (userId: string) => 
+    canEditOwnProfile: (userId: string) =>
       permissions.isOwner(userId) || permissions.isManagement()
   };
 };
 
 export const useTrainerPermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canCreateTrainer: permissions.can('trainers', 'create'),
     canEditTrainer: permissions.can('trainers', 'update'),
     canDeleteTrainer: permissions.can('trainers', 'delete'),
     canViewTrainers: permissions.can('trainers', 'read'),
     canExportTrainers: permissions.can('trainers', 'export'),
-    canEditOwnProfile: (trainerId: string) => 
+    canEditOwnProfile: (trainerId: string) =>
       permissions.isTrainer() && permissions.isOwner(trainerId),
     canViewTrainerDetails: (trainerId: string) =>
       permissions.isManagement() || permissions.isOwner(trainerId)
@@ -134,47 +201,47 @@ export const useTrainerPermissions = () => {
 
 export const useClientPermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canCreateClient: permissions.can('clients', 'create'),
     canEditClient: permissions.can('clients', 'update'),
     canDeleteClient: permissions.can('clients', 'delete'),
     canViewClients: permissions.can('clients', 'read'),
     canExportClients: permissions.can('clients', 'export'),
-    canEditOwnProfile: (clientId: string) => 
+    canEditOwnProfile: (clientId: string) =>
       permissions.isClient() && permissions.isOwner(clientId),
     canViewClientDetails: (clientId: string) =>
-      permissions.isManagement() || 
-      permissions.isTrainer() || 
+      permissions.isManagement() ||
+      permissions.isTrainer() ||
       permissions.isOwner(clientId)
   };
 };
 
 export const useSchedulePermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canCreateEvent: permissions.can('schedule', 'create'),
     canEditEvent: permissions.can('schedule', 'update'),
     canDeleteEvent: permissions.can('schedule', 'delete'),
     canViewSchedule: permissions.can('schedule', 'read'),
     canExportSchedule: permissions.can('schedule', 'export'),
-    canEditOwnEvents: (trainerId: string) => 
+    canEditOwnEvents: (trainerId: string) =>
       permissions.isTrainer() && permissions.isOwner(trainerId),
     canViewAllSchedule: () => permissions.isManagement(),
     canBookSession: () => permissions.isClient(),
-    canCancelSession: (ownerId: string) => 
+    canCancelSession: (ownerId: string) =>
       permissions.isOwner(ownerId) || permissions.isManagement()
   };
 };
 
 export const useAnalyticsPermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canViewAnalytics: permissions.can('analytics', 'read'),
     canExportAnalytics: permissions.can('analytics', 'export'),
-    canViewOwnAnalytics: () => true, // Все могут видеть свою аналитику
+    canViewOwnAnalytics: () => true,
     canViewTeamAnalytics: () => permissions.isStaff(),
     canViewAllAnalytics: () => permissions.isManagement()
   };
@@ -182,7 +249,7 @@ export const useAnalyticsPermissions = () => {
 
 export const useSystemPermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canMaintainSystem: permissions.can('system', 'maintenance'),
     canManageSystem: permissions.can('system', 'manage'),
@@ -197,12 +264,12 @@ export const useSystemPermissions = () => {
 
 export const useReportPermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canCreateReport: permissions.can('reports', 'create'),
     canViewReports: permissions.can('reports', 'read'),
     canExportReports: permissions.can('reports', 'export'),
-    canViewOwnReports: () => true, // Все могут видеть свои отчеты
+    canViewOwnReports: () => true,
     canViewAllReports: () => permissions.isManagement(),
     canGenerateSystemReports: () => permissions.isManagement()
   };
@@ -210,7 +277,7 @@ export const useReportPermissions = () => {
 
 export const useNotificationPermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canCreateNotification: permissions.can('notifications', 'create'),
     canViewNotifications: permissions.can('notifications', 'read'),
@@ -221,10 +288,9 @@ export const useNotificationPermissions = () => {
   };
 };
 
-// Хук для проверки доступа к конкретным страницам
 export const usePagePermissions = () => {
   const permissions = usePermissions();
-  
+
   return {
     canAccessAdminPanel: () => permissions.isAdmin(),
     canAccessManagerPanel: () => permissions.isManagement(),
@@ -238,14 +304,12 @@ export const usePagePermissions = () => {
 };
 
 // Хук для получения отфильтрованных данных
-export const useFilteredData = <T extends { 
-  role?: string; 
-  trainerId?: string; 
-  clientId?: string;
-  ownerId?: string;
-}>(data: T[], resource: Resource) => {
+export const useFilteredData = <T extends Record<string, any>>(
+  data: T[],
+  resource: Resource
+) => {
   const permissions = usePermissions();
-  
+
   return useMemo(() => {
     return permissions.filterData(data, resource);
   }, [data, resource, permissions]);
@@ -253,12 +317,12 @@ export const useFilteredData = <T extends {
 
 // Хук для проверки доступа к объекту
 export const useObjectAccess = (
-  objectOwnerId: string | undefined, 
-  resource: Resource, 
+  objectOwnerId: string | undefined,
+  resource: Resource,
   action: Action
 ) => {
   const permissions = usePermissions();
-  
+
   return useMemo(() => {
     return permissions.canAccess(objectOwnerId, resource, action);
   }, [objectOwnerId, resource, action, permissions]);
@@ -267,10 +331,9 @@ export const useObjectAccess = (
 // Хук для получения доступных действий для ресурса
 export const useAvailableActions = (resource: Resource) => {
   const permissions = usePermissions();
-  
+
   return useMemo(() => {
     const actions: Action[] = ['create', 'read', 'update', 'delete', 'export', 'import'];
     return actions.filter(action => permissions.can(resource, action));
   }, [resource, permissions]);
 };
-

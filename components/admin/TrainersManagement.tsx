@@ -24,6 +24,7 @@ import {
   MoreVertical,
   Activity
 } from "lucide-react";
+// components/admin/TrainersManagement.tsx (продолжение)
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,8 +54,7 @@ export default function TrainersManagement({ onQuickMessage }: TrainersManagemen
   const filteredTrainers = trainers.filter((trainer: TrainerData) => {
     const matchesSearch = trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          trainer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         trainer.specializations.some((s: string) => s.
-toLowerCase().includes(searchTerm.toLowerCase()));
+                         trainer.specializations.some((s: string) => s.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || trainer.status === statusFilter;
     
@@ -165,7 +165,7 @@ toLowerCase().includes(searchTerm.toLowerCase()));
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={trainer.avatar} />
                       <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
-                        {trainer.name.split(' ').map(n => n[0]).join('')}
+                        {trainer.name.split(' ').map((n: string) => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -214,7 +214,7 @@ toLowerCase().includes(searchTerm.toLowerCase()));
                 <div>
                   <p className="text-xs font-medium text-gray-700 mb-2">Специализации:</p>
                   <div className="flex flex-wrap gap-1">
-                    {trainer.specializations.map(spec => (
+                    {trainer.specializations.map((spec: string) => (
                       <Badge key={spec} variant="outline" className="text-xs">
                         {spec}
                       </Badge>
@@ -372,8 +372,8 @@ function TrainerDetailsModal({
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16">
                   <AvatarImage src={trainer.avatar} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold text-lg">
-                    {trainer.name.split(' ').map(n => n[0]).join('')}
+                                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold text-lg">
+                    {trainer.name.split(' ').map((n: string) => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
                 <div>
@@ -453,7 +453,7 @@ function TrainerDetailsModal({
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <span>
-                      {trainer.workingHours.days.map(day => {
+                      {trainer.workingHours.days.map((day: number) => {
                         const days = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
                         return days[day];
                       }).join(', ')}
@@ -467,7 +467,7 @@ function TrainerDetailsModal({
             <div>
               <h4 className="font-semibold mb-3">Специализации</h4>
               <div className="flex flex-wrap gap-2">
-                {trainer.specializations.map(spec => (
+                {trainer.specializations.map((spec: string) => (
                   <Badge key={spec} variant="outline">
                     {spec}
                   </Badge>
@@ -535,3 +535,5 @@ function TrainerDetailsModal({
     </div>
   );
 }
+
+

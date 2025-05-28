@@ -1,20 +1,20 @@
 // components/admin/schedule/EventForm.tsx
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -34,28 +34,28 @@ interface EventFormProps {
   initialHour?: number;
 }
 
-export function EventForm({ 
-  event, 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  trainers, 
+export function EventForm({
+  event,
+  isOpen,
+  onClose,
+  onSubmit,
+  trainers,
   clients,
   initialDate,
-  initialHour 
+  initialHour,
 }: EventFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateEventData>({
-    title: '',
-    description: '',
-    type: 'training',
-    startTime: '',
-    endTime: '',
-    trainerId: '',
-    clientId: '', // Изменим логику для этого поля
-    location: '',
-    notes: '',
-    recurring: undefined
+    title: "",
+    description: "",
+    type: "training",
+    startTime: "",
+    endTime: "",
+    trainerId: "",
+    clientId: "", // Изменим логику для этого поля
+    location: "",
+    notes: "",
+    recurring: undefined,
   });
   const [isRecurring, setIsRecurring] = useState(false);
 
@@ -64,15 +64,22 @@ export function EventForm({
       // Редактирование существующего события
       setFormData({
         title: event.title,
-        description: event.description || '',
+        description: event.description || "",
         type: event.type,
-        startTime: event.startTime.slice(0, 16), // Формат для datetime-local
+        startTime: event.startTime.slice(0, 16),
         endTime: event.endTime.slice(0, 16),
         trainerId: event.trainerId,
-        clientId: event.clientId || 'no-client', // Используем специальное значение вместо пустой строки
-        location: event.location || '',
-        notes: event.notes || '',
+        clientId: event.clientId || "no-client",
+        location: event.location || "",
+        notes: event.notes || "",
         recurring: event.recurring
+          ? {
+              pattern: event.recurring.pattern,
+              interval: event.recurring.interval,
+              endDate: event.recurring.endDate,
+              daysOfWeek: event.recurring.daysOfWeek,
+            }
+          : undefined,
       });
       setIsRecurring(!!event.recurring);
     } else if (initialDate && initialHour !== undefined) {
@@ -83,89 +90,96 @@ export function EventForm({
       endDate.setHours(initialHour + 1, 0, 0, 0);
 
       setFormData({
-        title: '',
-        description: '',
-        type: 'training',
+        title: "",
+        description: "",
+        type: "training",
         startTime: startDate.toISOString().slice(0, 16),
         endTime: endDate.toISOString().slice(0, 16),
-        trainerId: '',
-        clientId: 'no-client', // Используем специальное значение
-        location: '',
-        notes: '',
-        recurring: undefined
+        trainerId: "",
+        clientId: "no-client", // Используем специальное значение
+        location: "",
+        notes: "",
+        recurring: undefined,
       });
       setIsRecurring(false);
     } else {
       // Создание нового события
       const now = new Date();
       const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-      
+
       setFormData({
-        title: '',
-        description: '',
-        type: 'training',
+        title: "",
+        description: "",
+        type: "training",
         startTime: now.toISOString().slice(0, 16),
         endTime: oneHourLater.toISOString().slice(0, 16),
-        trainerId: '',
-        clientId: 'no-client', // Используем специальное значение
-        location: '',
-        notes: '',
-        recurring: undefined
+        trainerId: "",
+        clientId: "no-client", // Используем специальное значение
+        location: "",
+        notes: "",
+        recurring: undefined,
       });
       setIsRecurring(false);
     }
   }, [event, initialDate, initialHour]);
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  if (!formData.title || !formData.startTime || !formData.endTime || !formData.trainerId) {
-    alert('Пожалуйста, заполните все обязательные поля');
-    return;
-  }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const startTime = new Date(formData.startTime);
-  const endTime = new Date(formData.endTime);
-  
-  console.log('Отправка формы:', {
-    formData,
-    startTime: startTime.toISOString(),
-    endTime: endTime.toISOString(),
-    startTimeLocal: startTime.toString(),
-    endTimeLocal: endTime.toString()
-  });
-  
-  if (endTime <= startTime) {
-    alert('Время окончания должно быть позже времени начала');
-    return;
-  }
+    if (
+      !formData.title ||
+      !formData.startTime ||
+      !formData.endTime ||
+      !formData.trainerId
+    ) {
+      alert("Пожалуйста, заполните все обязательные поля");
+      return;
+    }
 
-  setLoading(true);
-  try {
-    const submitData = {
-      ...formData,
+    const startTime = new Date(formData.startTime);
+    const endTime = new Date(formData.endTime);
+
+    console.log("Отправка формы:", {
+      formData,
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
-      clientId: formData.clientId === 'no-client' ? undefined : formData.clientId,
-      recurring: isRecurring ? formData.recurring : undefined
-    };
-    
-    console.log('Данные для отправки:', submitData);
-    
-    await onSubmit(submitData);
-    onClose();
-  } catch (error) {
-    console.error('Ошибка сохранения события:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+      startTimeLocal: startTime.toString(),
+      endTimeLocal: endTime.toString(),
+    });
+
+    if (endTime <= startTime) {
+      alert("Время окончания должно быть позже времени начала");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const submitData = {
+        ...formData,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        clientId:
+          formData.clientId === "no-client" ? undefined : formData.clientId,
+        recurring: isRecurring ? formData.recurring : undefined,
+      };
+
+      console.log("Данные для отправки:", submitData);
+
+      await onSubmit(submitData);
+      onClose();
+    } catch (error) {
+      console.error("Ошибка сохранения события:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
   const eventTypes = [
-    { value: 'training', label: 'Тренировка' },
-    { value: 'consultation', label: 'Консультация' },
-    { value: 'meeting', label: 'Встреча' },
-    { value: 'break', label: 'Перерыв' },
-    { value: 'other', label: 'Другое' }
+    { value: "training", label: "Тренировка" },
+    { value: "consultation", label: "Консультация" },
+    { value: "group", label: "Групповая тренировка" },
+    { value: "meeting", label: "Встреча" },
+    { value: "break", label: "Перерыв" },
+    { value: "other", label: "Другое" },
   ];
 
   return (
@@ -174,15 +188,17 @@ const handleSubmit = async (e: React.FormEvent) => {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            {event ? 'Редактировать событие' : 'Создать новое событие'}
+            {event ? "Редактировать событие" : "Создать новое событие"}
           </DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Основная информация */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Основная информация</h3>
-            
+            <h3 className="text-lg font-medium text-gray-900">
+              Основная информация
+            </h3>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title" className="flex items-center gap-2">
@@ -192,7 +208,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <Input
                   id="title"
                   value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                   placeholder="Введите название"
                   required
                 />
@@ -200,9 +218,11 @@ const handleSubmit = async (e: React.FormEvent) => {
 
               <div className="space-y-2">
                 <Label htmlFor="type">Тип события *</Label>
-                <Select 
-                  value={formData.type} 
-                  onValueChange={(value: CreateEventData['type']) => setFormData({...formData, type: value})}
+                <Select
+                  value={formData.type}
+                  onValueChange={(value: CreateEventData["type"]) =>
+                    setFormData({ ...formData, type: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите тип" />
@@ -223,7 +243,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 placeholder="Введите описание события"
                 rows={3}
               />
@@ -232,8 +254,10 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* Время и участники */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Время и участники</h3>
-            
+            <h3 className="text-lg font-medium text-gray-900">
+              Время и участники
+            </h3>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startTime" className="flex items-center gap-2">
@@ -244,7 +268,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                   id="startTime"
                   type="datetime-local"
                   value={formData.startTime}
-                  onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, startTime: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -258,7 +284,9 @@ const handleSubmit = async (e: React.FormEvent) => {
                   id="endTime"
                   type="datetime-local"
                   value={formData.endTime}
-                  onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, endTime: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -270,9 +298,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <User className="h-4 w-4" />
                   Тренер *
                 </Label>
-                <Select 
-                  value={formData.trainerId} 
-                  onValueChange={(value) => setFormData({...formData, trainerId: value})}
+                <Select
+                  value={formData.trainerId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, trainerId: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите тренера" />
@@ -292,9 +322,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <User className="h-4 w-4" />
                   Клиент
                 </Label>
-                <Select 
-                  value={formData.clientId} 
-                  onValueChange={(value) => setFormData({...formData, clientId: value})}
+                <Select
+                  value={formData.clientId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, clientId: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Выберите клиента" />
@@ -314,8 +346,10 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* Дополнительная информация */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Дополнительная информация</h3>
-            
+            <h3 className="text-lg font-medium text-gray-900">
+              Дополнительная информация
+            </h3>
+
             <div className="space-y-2">
               <Label htmlFor="location" className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
@@ -324,7 +358,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <Input
                 id="location"
                 value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, location: e.target.value })
+                }
                 placeholder="Зал 1, Онлайн, и т.д."
               />
             </div>
@@ -334,7 +370,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               <Textarea
                 id="notes"
                 value={formData.notes}
-                onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, notes: e.target.value })
+                }
                 placeholder="Дополнительные заметки"
                 rows={3}
               />
@@ -361,16 +399,16 @@ const handleSubmit = async (e: React.FormEvent) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div className="space-y-2">
                   <Label htmlFor="recurringType">Тип повторения</Label>
-                  <Select 
-                    value={formData.recurring?.type || 'weekly'} 
-                    onValueChange={(value: 'daily' | 'weekly' | 'monthly') => 
+                  <Select
+                    value={formData.recurring?.pattern || "weekly"}
+                    onValueChange={(value: "daily" | "weekly" | "monthly") =>
                       setFormData({
-                        ...formData, 
-                        recurring: { 
-                          type: value,
+                        ...formData,
+                        recurring: {
+                          pattern: value,
                           interval: formData.recurring?.interval || 1,
-                          endDate: formData.recurring?.endDate
-                        }
+                          endDate: formData.recurring?.endDate,
+                        },
                       })
                     }
                   >
@@ -393,14 +431,18 @@ const handleSubmit = async (e: React.FormEvent) => {
                     min="1"
                     max="12"
                     value={formData.recurring?.interval || 1}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      recurring: {
-                        type: formData.recurring?.type || 'weekly',
-                        interval: parseInt(e.target.value) || 1,
-                        endDate: formData.recurring?.endDate
-                      }
-                    })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        recurring: {
+                          pattern: formData.recurring?.pattern || "weekly",
+                          interval: formData.recurring?.interval || 1,
+                          endDate: e.target.value
+                            ? new Date(e.target.value).toISOString()
+                            : undefined,
+                        },
+                      })
+                    }
                   />
                 </div>
 
@@ -409,15 +451,19 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <Input
                     id="endDate"
                     type="date"
-                                        value={formData.recurring?.endDate?.slice(0, 10) || ''}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      recurring: {
-                        type: formData.recurring?.type || 'weekly',
-                        interval: formData.recurring?.interval || 1,
-                        endDate: e.target.value ? new Date(e.target.value).toISOString() : undefined
-                      }
-                    })}
+                    value={formData.recurring?.endDate?.slice(0, 10) || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        recurring: {
+                          pattern: formData.recurring?.pattern || "weekly",
+                          interval: formData.recurring?.interval || 1,
+                          endDate: e.target.value
+                            ? new Date(e.target.value).toISOString()
+                            : undefined,
+                        },
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -426,16 +472,20 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* Действия */}
           <div className="flex space-x-3 pt-4 border-t">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               disabled={loading}
               className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
-              {loading ? 'Сохранение...' : (event ? 'Обновить событие' : 'Создать событие')}
+              {loading
+                ? "Сохранение..."
+                : event
+                  ? "Обновить событие"
+                  : "Создать событие"}
             </Button>
-            <Button 
+            <Button
               type="button"
-              variant="outline" 
+              variant="outline"
               onClick={onClose}
               className="flex-1"
             >
@@ -447,4 +497,3 @@ const handleSubmit = async (e: React.FormEvent) => {
     </Dialog>
   );
 }
-

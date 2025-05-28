@@ -10,7 +10,7 @@ import {
     UseDashboardDataReturn,
     SyncStatus
 } from '../types/dashboard';
-import { initDebugCommands } from '@/utils/debugCommands';
+import { initDebugCommands, registerGlobalDebugCommands } from '@/utils/debugCommands';
 
 // Моковые данные для демонстрации
 const mockTrainers: UnifiedTrainer[] = [
@@ -411,11 +411,12 @@ export const useDashboardData = (): UseDashboardDataReturn => {
         if (process.env.NODE_ENV === 'development') {
             // Небольшая задержка чтобы все контексты успели загрузиться
             const timer = setTimeout(() => {
-                initDebugCommands(
-                    { events, addEvent: () => {}, deleteEvent: () => {} }, // schedule mock
-                    { trainers, clients, events, syncAllData, refreshStats }, // dashboard
-                    { trainers, clients } // superAdmin mock
-                );
+                const debugCommands = initDebugCommands({
+                    schedule: { events, addEvent: () => { }, deleteEvent: () => { } },
+                    dashboard: { trainers, clients, events, syncAllData, refreshStats },
+                    superAdmin: { trainers, clients }
+                });
+                registerGlobalDebugCommands(debugCommands);
             }, 1000);
 
             return () => clearTimeout(timer);

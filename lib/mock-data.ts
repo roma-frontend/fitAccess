@@ -24,7 +24,7 @@ export interface Trainer {
   name: string;
   email: string;
   role: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'active' | 'inactive' | 'suspended' | 'deleted';
   phone: string;
   specialization: string[];
   experience: number;
@@ -45,7 +45,7 @@ export interface Client {
   name: string;
   email: string;
   phone?: string;
-  status: 'active' | 'inactive' | 'suspended';
+  status: 'active' | 'inactive' | 'suspended' | 'deleted';
   trainerId?: string;
   membershipType: 'basic' | 'premium' | 'vip';
   joinDate: string;

@@ -1,42 +1,48 @@
-// types/debug.ts (обновленная версия с более гибкими типами)
+// types/debug.ts
+export interface ScheduleDebugContext {
+  events: any[];
+  trainers: any[];
+  loading: boolean;
+  error: string | null;
+  createEvent: (data: any) => Promise<void>;
+  updateEvent: (id: string, data: any) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
+  refreshData: () => Promise<void>;
+  getStats: () => object;
+  clearAllEvents: () => void;
+  [key: string]: any;
+}
+
+export interface DashboardDebugContext {
+  events: any[];
+  trainers: any[];
+  clients: any[];
+  notifications: any[];
+  stats: any;
+  analytics: any;
+  loading: boolean;
+  error: string | null;
+  syncAllData: () => Promise<void>;
+  refreshStats: () => Promise<void>;
+  getStats: () => object;
+  [key: string]: any;
+}
+
+export interface SuperAdminDebugContext {
+  trainers: any[];
+  clients: any[];
+  loading: boolean;
+  error: string | null;
+  refreshData: () => Promise<void>;
+  getStats: () => object;
+  [key: string]: any;
+}
+
 export interface GlobalDebugCommands {
-  schedule?: {
-    events: any[];
-    trainers: any[];
-    loading: boolean;
-    error: string | null;
-    createEvent: (data: any) => Promise<void>;
-    updateEvent: (id: string, data: any) => Promise<void>;
-    deleteEvent: (id: string) => Promise<void>;
-    refreshData: () => Promise<void>;
-    getStats: () => object;
-    clearAllEvents: () => void;
-    [key: string]: any;
-  };
-  
-  dashboard?: {
-    events: any[];
-    trainers: any[];
-    clients: any[];
-    stats: any;
-    analytics: any;
-    loading: boolean;
-    error: string | null;
-    syncAllData: () => Promise<void>;
-    refreshStats: () => Promise<void>;
-    getStats: () => object;
-    [key: string]: any;
-  };
-  
-  superAdmin?: {
-    trainers: any[];
-    clients: any[];
-    loading: boolean;
-    error: string | null;
-    refreshData: () => Promise<void>;
-    getStats: () => object;
-    [key: string]: any;
-  };
+  // ✅ КОНТЕКСТЫ (ОПЦИОНАЛЬНЫЕ)
+  schedule?: ScheduleDebugContext;
+  dashboard?: DashboardDebugContext;
+  superAdmin?: SuperAdminDebugContext;
   
   // ✅ ОБЯЗАТЕЛЬНЫЕ КОМАНДЫ
   help: () => void;
@@ -70,3 +76,5 @@ declare global {
     forceRegisterContexts: () => void;
   }
 }
+
+export {};
