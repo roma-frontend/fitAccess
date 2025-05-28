@@ -58,7 +58,7 @@ export default function SchedulePage() {
 
   // Отладка изменений событий
   useEffect(() => {
-    console.log('События обновились на главной странице:', events);
+    console.log("События обновились на главной странице:", events);
   }, [events]);
 
   const loadScheduleData = async () => {
@@ -153,18 +153,48 @@ export default function SchedulePage() {
         upcomingEvents: 45,
         completedEvents: 89,
         cancelledEvents: 10,
-        byTrainer: {
-          trainer1: 45,
-          trainer2: 38,
-          trainer3: 32,
-        },
+        pendingConfirmation: 8,
+        overdueEvents: 3,
+        byTrainer: [
+          { trainerId: "trainer1", trainerName: "Иван Петров", eventCount: 45 },
+          {
+            trainerId: "trainer2",
+            trainerName: "Мария Иванова",
+            eventCount: 38,
+          },
+          {
+            trainerId: "trainer3",
+            trainerName: "Алексей Сидоров",
+            eventCount: 32,
+          },
+        ],
         byType: {
           training: 89,
           consultation: 34,
+          group: 15,
           meeting: 23,
           break: 10,
+          other: 5,
+        },
+        byStatus: {
+          scheduled: 45,
+          confirmed: 67,
+          completed: 89,
+          cancelled: 10,
+          "no-show": 5,
         },
         utilizationRate: 78,
+        averageDuration: 60, // 60 минут
+        busyHours: [
+          { hour: 9, eventCount: 12 },
+          { hour: 10, eventCount: 18 },
+          { hour: 11, eventCount: 15 },
+          { hour: 14, eventCount: 20 },
+          { hour: 15, eventCount: 16 },
+          { hour: 16, eventCount: 14 },
+          { hour: 17, eventCount: 10 },
+          { hour: 18, eventCount: 8 },
+        ],
       };
 
       const mockTrainers: TrainerSchedule[] = [
@@ -293,13 +323,15 @@ export default function SchedulePage() {
                 upcomingEvents: prev.upcomingEvents + 1,
                 byType: {
                   ...prev.byType,
-                  [newEvent.type]: (prev.byType[newEvent.type] || 0) + 1,
+                  [newEvent.type]:
+                    (prev.byType[newEvent.type as keyof typeof prev.byType] ||
+                      0) + 1,
                 },
-                byTrainer: {
-                  ...prev.byTrainer,
-                  [newEvent.trainerId]:
-                    (prev.byTrainer[newEvent.trainerId] || 0) + 1,
-                },
+                byTrainer: prev.byTrainer.map((trainer) =>
+                  trainer.trainerId === newEvent.trainerId
+                    ? { ...trainer, eventCount: trainer.eventCount + 1 }
+                    : trainer
+                ),
               }
             : null
         );
@@ -545,9 +577,11 @@ export default function SchedulePage() {
       </div>
 
       {/* Отладочная панель - только для разработки */}
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === "development" && (
         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="font-medium text-yellow-800 mb-2">Отладочная информация:</h3>
+          <h3 className="font-medium text-yellow-800 mb-2">
+            Отладочная информация:
+          </h3>
           <div className="text-sm text-yellow-700 space-y-1">
             <div>Всего событий в состоянии: {events.length}</div>
             <div>Последнее обновление: {new Date().toLocaleTimeString()}</div>
@@ -559,10 +593,10 @@ export default function SchedulePage() {
               </div>
             )}
           </div>
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => console.log('Текущие события:', events)}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => console.log("Текущие события:", events)}
             className="mt-2"
           >
             Вывести события в консоль
@@ -656,6 +690,7 @@ export default function SchedulePage() {
                   const typeNames = {
                     training: "Тренировки",
                     consultation: "Консультации",
+                    group: "Групповые занятия",
                     meeting: "Встречи",
                     break: "Перерывы",
                     other: "Другое",
@@ -674,7 +709,7 @@ export default function SchedulePage() {
                       className="flex items-center justify-between"
                     >
                       <span className="text-sm font-medium">
-                        {typeNames[type as keyof typeof typeNames]}
+                        {(typeNames as Record<string, string>)[type] || type}
                       </span>
                       <div className="flex items-center space-x-3">
                         <div className="w-24 bg-gray-200 rounded-full h-2">
@@ -703,14 +738,12 @@ export default function SchedulePage() {
               </h3>
               <div className="space-y-3">
                 {trainers.map((trainer) => {
-                  const trainerEvents = events.filter(
-                    (e) => e.trainerId === trainer.trainerId
-                  ).length;
+                  const trainerStats = stats?.byTrainer.find(
+                    (t) => t.trainerId === trainer.trainerId
+                  );
+                  const trainerEvents = trainerStats?.eventCount || 0;
                   const maxEvents = Math.max(
-                    ...trainers.map(
-                      (t) =>
-                        events.filter((e) => e.trainerId === t.trainerId).length
-                    )
+                    ...(stats?.byTrainer.map((t) => t.eventCount) || [1])
                   );
                   const percentage =
                     maxEvents > 0
@@ -869,5 +902,3 @@ export default function SchedulePage() {
     </div>
   );
 }
-
-

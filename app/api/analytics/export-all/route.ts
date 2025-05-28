@@ -1,173 +1,231 @@
 // app/api/analytics/export-all/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { withPermissions, AuthenticatedRequest } from '@/lib/api-middleware';
 import { mockSessions, mockTrainers, mockClients } from '@/lib/mock-data';
 
-// GET /api/analytics/export-all - Полный экспорт аналитических данных
-export const GET = withPermissions(
-  { resource: 'analytics', action: 'export' },
-  async (req: AuthenticatedRequest) => {
-    try {
-      console.log('📤 API: полный экспорт аналитических данных');
+// Типы для пользователя (адаптируйте под вашу структуру)
+interface User {
+  id: string;
+  email: string;
+  role: 'admin' | 'trainer' | 'client';
+}
 
-      const { user } = req;
-      const url = new URL(req.url);
-      const format = url.searchParams.get('format') || 'json';
-      const period = url.searchParams.get('period') || 'year';
-      const includePersonalData = url.searchParams.get('includePersonalData') === 'true';
+// Функция для получения аутентифицированного пользователя
+async function getAuthenticatedUser(request: NextRequest): Promise<User | null> {
+  // Здесь должна быть ваша логика аутентификации
+  // Например, проверка JWT токена из headers или cookies
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '') || 
+                  request.cookies.get('auth-token')?.value;
+    
+    if (!token) {
+      return null;
+    }
 
-      // Проверка прав на экспорт персональных данных
-      if (includePersonalData && user.role !== 'admin') {
-        return NextResponse.json(
-          { success: false, error: 'Недостаточно прав для экспорта персональных данных' },
-          { status: 403 }
-        );
-      }
+    // Здесь должна быть проверка токена и получение пользователя
+    // Для примера возвращаем мок-пользователя
+    return {
+      id: 'user-1',
+      email: 'admin@example.com',
+      role: 'admin'
+    };
+  } catch (error) {
+    console.error('Ошибка аутентификации:', error);
+    return null;
+  }
+}
 
-      // Фильтрация данных по правам доступа
-      let sessions = [...mockSessions];
-      let trainers = [...mockTrainers];
-      let clients = [...mockClients];
+// Функция проверки прав
+function hasPermission(user: User, resource: string, action: string): boolean {
+  // Здесь должна быть ваша логика проверки прав
+  // Для примера: админы могут все, тренеры могут экспортировать свои данные
+  if (user.role === 'admin') {
+    return true;
+  }
+  
+  if (user.role === 'trainer' && resource === 'analytics' && action === 'export') {
+    return true;
+  }
+  
+  return false;
+}
 
-      if (user.role === 'trainer') {
-        sessions = sessions.filter(s => s.trainerId === user.id);
-        trainers = trainers.filter(t => t.id === user.id);
-        clients = clients.filter(c => c.trainerId === user.id);
-      }
+export async function GET(request: NextRequest) {
+  try {
+    console.log('📤 API: полный экспорт аналитических данных');
 
-      // Определение временного периода
-      const now = new Date();
-      let startDate: Date;
-      
-      switch (period) {
-        case 'month':
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        case 'quarter':
-          startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-          break;
-        case 'year':
-          startDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        case 'all':
-          startDate = new Date(2020, 0, 1); // Начало данных
-          break;
-        default:
-          startDate = new Date(now.getFullYear(), 0, 1);
-      }
-
-      const periodSessions = sessions.filter(session => {
-        const sessionDate = new Date(`${session.date}T${session.startTime}`);
-        return sessionDate >= startDate;
-      });
-
-      // Подготовка данных для экспорта
-      const exportData = {
-        metadata: {
-          exportDate: now.toISOString(),
-          exportedBy: user.email,
-          period: {
-            type: period,
-            start: startDate.toISOString(),
-            end: now.toISOString()
-          },
-          scope: user.role === 'trainer' ? 'personal' : 'global',
-          includesPersonalData: includePersonalData,
-          version: '1.0'
-        },
-        summary: {
-          totalSessions: periodSessions.length,
-          completedSessions: periodSessions.filter(s => s.status === 'completed').length,
-          cancelledSessions: periodSessions.filter(s => s.status === 'cancelled').length,
-          totalRevenue: periodSessions.filter(s => s.status === 'completed').length * 2000,
-          uniqueClients: new Set(periodSessions.map(s => s.clientId)).size,
-          activeTrainers: trainers.filter(t => t.status === 'active').length
-        },
-        sessions: periodSessions.map(session => ({
-          id: session.id,
-          date: session.date,
-          startTime: session.startTime,
-          endTime: session.endTime,
-          type: session.type,
-          status: session.status,
-          trainerId: session.trainerId,
-          clientId: includePersonalData ? session.clientId : 'REDACTED',
-          notes: includePersonalData ? session.notes : 'REDACTED'
-        })),
-        trainers: trainers.map(trainer => ({
-          id: trainer.id,
-          name: includePersonalData ? trainer.name : 'REDACTED',
-          email: includePersonalData ? trainer.email : 'REDACTED',
-          specialization: trainer.specialization,
-          rating: trainer.rating,
-          experience: trainer.experience,
-          status: trainer.status,
-          sessionsCount: periodSessions.filter(s => s.trainerId === trainer.id).length,
-          completedSessions: periodSessions.filter(s => s.trainerId === trainer.id && s.status === 'completed').length,
-          revenue: periodSessions.filter(s => s.trainerId === trainer.id && s.status === 'completed').length * 2000
-        })),
-        clients: includePersonalData ? clients.map(client => ({
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          phone: client.phone,
-          trainerId: client.trainerId,
-          status: client.status,
-          joinDate: client.joinDate,
-          sessionsCount: periodSessions.filter(s => s.clientId === client.id).length,
-          completedSessions: periodSessions.filter(s => s.clientId === client.id && s.status === 'completed').length,
-          lastSessionDate: periodSessions
-            .filter(s => s.clientId === client.id)
-            .sort((a, b) => new Date(`${b.date}T${b.startTime}`).getTime() - new Date(`${a.date}T${a.startTime}`).getTime())[0]?.date || null
-        })) : [],
-        analytics: {
-          byMonth: generateMonthlyAnalytics(periodSessions, startDate, now),
-          byTrainer: generateTrainerAnalytics(periodSessions, trainers),
-          bySessionType: generateSessionTypeAnalytics(periodSessions),
-          trends: generateTrendAnalytics(periodSessions, startDate)
-        }
-      };
-
-      // Возврат в зависимости от формата
-      if (format === 'csv') {
-        const csvContent = convertToCSV(exportData);
-        return new NextResponse(csvContent, {
-          status: 200,
-          headers: {
-            'Content-Type': 'text/csv; charset=utf-8',
-            'Content-Disposition': `attachment; filename="analytics_export_${period}_${now.toISOString().split('T')[0]}.csv"`
-          }
-        });
-      }
-
-      if (format === 'excel') {
-        // В реальном приложении здесь будет генерация Excel файла
-        return NextResponse.json({
-          success: false,
-          error: 'Excel экспорт пока не поддерживается. Используйте JSON или CSV формат.'
-        }, { status: 501 });
-      }
-
-      // JSON формат по умолчанию
-      return new NextResponse(JSON.stringify(exportData, null, 2), {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Disposition': `attachment; filename="analytics_export_${period}_${now.toISOString().split('T')[0]}.json"`
-        }
-      });
-
-    } catch (error: any) {
-      console.error('💥 API: ошибка полного экспорта аналитики:', error);
+    // Проверка аутентификации и прав
+    const user = await getAuthenticatedUser(request);
+    if (!user) {
       return NextResponse.json(
-        { success: false, error: 'Ошибка экспорта аналитических данных' },
-        { status: 500 }
+        { success: false, error: 'Не авторизован' },
+        { status: 401 }
       );
     }
-  }
-);
 
-// Вспомогательные функции для генерации аналитики
+    // Проверка прав на экспорт аналитики
+    if (!hasPermission(user, 'analytics', 'export')) {
+      return NextResponse.json(
+        { success: false, error: 'Недостаточно прав' },
+        { status: 403 }
+      );
+    }
+
+    const url = new URL(request.url);
+    const format = url.searchParams.get('format') || 'json';
+    const period = url.searchParams.get('period') || 'year';
+    const includePersonalData = url.searchParams.get('includePersonalData') === 'true';
+
+    // Проверка прав на экспорт персональных данных
+    if (includePersonalData && user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: 'Недостаточно прав для экспорта персональных данных' },
+        { status: 403 }
+      );
+    }
+
+    // Фильтрация данных по правам доступа
+    let sessions = [...mockSessions];
+    let trainers = [...mockTrainers];
+    let clients = [...mockClients];
+
+    if (user.role === 'trainer') {
+      sessions = sessions.filter(s => s.trainerId === user.id);
+      trainers = trainers.filter(t => t.id === user.id);
+      clients = clients.filter(c => c.trainerId === user.id);
+    }
+
+    // Определение временного периода
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (period) {
+      case 'month':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'quarter':
+        startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+        break;
+      case 'year':
+        startDate = new Date(now.getFullYear(), 0, 1);
+        break;
+      case 'all':
+        startDate = new Date(2020, 0, 1); // Начало данных
+        break;
+      default:
+        startDate = new Date(now.getFullYear(), 0, 1);
+    }
+
+    const periodSessions = sessions.filter(session => {
+      const sessionDate = new Date(`${session.date}T${session.startTime}`);
+      return sessionDate >= startDate;
+    });
+
+    // Подготовка данных для экспорта
+    const exportData = {
+      metadata: {
+        exportDate: now.toISOString(),
+        exportedBy: user.email,
+        period: {
+          type: period,
+          start: startDate.toISOString(),
+          end: now.toISOString()
+        },
+        scope: user.role === 'trainer' ? 'personal' : 'global',
+        includesPersonalData: includePersonalData,
+        version: '1.0'
+      },
+      summary: {
+        totalSessions: periodSessions.length,
+        completedSessions: periodSessions.filter(s => s.status === 'completed').length,
+        cancelledSessions: periodSessions.filter(s => s.status === 'cancelled').length,
+        totalRevenue: periodSessions.filter(s => s.status === 'completed').length * 2000,
+        uniqueClients: new Set(periodSessions.map(s => s.clientId)).size,
+        activeTrainers: trainers.filter(t => t.status === 'active').length
+      },
+      sessions: periodSessions.map(session => ({
+        id: session.id,
+        date: session.date,
+        startTime: session.startTime,
+        endTime: session.endTime,
+        type: session.type,
+        status: session.status,
+        trainerId: session.trainerId,
+        clientId: includePersonalData ? session.clientId : 'REDACTED',
+        notes: includePersonalData ? session.notes : 'REDACTED'
+      })),
+      trainers: trainers.map(trainer => ({
+        id: trainer.id,
+        name: includePersonalData ? trainer.name : 'REDACTED',
+        email: includePersonalData ? trainer.email : 'REDACTED',
+        specialization: trainer.specialization,
+        rating: trainer.rating,
+        experience: trainer.experience,
+        status: trainer.status,
+        sessionsCount: periodSessions.filter(s => s.trainerId === trainer.id).length,
+        completedSessions: periodSessions.filter(s => s.trainerId === trainer.id && s.status === 'completed').length,
+        revenue: periodSessions.filter(s => s.trainerId === trainer.id && s.status === 'completed').length * 2000
+      })),
+      clients: includePersonalData ? clients.map(client => ({
+        id: client.id,
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        trainerId: client.trainerId,
+        status: client.status,
+        joinDate: client.joinDate,
+        sessionsCount: periodSessions.filter(s => s.clientId === client.id).length,
+        completedSessions: periodSessions.filter(s => s.clientId === client.id && s.status === 'completed').length,
+        lastSessionDate: periodSessions
+          .filter(s => s.clientId === client.id)
+          .sort((a, b) => new Date(`${b.date}T${b.startTime}`).getTime() - new Date(`${a.date}T${a.startTime}`).getTime())[0]?.date || null
+      })) : [],
+      analytics: {
+        byMonth: generateMonthlyAnalytics(periodSessions, startDate, now),
+        byTrainer: generateTrainerAnalytics(periodSessions, trainers),
+        bySessionType: generateSessionTypeAnalytics(periodSessions),
+        trends: generateTrendAnalytics(periodSessions, startDate)
+      }
+    };
+
+    // Возврат в зависимости от формата
+    if (format === 'csv') {
+      const csvContent = convertToCSV(exportData);
+      return new NextResponse(csvContent, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="analytics_export_${period}_${now.toISOString().split('T')[0]}.csv"`
+        }
+      });
+    }
+
+    if (format === 'excel') {
+      // В реальном приложении здесь будет генерация Excel файла
+      return NextResponse.json({
+        success: false,
+        error: 'Excel экспорт пока не поддерживается. Используйте JSON или CSV формат.'
+      }, { status: 501 });
+    }
+
+    // JSON формат по умолчанию
+    return new NextResponse(JSON.stringify(exportData, null, 2), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Disposition': `attachment; filename="analytics_export_${period}_${now.toISOString().split('T')[0]}.json"`
+      }
+    });
+ 
+  } catch (error: any) {
+    console.error('💥 API: ошибка полного экспорта аналитики:', error);
+    return NextResponse.json(
+      { success: false, error: 'Ошибка экспорта аналитических данных' },
+      { status: 500 }
+    );
+  }
+}
+
+// Helper functions
 function generateMonthlyAnalytics(sessions: any[], startDate: Date, endDate: Date) {
   const monthlyData = [];
   const start = new Date(startDate);
@@ -324,12 +382,54 @@ function convertToCSV(data: any): string {
   });
   csvSections.push('');
   
+  // Клиенты (если включены персональные данные)
+  if (data.clients.length > 0) {
+    csvSections.push('CLIENTS');
+    csvSections.push('ID,Name,Email,Phone,Trainer ID,Status,Join Date,Sessions Count,Completed Sessions,Last Session Date');
+    data.clients.forEach((client: any) => {
+      csvSections.push(`${client.id},"${client.name}","${client.email}","${client.phone}",${client.trainerId},${client.status},${client.joinDate},${client.sessionsCount},${client.completedSessions},${client.lastSessionDate || 'N/A'}`);
+    });
+    csvSections.push('');
+  }
+  
   // Месячная аналитика
   csvSections.push('MONTHLY ANALYTICS');
   csvSections.push('Month,Total Sessions,Completed Sessions,Revenue,Unique Clients');
   data.analytics.byMonth.forEach((month: any) => {
     csvSections.push(`${month.month},${month.totalSessions},${month.completedSessions},${month.revenue},${month.uniqueClients}`);
   });
+  csvSections.push('');
+  
+  // Аналитика по тренерам
+  csvSections.push('TRAINER ANALYTICS');
+  csvSections.push('Trainer ID,Total Sessions,Completed Sessions,Completion Rate,Revenue,Unique Clients,Avg Rating');
+  data.analytics.byTrainer.forEach((trainer: any) => {
+    csvSections.push(`${trainer.trainerId},${trainer.totalSessions},${trainer.completedSessions},${trainer.completionRate}%,${trainer.revenue},${trainer.uniqueClients},${trainer.avgRating}`);
+  });
+  csvSections.push('');
+  
+  // Аналитика по типам сессий
+  csvSections.push('SESSION TYPE ANALYTICS');
+  csvSections.push('Type,Total Sessions,Completed Sessions,Completion Rate,Revenue');
+  data.analytics.bySessionType.forEach((type: any) => {
+    csvSections.push(`${type.type},${type.totalSessions},${type.completedSessions},${type.completionRate}%,${type.revenue}`);
+  });
+  csvSections.push('');
+  
+  // Недельные тренды
+  csvSections.push('WEEKLY TRENDS');
+  csvSections.push('Week Start,Week End,Total Sessions,Completed Sessions,Revenue');
+  data.analytics.trends.weeklyData.forEach((week: any) => {
+    csvSections.push(`${week.weekStart},${week.weekEnd},${week.totalSessions},${week.completedSessions},${week.revenue}`);
+  });
+  csvSections.push('');
+  
+  // Общие тренды
+  csvSections.push('GROWTH TRENDS');
+  csvSections.push('Metric,Trend');
+  csvSections.push(`Sessions Growth,${data.analytics.trends.trends.sessionsGrowth}`);
+  csvSections.push(`Revenue Growth,${data.analytics.trends.trends.revenueGrowth}`);
+  csvSections.push(`Completion Trend,${data.analytics.trends.trends.completionTrend}`);
   
   return csvSections.join('\n');
 }

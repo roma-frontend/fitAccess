@@ -50,202 +50,204 @@ interface ComparisonAverages {
 }
 
 // POST /api/analytics/trainers/compare - Сравнение тренеров
-export const POST = withPermissions(
-  { resource: 'analytics', action: 'read' },
-  async (req: AuthenticatedRequest) => {
-    try {
-      console.log('🔄 API: сравнение тренеров');
+export async function POST(req: NextRequest) {
+  return withPermissions(
+    { resource: 'analytics', action: 'read' },
+    async (authenticatedReq: AuthenticatedRequest) => {
+      try {
+        console.log('🔄 API: сравнение тренеров');
 
-      const { user } = req;
-      const body = await req.json();
-      const { trainerIds, period = 'month', metrics = ['sessions', 'revenue', 'efficiency'] } = body;
+        const { user } = authenticatedReq;
+        const body = await req.json();
+        const { trainerIds, period = 'month', metrics = ['sessions', 'revenue', 'efficiency'] } = body;
 
-      // Проверка прав доступа
-      if (!isManager(user.role) && !isAdmin(user.role)) {
-        return NextResponse.json(
-          { success: false, error: 'Недостаточно прав для сравнения тренеров' },
-          { status: 403 }
-        );
-      }
-
-      // Валидация входных данных
-      if (!trainerIds || !Array.isArray(trainerIds) || trainerIds.length < 2) {
-        return NextResponse.json(
-          { success: false, error: 'Необходимо выбрать минимум 2 тренеров для сравнения' },
-          { status: 400 }
-        );
-      }
-
-      if (trainerIds.length > 5) {
-        return NextResponse.json(
-          { success: false, error: 'Максимальное количество тренеров для сравнения - 5' },
-          { status: 400 }
-        );
-      }
-
-      // Проверка валидности ID тренеров
-      const invalidIds = trainerIds.filter(id => typeof id !== 'string' || id.trim() === '');
-      if (invalidIds.length > 0) {
-        return NextResponse.json(
-          { success: false, error: 'Некорректные ID тренеров' },
-          { status: 400 }
-        );
-      }
-
-      // Определение временного периода
-      const now = new Date();
-      let startDate: Date;
-      
-      switch (period) {
-        case 'week':
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        case 'quarter':
-          startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-          break;
-        case 'year':
-          startDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        default:
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      }
-
-      // Получение данных тренеров
-      const trainersData: TrainerComparisonMetrics[] = [];
-      
-      for (const trainerId of trainerIds) {
-        const trainer = mockTrainers.find(t => t.id === trainerId);
-        if (!trainer) {
+        // Проверка прав доступа
+        if (!isManager(user.role) && !isAdmin(user.role)) {
           return NextResponse.json(
-            { success: false, error: `Тренер с ID ${trainerId} не найден` },
-            { status: 404 }
+            { success: false, error: 'Недостаточно прав для сравнения тренеров' },
+            { status: 403 }
           );
         }
 
-        // Проверка, что это действительно тренер
-        if (trainer.role !== 'trainer') {
+        // Валидация входных данных
+        if (!trainerIds || !Array.isArray(trainerIds) || trainerIds.length < 2) {
           return NextResponse.json(
-            { success: false, error: `Пользователь ${trainer.name} не является тренером` },
+            { success: false, error: 'Необходимо выбрать минимум 2 тренеров для сравнения' },
             { status: 400 }
           );
         }
 
-        const trainerSessions = mockSessions.filter(s => s.trainerId === trainerId);
-        const trainerClients = mockClients.filter(c => c.trainerId === trainerId);
-        
-        const periodSessions = trainerSessions.filter(session => {
-          const sessionDate = new Date(`${session.date}T${session.startTime}`);
-          return sessionDate >= startDate && sessionDate <= now;
-        });
+        if (trainerIds.length > 5) {
+          return NextResponse.json(
+            { success: false, error: 'Максимальное количество тренеров для сравнения - 5' },
+            { status: 400 }
+          );
+        }
 
-        const completedSessions = periodSessions.filter(s => s.status === 'completed');
-        const cancelledSessions = periodSessions.filter(s => s.status === 'cancelled');
+        // Проверка валидности ID тренеров
+        const invalidIds = trainerIds.filter((id: any) => typeof id !== 'string' || id.trim() === '');
+        if (invalidIds.length > 0) {
+          return NextResponse.json(
+            { success: false, error: 'Некорректные ID тренеров' },
+            { status: 400 }
+          );
+        }
+
+        // Определение временного периода
+        const now = new Date();
+        let startDate: Date;
         
-        // Расчет дней в периоде
-        const daysDiff = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+        switch (period) {
+          case 'week':
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+          case 'quarter':
+            startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+            break;
+          case 'year':
+            startDate = new Date(now.getFullYear(), 0, 1);
+            break;
+          default:
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        }
+
+        // Получение данных тренеров
+        const trainersData: TrainerComparisonMetrics[] = [];
         
-        const trainerMetrics: TrainerComparisonMetrics = {
-          id: trainer.id,
-          name: trainer.name,
-          specialization: Array.isArray(trainer.specialization) ? trainer.specialization : [],
-          rating: trainer.rating || 0,
-          totalSessions: periodSessions.length,
-          completedSessions: completedSessions.length,
-          cancelledSessions: cancelledSessions.length,
-          revenue: completedSessions.length * 2000,
-          uniqueClients: new Set(periodSessions.map(s => s.clientId)).size,
-          activeClients: trainerClients.filter(c => c.status === 'active').length,
-          completionRate: periodSessions.length > 0 ? 
-            Math.round((completedSessions.length / periodSessions.length) * 100) : 0,
-          cancellationRate: periodSessions.length > 0 ? 
-            Math.round((cancelledSessions.length / periodSessions.length) * 100) : 0,
-          avgSessionsPerDay: Math.round((completedSessions.length / daysDiff) * 10) / 10,
-          sessionTypes: {
-            personal: periodSessions.filter(s => s.type === 'personal').length,
-            group: periodSessions.filter(s => s.type === 'group').length,
-            consultation: periodSessions.filter(s => s.type === 'consultation').length
+        for (const trainerId of trainerIds) {
+          const trainer = mockTrainers.find((t: any) => t.id === trainerId);
+          if (!trainer) {
+            return NextResponse.json(
+              { success: false, error: `Тренер с ID ${trainerId} не найден` },
+              { status: 404 }
+            );
           }
+
+          // Проверка, что это действительно тренер
+          if (trainer.role !== 'trainer') {
+            return NextResponse.json(
+              { success: false, error: `Пользователь ${trainer.name} не является тренером` },
+              { status: 400 }
+            );
+          }
+
+          const trainerSessions = mockSessions.filter((s: any) => s.trainerId === trainerId);
+          const trainerClients = mockClients.filter((c: any) => c.trainerId === trainerId);
+          
+          const periodSessions = trainerSessions.filter((session: any) => {
+            const sessionDate = new Date(`${session.date}T${session.startTime}`);
+            return sessionDate >= startDate && sessionDate <= now;
+          });
+
+          const completedSessions = periodSessions.filter((s: any) => s.status === 'completed');
+          const cancelledSessions = periodSessions.filter((s: any) => s.status === 'cancelled');
+          
+          // Расчет дней в периоде
+          const daysDiff = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+          
+          const trainerMetrics: TrainerComparisonMetrics = {
+            id: trainer.id,
+            name: trainer.name,
+            specialization: Array.isArray(trainer.specialization) ? trainer.specialization : [],
+            rating: trainer.rating || 0,
+            totalSessions: periodSessions.length,
+            completedSessions: completedSessions.length,
+            cancelledSessions: cancelledSessions.length,
+            revenue: completedSessions.length * 2000,
+            uniqueClients: new Set(periodSessions.map((s: any) => s.clientId)).size,
+            activeClients: trainerClients.filter((c: any) => c.status === 'active').length,
+            completionRate: periodSessions.length > 0 ? 
+              Math.round((completedSessions.length / periodSessions.length) * 100) : 0,
+            cancellationRate: periodSessions.length > 0 ? 
+              Math.round((cancelledSessions.length / periodSessions.length) * 100) : 0,
+            avgSessionsPerDay: Math.round((completedSessions.length / daysDiff) * 10) / 10,
+            sessionTypes: {
+              personal: periodSessions.filter((s: any) => s.type === 'personal').length,
+              group: periodSessions.filter((s: any) => s.type === 'group').length,
+              consultation: periodSessions.filter((s: any) => s.type === 'consultation').length
+            }
+          };
+
+          trainersData.push(trainerMetrics);
+        }
+
+        // Расчет сравнительных показателей
+        const rankings: ComparisonRankings = {
+          bySessions: [...trainersData].sort((a, b) => b.completedSessions - a.completedSessions),
+          byRevenue: [...trainersData].sort((a, b) => b.revenue - a.revenue),
+          byEfficiency: [...trainersData].sort((a, b) => b.completionRate - a.completionRate),
+          byClients: [...trainersData].sort((a, b) => b.uniqueClients - a.uniqueClients),
+          byRating: [...trainersData].sort((a, b) => b.rating - a.rating)
         };
 
-        trainersData.push(trainerMetrics);
+        const averages: ComparisonAverages = {
+          sessions: trainersData.length > 0 ? 
+            Math.round(trainersData.reduce((sum, t) => sum + t.completedSessions, 0) / trainersData.length) : 0,
+          revenue: trainersData.length > 0 ? 
+            Math.round(trainersData.reduce((sum, t) => sum + t.revenue, 0) / trainersData.length) : 0,
+          completionRate: trainersData.length > 0 ? 
+            Math.round(trainersData.reduce((sum, t) => sum + t.completionRate, 0) / trainersData.length) : 0,
+          clients: trainersData.length > 0 ? 
+            Math.round(trainersData.reduce((sum, t) => sum + t.uniqueClients, 0) / trainersData.length) : 0,
+          rating: trainersData.length > 0 ? 
+            Math.round(trainersData.reduce((sum, t) => sum + t.rating, 0) / trainersData.length * 10) / 10 : 0
+        };
+
+        // Дополнительная статистика
+        const additionalStats = {
+          totalRevenue: trainersData.reduce((sum, t) => sum + t.revenue, 0),
+          totalSessions: trainersData.reduce((sum, t) => sum + t.completedSessions, 0),
+          totalClients: trainersData.reduce((sum, t) => sum + t.uniqueClients, 0),
+          bestPerformer: rankings.bySessions[0]?.name || 'Нет данных',
+          mostEfficient: rankings.byEfficiency[0]?.name || 'Нет данных',
+          topRated: rankings.byRating[0]?.name || 'Нет данных',
+          sessionTypeDistribution: calculateSessionTypeDistribution(trainersData),
+          performanceSpread: calculatePerformanceSpread(trainersData)
+        };
+
+        const comparison = {
+          period: {
+            type: period,
+            start: startDate.toISOString(),
+            end: now.toISOString()
+          },
+          trainers: trainersData,
+          rankings,
+          averages,
+          additionalStats,
+          insights: generateComparisonInsights(trainersData),
+          recommendations: generateComparisonRecommendations(trainersData)
+        };
+
+        console.log(`✅ API: сравнение ${trainersData.length} тренеров выполнено`);
+
+        return NextResponse.json({
+          success: true,
+          data: comparison,
+          meta: {
+            comparedBy: user.email,
+            generatedAt: now.toISOString(),
+            trainersCount: trainersData.length,
+            period: period,
+            requestedMetrics: metrics
+          }
+        });
+
+      } catch (error: any) {
+        console.error('💥 API: ошибка сравнения тренеров:', error);
+        return NextResponse.json(
+          { success: false, error: 'Ошибка выполнения сравнения тренеров' },
+          { status: 500 }
+        );
       }
-
-      // Расчет сравнительных показателей
-      const rankings: ComparisonRankings = {
-        bySessions: [...trainersData].sort((a, b) => b.completedSessions - a.completedSessions),
-        byRevenue: [...trainersData].sort((a, b) => b.revenue - a.revenue),
-        byEfficiency: [...trainersData].sort((a, b) => b.completionRate - a.completionRate),
-        byClients: [...trainersData].sort((a, b) => b.uniqueClients - a.uniqueClients),
-        byRating: [...trainersData].sort((a, b) => b.rating - a.rating)
-      };
-
-      const averages: ComparisonAverages = {
-        sessions: trainersData.length > 0 ? 
-          Math.round(trainersData.reduce((sum, t) => sum + t.completedSessions, 0) / trainersData.length) : 0,
-        revenue: trainersData.length > 0 ? 
-          Math.round(trainersData.reduce((sum, t) => sum + t.revenue, 0) / trainersData.length) : 0,
-        completionRate: trainersData.length > 0 ? 
-          Math.round(trainersData.reduce((sum, t) => sum + t.completionRate, 0) / trainersData.length) : 0,
-        clients: trainersData.length > 0 ? 
-          Math.round(trainersData.reduce((sum, t) => sum + t.uniqueClients, 0) / trainersData.length) : 0,
-        rating: trainersData.length > 0 ? 
-          Math.round(trainersData.reduce((sum, t) => sum + t.rating, 0) / trainersData.length * 10) / 10 : 0
-      };
-
-      // Дополнительная статистика
-      const additionalStats = {
-        totalRevenue: trainersData.reduce((sum, t) => sum + t.revenue, 0),
-        totalSessions: trainersData.reduce((sum, t) => sum + t.completedSessions, 0),
-        totalClients: trainersData.reduce((sum, t) => sum + t.uniqueClients, 0),
-        bestPerformer: rankings.bySessions[0]?.name || 'Нет данных',
-        mostEfficient: rankings.byEfficiency[0]?.name || 'Нет данных',
-        topRated: rankings.byRating[0]?.name || 'Нет данных',
-        sessionTypeDistribution: calculateSessionTypeDistribution(trainersData),
-        performanceSpread: calculatePerformanceSpread(trainersData)
-      };
-
-      const comparison = {
-        period: {
-          type: period,
-          start: startDate.toISOString(),
-          end: now.toISOString()
-        },
-        trainers: trainersData,
-        rankings,
-        averages,
-        additionalStats,
-        insights: generateComparisonInsights(trainersData),
-        recommendations: generateComparisonRecommendations(trainersData)
-      };
-
-      console.log(`✅ API: сравнение ${trainersData.length} тренеров выполнено`);
-
-      return NextResponse.json({
-        success: true,
-        data: comparison,
-        meta: {
-          comparedBy: user.email,
-          generatedAt: now.toISOString(),
-          trainersCount: trainersData.length,
-          period: period,
-          requestedMetrics: metrics
-        }
-      });
-
-    } catch (error: any) {
-      console.error('💥 API: ошибка сравнения тренеров:', error);
-      return NextResponse.json(
-        { success: false, error: 'Ошибка выполнения сравнения тренеров' },
-        { status: 500 }
-      );
     }
-  }
-);
+  )(req);
+}
 
-// Функция для генерации инсайтов сравнения
+// Остальные функции остаются без изменений...
 function generateComparisonInsights(trainersData: TrainerComparisonMetrics[]): ComparisonInsight[] {
   const insights: ComparisonInsight[] = [];
 
@@ -291,89 +293,9 @@ function generateComparisonInsights(trainersData: TrainerComparisonMetrics[]): C
     trainers: [topEarner.name]
   });
 
-  // Проблемы с отменами
-  const highCancellation = trainersData.filter(t => t.cancellationRate > 15);
-  if (highCancellation.length > 0) {
-    insights.push({
-      type: 'warning',
-      title: 'Высокий процент отмен',
-      description: 'Следующие тренеры имеют высокий процент отмен (>15%)',
-      trainers: highCancellation.map(t => `${t.name} (${t.cancellationRate}%)`)
-    });
-  }
-
-  // Низкая загрузка
-  const lowUtilization = trainersData.filter(t => t.avgSessionsPerDay < 2);
-  if (lowUtilization.length > 0) {
-    insights.push({
-      type: 'info',
-      title: 'Низкая загрузка',
-      description: 'Тренеры с низкой ежедневной загрузкой (<2 сессий/день)',
-      trainers: lowUtilization.map(t => `${t.name} (${t.avgSessionsPerDay} сессий/день)`)
-    });
-  }
-
-  // Разнообразие услуг
-  const diverseTrainers = trainersData.filter(t => {
-    const sessionTypeCounts = Object.values(t.sessionTypes) as number[];
-    return sessionTypeCounts.filter(count => count > 0).length >= 2;
-  });
-
-  if (diverseTrainers.length > 0) {
-    insights.push({
-      type: 'success',
-      title: 'Разнообразие услуг',
-      description: 'Тренеры, предоставляющие различные типы сессий',
-      trainers: diverseTrainers.map(t => t.name)
-    });
-  }
-
-  // Высокий рейтинг
-  const highRated = trainersData.filter(t => t.rating >= 4.5);
-  if (highRated.length > 0) {
-    insights.push({
-      type: 'success',
-      title: 'Высокий рейтинг клиентов',
-      description: 'Тренеры с отличными оценками клиентов (≥4.5)',
-      trainers: highRated.map(t => `${t.name} (${t.rating}⭐)`)
-    });
-  }
-
-   // Анализ клиентской базы
-  const clientLeader = trainersData.reduce((prev, current) => 
-    current.uniqueClients > prev.uniqueClients ? current : prev
-  );
-
-  if (clientLeader.uniqueClients > 0) {
-    insights.push({
-      type: 'info',
-      title: 'Лидер по клиентской базе',
-      description: `${clientLeader.name} работает с наибольшим количеством клиентов (${clientLeader.uniqueClients})`,
-      trainers: [clientLeader.name]
-    });
-  }
-
-  // Анализ стабильности
-  const stableTrainers = trainersData.filter(t => t.cancellationRate < 10 && t.completionRate > 85);
-  if (stableTrainers.length > 0) {
-    insights.push({
-      type: 'success',
-      title: 'Стабильные результаты',
-      description: 'Тренеры с низким процентом отмен и высокой эффективностью',
-      trainers: stableTrainers.map(t => t.name)
-    });
-  }
-
-  // Анализ специализации
-  const specializationAnalysis = analyzeSpecializations(trainersData);
-  if (specializationAnalysis.insights.length > 0) {
-    insights.push(...specializationAnalysis.insights);
-  }
-
   return insights;
 }
 
-// Функция для расчета распределения типов сессий
 function calculateSessionTypeDistribution(trainersData: TrainerComparisonMetrics[]): {
   personal: number;
   group: number;
@@ -397,7 +319,6 @@ function calculateSessionTypeDistribution(trainersData: TrainerComparisonMetrics
   };
 }
 
-// Функция для расчета разброса производительности
 function calculatePerformanceSpread(trainersData: TrainerComparisonMetrics[]): {
   completionRate: { min: number; max: number; spread: number };
   revenue: { min: number; max: number; spread: number };
@@ -434,60 +355,6 @@ function calculatePerformanceSpread(trainersData: TrainerComparisonMetrics[]): {
   };
 }
 
-// Функция для анализа специализаций
-function analyzeSpecializations(trainersData: TrainerComparisonMetrics[]): {
-  insights: ComparisonInsight[];
-  distribution: Record<string, number>;
-} {
-  const insights: ComparisonInsight[] = [];
-  const specializationCount: Record<string, string[]> = {};
-
-  // Подсчет специализаций
-  trainersData.forEach(trainer => {
-    trainer.specialization.forEach(spec => {
-      if (!specializationCount[spec]) {
-        specializationCount[spec] = [];
-      }
-      specializationCount[spec].push(trainer.name);
-    });
-  });
-
-  const distribution = Object.fromEntries(
-    Object.entries(specializationCount).map(([spec, trainers]) => [spec, trainers.length])
-  );
-
-  // Поиск уникальных специализаций
-  const uniqueSpecs = Object.entries(specializationCount).filter(([_, trainers]) => trainers.length === 1);
-  if (uniqueSpecs.length > 0) {
-    uniqueSpecs.forEach(([spec, trainers]) => {
-      insights.push({
-        type: 'info',
-        title: 'Уникальная специализация',
-        description: `${trainers[0]} единственный специалист по направлению "${spec}"`,
-        trainers: trainers
-      });
-    });
-  }
-
-  // Поиск популярных специализаций
-  const popularSpecs = Object.entries(specializationCount).filter(([_, trainers]) => trainers.length > 1);
-  if (popularSpecs.length > 0) {
-    const mostPopular = popularSpecs.reduce((prev, current) => 
-      current[1].length > prev[1].length ? current : prev
-    );
-    
-    insights.push({
-      type: 'info',
-      title: 'Популярная специализация',
-      description: `Направление "${mostPopular[0]}" представлено ${mostPopular[1].length} тренерами`,
-      trainers: mostPopular[1]
-    });
-  }
-
-  return { insights, distribution };
-}
-
-// Функция для генерации рекомендаций по сравнению
 function generateComparisonRecommendations(trainersData: TrainerComparisonMetrics[]): Array<{
   category: string;
   title: string;
@@ -604,7 +471,59 @@ function generateComparisonRecommendations(trainersData: TrainerComparisonMetric
 }
 
 // Дополнительные утилитарные функции для сравнения
-export function calculateComparisonScore(trainer: TrainerComparisonMetrics, averages: ComparisonAverages): number {
+function analyzeSpecializations(trainersData: TrainerComparisonMetrics[]): {
+  insights: ComparisonInsight[];
+  distribution: Record<string, number>;
+} {
+  const insights: ComparisonInsight[] = [];
+  const specializationCount: Record<string, string[]> = {};
+
+  // Подсчет специализаций
+  trainersData.forEach(trainer => {
+    trainer.specialization.forEach(spec => {
+      if (!specializationCount[spec]) {
+        specializationCount[spec] = [];
+      }
+      specializationCount[spec].push(trainer.name);
+    });
+  });
+
+  const distribution = Object.fromEntries(
+    Object.entries(specializationCount).map(([spec, trainers]) => [spec, trainers.length])
+  );
+
+  // Поиск уникальных специализаций
+  const uniqueSpecs = Object.entries(specializationCount).filter(([_, trainers]) => trainers.length === 1);
+  if (uniqueSpecs.length > 0) {
+    uniqueSpecs.forEach(([spec, trainers]) => {
+      insights.push({
+        type: 'info',
+        title: 'Уникальная специализация',
+        description: `${trainers[0]} единственный специалист по направлению "${spec}"`,
+        trainers: trainers
+      });
+    });
+  }
+
+  // Поиск популярных специализаций
+  const popularSpecs = Object.entries(specializationCount).filter(([_, trainers]) => trainers.length > 1);
+  if (popularSpecs.length > 0) {
+    const mostPopular = popularSpecs.reduce((prev, current) => 
+      current[1].length > prev[1].length ? current : prev
+    );
+    
+    insights.push({
+      type: 'info',
+      title: 'Популярная специализация',
+      description: `Направление "${mostPopular[0]}" представлено ${mostPopular[1].length} тренерами`,
+      trainers: mostPopular[1]
+    });
+  }
+
+  return { insights, distribution };
+}
+
+function calculateComparisonScore(trainer: TrainerComparisonMetrics, averages: ComparisonAverages): number {
   const weights = {
     sessions: 0.3,
     efficiency: 0.25,
@@ -628,7 +547,7 @@ export function calculateComparisonScore(trainer: TrainerComparisonMetrics, aver
   return Math.round(totalScore);
 }
 
-export function identifyOutliers(trainersData: TrainerComparisonMetrics[]): {
+function identifyOutliers(trainersData: TrainerComparisonMetrics[]): {
   high: Array<{ trainer: string; metric: string; value: number }>;
   low: Array<{ trainer: string; metric: string; value: number }>;
 } {
@@ -672,7 +591,7 @@ export function identifyOutliers(trainersData: TrainerComparisonMetrics[]): {
   return outliers;
 }
 
-export function generateComparisonSummary(trainersData: TrainerComparisonMetrics[]): {
+function generateComparisonSummary(trainersData: TrainerComparisonMetrics[]): {
   winner: string;
   categories: Record<string, string>;
   overallInsight: string;
@@ -698,14 +617,14 @@ export function generateComparisonSummary(trainersData: TrainerComparisonMetrics
     'Рейтинг': trainersData.reduce((prev, current) => 
       current.rating > prev.rating ? current : prev
     ).name,
-    'Клиентская база': trainersData.reduce((prev, current) => 
+    'Клиентская база': trainersData.reduce((prev, current) =>
       current.uniqueClients > prev.uniqueClients ? current : prev
     ).name
   };
 
   // Определение общего победителя по количеству категорий
   const winCounts: Record<string, number> = {};
-    Object.values(categories).forEach(winner => {
+  Object.values(categories).forEach(winner => {
     winCounts[winner] = (winCounts[winner] || 0) + 1;
   });
 
@@ -737,8 +656,7 @@ export function generateComparisonSummary(trainersData: TrainerComparisonMetrics
   };
 }
 
-// Функция для расчета корреляций между метриками
-export function calculateMetricCorrelations(trainersData: TrainerComparisonMetrics[]): Array<{
+function calculateMetricCorrelations(trainersData: TrainerComparisonMetrics[]): Array<{
   metric1: string;
   metric2: string;
   correlation: number;
@@ -815,7 +733,7 @@ function calculatePearsonCorrelation(x: number[], y: number[]): number {
 }
 
 // Функция для создания матрицы сравнения
-export function createComparisonMatrix(trainersData: TrainerComparisonMetrics[]): {
+function createComparisonMatrix(trainersData: TrainerComparisonMetrics[]): {
   headers: string[];
   rows: Array<{
     trainer: string;
@@ -883,7 +801,7 @@ export function createComparisonMatrix(trainersData: TrainerComparisonMetrics[])
 }
 
 // Функция для генерации рекомендаций по парному сравнению
-export function generatePairwiseRecommendations(
+function generatePairwiseRecommendations(
   trainer1: TrainerComparisonMetrics,
   trainer2: TrainerComparisonMetrics
 ): Array<{
@@ -958,7 +876,7 @@ export function generatePairwiseRecommendations(
 }
 
 // Функция для расчета индекса конкурентоспособности
-export function calculateCompetitivenessIndex(trainer: TrainerComparisonMetrics, allTrainers: TrainerComparisonMetrics[]): {
+function calculateCompetitivenessIndex(trainer: TrainerComparisonMetrics, allTrainers: TrainerComparisonMetrics[]): {
   index: number;
   rank: number;
   percentile: number;
@@ -1000,7 +918,20 @@ export function calculateCompetitivenessIndex(trainer: TrainerComparisonMetrics,
   });
 
   // Расчет ранга
-  const allScores = allTrainers.map(t => calculateCompetitivenessIndex(t, allTrainers).index);
+  const allScores = allTrainers.map(t => {
+    let score = 0;
+    metrics.forEach(metric => {
+      const value = t[metric.key as keyof TrainerComparisonMetrics] as number;
+      const allValues = allTrainers.map(tr => tr[metric.key as keyof TrainerComparisonMetrics] as number);
+      const maxValue = Math.max(...allValues);
+      const minValue = Math.min(...allValues);
+      const normalizedValue = maxValue > minValue ? 
+        ((value - minValue) / (maxValue - minValue)) * 100 : 50;
+      score += normalizedValue * metric.weight;
+    });
+    return score;
+  });
+  
   const rank = allScores.filter(score => score > totalScore).length + 1;
   
   // Расчет процентиля
@@ -1016,7 +947,7 @@ export function calculateCompetitivenessIndex(trainer: TrainerComparisonMetrics,
 }
 
 // Функция для анализа трендов в сравнении
-export function analyzeTrends(currentData: TrainerComparisonMetrics[], previousData?: TrainerComparisonMetrics[]): {
+function analyzeTrends(currentData: TrainerComparisonMetrics[], previousData?: TrainerComparisonMetrics[]): {
   trends: Array<{
     trainer: string;
     metric: string;
@@ -1083,5 +1014,4 @@ export function analyzeTrends(currentData: TrainerComparisonMetrics[], previousD
 
   return { trends, summary };
 }
-
 

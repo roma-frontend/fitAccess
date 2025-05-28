@@ -64,303 +64,307 @@ interface OverviewRecommendation {
 }
 
 // GET /api/analytics/trainers/overview - Обзор всех тренеров
-export const GET = withPermissions(
-  { resource: 'analytics', action: 'read' },
-  async (req: AuthenticatedRequest) => {
-    try {
-      console.log('📈 API: получение обзора всех тренеров');
+export async function GET(req: NextRequest) {
+  return withPermissions(
+    { resource: 'analytics', action: 'read' },
+    async (authenticatedReq: AuthenticatedRequest) => {
+      try {
+        console.log('📈 API: получение обзора всех тренеров');
 
-      const { user } = req;
-      const url = new URL(req.url);
-      const period = url.searchParams.get('period') || 'month';
-      const sortBy = url.searchParams.get('sortBy') || 'sessions';
-      const order = url.searchParams.get('order') || 'desc';
+        const { user } = authenticatedReq;
+        const url = new URL(req.url);
+        const period = url.searchParams.get('period') || 'month';
+        const sortBy = url.searchParams.get('sortBy') || 'sessions';
+        const order = url.searchParams.get('order') || 'desc';
 
-      // Проверка прав доступа
-      if (!isManager(user.role) && !isAdmin(user.role)) {
-        return NextResponse.json(
-          { success: false, error: 'Недостаточно прав для просмотра обзора тренеров' },
-          { status: 403 }
-        );
-      }
+        // Проверка прав доступа
+        if (!isManager(user.role) && !isAdmin(user.role)) {
+          return NextResponse.json(
+            { success: false, error: 'Недостаточно прав для просмотра обзора тренеров' },
+            { status: 403 }
+          );
+        }
 
-      // Определение временного периода
-      const now = new Date();
-      let startDate: Date;
-      
-      switch (period) {
-        case 'week':
-          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case 'month':
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          break;
-        case 'quarter':
-          startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-          break;
-        case 'year':
-          startDate = new Date(now.getFullYear(), 0, 1);
-          break;
-        default:
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      }
+        // Определение временного периода
+        const now = new Date();
+        let startDate: Date;
 
-      // Получение только активных тренеров
-      const activeTrainers = mockTrainers.filter(t => t.status === 'active' && t.role === 'trainer');
-
-      // Расчет метрик для каждого тренера
-      const trainersOverview: TrainerOverview[] = activeTrainers.map(trainer => {
-        const trainerSessions = mockSessions.filter(s => s.trainerId === trainer.id);
-        const trainerClients = mockClients.filter(c => c.trainerId === trainer.id);
-        
-        const periodSessions = trainerSessions.filter(session => {
-          const sessionDate = new Date(`${session.date}T${session.startTime}`);
-          return sessionDate >= startDate;
-        });
-
-        const completedSessions = periodSessions.filter(s => s.status === 'completed');
-        const cancelledSessions = periodSessions.filter(s => s.status === 'cancelled');
-        const scheduledSessions = periodSessions.filter(s => s.status === 'scheduled');
-
-        // Расчет предыдущего периода для роста
-        const prevStartDate = new Date(startDate);
         switch (period) {
           case 'week':
-            prevStartDate.setDate(prevStartDate.getDate() - 7);
+            startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
             break;
           case 'month':
-            prevStartDate.setMonth(prevStartDate.getMonth() - 1);
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
             break;
           case 'quarter':
-            prevStartDate.setMonth(prevStartDate.getMonth() - 3);
+            startDate = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
             break;
           case 'year':
-            prevStartDate.setFullYear(prevStartDate.getFullYear() - 1);
-            break;
-        }
-
-        const prevPeriodSessions = trainerSessions.filter(session => {
-          const sessionDate = new Date(`${session.date}T${session.startTime}`);
-          return sessionDate >= prevStartDate && sessionDate < startDate;
-        });
-
-        const prevCompletedSessions = prevPeriodSessions.filter(s => s.status === 'completed');
-
-        // Расчет роста
-        const sessionsGrowth = prevCompletedSessions.length > 0 
-          ? Math.round(((completedSessions.length - prevCompletedSessions.length) / prevCompletedSessions.length) * 100)
-          : completedSessions.length > 0 ? 100 : 0;
-
-        const revenueGrowth = prevCompletedSessions.length > 0 
-          ? Math.round(((completedSessions.length * 2000 - prevCompletedSessions.length * 2000) / (prevCompletedSessions.length * 2000)) * 100)
-          : completedSessions.length > 0 ? 100 : 0;
-
-        // Расчет загрузки (процент от максимально возможных сессий)
-        const daysDiff = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-        const maxPossibleSessions = daysDiff * 8; // 8 сессий в день максимум
-        const utilizationRate = maxPossibleSessions > 0 ? Math.round((periodSessions.length / maxPossibleSessions) * 100) : 0;
-
-        // Получение последней сессии
-        const lastSession = trainerSessions.length > 0 
-          ? trainerSessions
-              .sort((a, b) => new Date(`${b.date}T${b.startTime}`).getTime() - new Date(`${a.date}T${a.startTime}`).getTime())[0]
-          : null;
-
-        return {
-          id: trainer.id,
-          name: trainer.name,
-          email: trainer.email,
-          avatar: (trainer as any).avatar || null, // Используем any для обхода типизации
-          specialization: Array.isArray(trainer.specialization) ? trainer.specialization : [],
-          rating: trainer.rating || 0,
-          experience: trainer.experience || 0,
-          joinDate: trainer.createdAt || new Date().toISOString(),
-          
-          // Основные метрики
-          totalSessions: periodSessions.length,
-          completedSessions: completedSessions.length,
-          cancelledSessions: cancelledSessions.length,
-          scheduledSessions: scheduledSessions.length,
-          revenue: completedSessions.length * 2000,
-          
-          // Клиентские метрики
-          totalClients: trainerClients.length,
-          activeClients: trainerClients.filter(c => c.status === 'active').length,
-          uniqueClientsInPeriod: new Set(periodSessions.map(s => s.clientId)).size,
-          
-          // Эффективность
-          completionRate: periodSessions.length > 0 ? 
-            Math.round((completedSessions.length / periodSessions.length) * 100) : 0,
-          cancellationRate: periodSessions.length > 0 ? 
-            Math.round((cancelledSessions.length / periodSessions.length) * 100) : 0,
-          utilizationRate: Math.min(utilizationRate, 100),
-          
-          // Рост
-          sessionsGrowth,
-          revenueGrowth,
-          
-          // Дополнительные метрики
-          avgSessionsPerDay: daysDiff > 0 ? 
-            Math.round((completedSessions.length / daysDiff) * 10) / 10 : 0,
-          avgRevenuePerSession: 2000,
-          
-          // Типы сессий
-          sessionTypes: {
-            personal: periodSessions.filter(s => s.type === 'personal').length,
-            group: periodSessions.filter(s => s.type === 'group').length,
-            consultation: periodSessions.filter(s => s.type === 'consultation').length
-          },
-          
-          // Статус активности
-          lastSessionDate: lastSession?.date || null,
-          
-          // Оценка производительности
-          performanceScore: calculatePerformanceScore({
-            completionRate: periodSessions.length > 0 ? (completedSessions.length / periodSessions.length) * 100 : 0,
-            utilizationRate: Math.min(utilizationRate, 100),
-            rating: trainer.rating || 0,
-            clientRetention: trainerClients.length > 0 ? (trainerClients.filter(c => c.status === 'active').length / trainerClients.length) * 100 : 0,
-            growth: sessionsGrowth
-          })
-        };
-      });
-
-      // Сортировка с правильной типизацией
-      const sortedTrainers = [...trainersOverview].sort((a, b) => {
-        let aValue: string | number;
-        let bValue: string | number;
-        
-        switch (sortBy) {
-          case 'name':
-            aValue = a.name.toLowerCase();
-            bValue = b.name.toLowerCase();
-            break;
-          case 'sessions':
-            aValue = a.completedSessions;
-            bValue = b.completedSessions;
-            break;
-          case 'revenue':
-            aValue = a.revenue;
-            bValue = b.revenue;
-            break;
-          case 'efficiency':
-            aValue = a.completionRate;
-            bValue = b.completionRate;
-            break;
-          case 'rating':
-            aValue = a.rating;
-            bValue = b.rating;
-            break;
-          case 'clients':
-            aValue = a.uniqueClientsInPeriod;
-            bValue = b.uniqueClientsInPeriod;
-            break;
-          case 'performance':
-            aValue = a.performanceScore;
-            bValue = b.performanceScore;
+            startDate = new Date(now.getFullYear(), 0, 1);
             break;
           default:
-            aValue = a.completedSessions;
-            bValue = b.completedSessions;
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
         }
 
-        // Правильная обработка сортировки для строк и чисел
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-          return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-        }
-        
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return order === 'asc' ? aValue - bValue : bValue - aValue;
-        }
-        
-        // Fallback для смешанных типов
-        return 0;
-      });
+        // Получение только активных тренеров
+        const activeTrainers = mockTrainers.filter((t: any) => t.status === 'active' && t.role === 'trainer');
 
-      // Общая статистика
-      const totalStats = {
-        totalTrainers: activeTrainers.length,
-        totalSessions: trainersOverview.reduce((sum, t) => sum + t.completedSessions, 0),
-        totalRevenue: trainersOverview.reduce((sum, t) => sum + t.revenue, 0),
-        totalClients: trainersOverview.reduce((sum, t) => sum + t.uniqueClientsInPeriod, 0),
-        avgCompletionRate: trainersOverview.length > 0 ? 
-          Math.round(trainersOverview.reduce((sum, t) => sum + t.completionRate, 0) / trainersOverview.length) : 0,
-        avgRating: trainersOverview.length > 0 ? 
-          Math.round(trainersOverview.reduce((sum, t) => sum + t.rating, 0) / trainersOverview.length * 10) / 10 : 0,
-        avgUtilization: trainersOverview.length > 0 ? 
-          Math.round(trainersOverview.reduce((sum, t) => sum + t.utilizationRate, 0) / trainersOverview.length) : 0
-      };
+        // Расчет метрик для каждого тренера
+        const trainersOverview: TrainerOverview[] = activeTrainers.map((trainer: any) => {
+          const trainerSessions = mockSessions.filter((s: any) => s.trainerId === trainer.id);
+          const trainerClients = mockClients.filter((c: any) => c.trainerId === trainer.id);
 
-      // Категории производительности
-      const performanceCategories = {
-        excellent: sortedTrainers.filter(t => t.performanceScore >= 85).length,
-        good: sortedTrainers.filter(t => t.performanceScore >= 70 && t.performanceScore < 85).length,
-        average: sortedTrainers.filter(t => t.performanceScore >= 50 && t.performanceScore < 70).length,
-        needsImprovement: sortedTrainers.filter(t => t.performanceScore < 50).length
-      };
+          const periodSessions = trainerSessions.filter((session: any) => {
+            const sessionDate = new Date(`${session.date}T${session.startTime}`);
+            return sessionDate >= startDate;
+          });
 
-      // Топ исполнители
-      const topPerformers = {
-        bySessions: [...sortedTrainers].sort((a, b) => b.completedSessions - a.completedSessions).slice(0, 3),
-        byRevenue: [...sortedTrainers].sort((a, b) => b.revenue - a.revenue).slice(0, 3),
-        byEfficiency: [...sortedTrainers].sort((a, b) => b.completionRate - a.completionRate).slice(0, 3),
-        byRating: [...sortedTrainers].sort((a, b) => b.rating - a.rating).slice(0, 3),
-        byGrowth: [...sortedTrainers].sort((a, b) => b.sessionsGrowth - a.sessionsGrowth).slice(0, 3)
-      };
+          const completedSessions = periodSessions.filter((s: any) => s.status === 'completed');
+          const cancelledSessions = periodSessions.filter((s: any) => s.status === 'cancelled');
+          const scheduledSessions = periodSessions.filter((s: any) => s.status === 'scheduled');
 
-      // Анализ трендов
-      const trends = {
-        growingTrainers: sortedTrainers.filter(t => t.sessionsGrowth > 10).length,
-        decliningTrainers: sortedTrainers.filter(t => t.sessionsGrowth < -10).length,
-        stableTrainers: sortedTrainers.filter(t => t.sessionsGrowth >= -10 && t.sessionsGrowth <= 10).length,
-        highUtilization: sortedTrainers.filter(t => t.utilizationRate > 70).length,
-        lowUtilization: sortedTrainers.filter(t => t.utilizationRate < 30).length
-      };
+          // Расчет предыдущего периода для роста
+          const prevStartDate = new Date(startDate);
+          switch (period) {
+            case 'week':
+              prevStartDate.setDate(prevStartDate.getDate() - 7);
+              break;
+            case 'month':
+              prevStartDate.setMonth(prevStartDate.getMonth() - 1);
+              break;
+            case 'quarter':
+              prevStartDate.setMonth(prevStartDate.getMonth() - 3);
+              break;
+            case 'year':
+              prevStartDate.setFullYear(prevStartDate.getFullYear() - 1);
+              break;
+          }
 
-      // Рекомендации для управления
-      const managementInsights = generateManagementInsights(sortedTrainers, totalStats);
+          const prevPeriodSessions = trainerSessions.filter((session: any) => {
+            const sessionDate = new Date(`${session.date}T${session.startTime}`);
+            return sessionDate >= prevStartDate && sessionDate < startDate;
+          });
 
-      const overview = {
-        period: {
-          type: period,
-                    start: startDate.toISOString(),
-          end: now.toISOString()
-        },
-        sorting: {
-          sortBy,
-          order
-        },
-        totalStats,
-        performanceCategories,
-        topPerformers,
-        trends,
-        trainers: sortedTrainers,
-        insights: managementInsights,
-        recommendations: generateOverviewRecommendations(sortedTrainers, totalStats, trends)
-      };
+          const prevCompletedSessions = prevPeriodSessions.filter((s: any) => s.status === 'completed');
 
-      console.log(`✅ API: обзор ${activeTrainers.length} тренеров сформирован`);
+          // Расчет роста
+          const sessionsGrowth = prevCompletedSessions.length > 0
+            ? Math.round(((completedSessions.length - prevCompletedSessions.length) / prevCompletedSessions.length) * 100)
+            : completedSessions.length > 0 ? 100 : 0;
 
-      return NextResponse.json({
-        success: true,
-        data: overview,
-        meta: {
-          generatedAt: now.toISOString(),
-          requestedBy: user.email,
-          trainersCount: activeTrainers.length,
-          period: period
-        }
-      });
+          const revenueGrowth = prevCompletedSessions.length > 0
+            ? Math.round(((completedSessions.length * 2000 - prevCompletedSessions.length * 2000) / (prevCompletedSessions.length * 2000)) * 100)
+            : completedSessions.length > 0 ? 100 : 0;
 
-    } catch (error: any) {
-      console.error('💥 API: ошибка получения обзора тренеров:', error);
-      return NextResponse.json(
-        { success: false, error: 'Ошибка получения обзора тренеров' },
-        { status: 500 }
-      );
+          // Расчет загрузки (процент от максимально возможных сессий)
+          const daysDiff = Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+          const maxPossibleSessions = daysDiff * 8; // 8 сессий в день максимум
+          const utilizationRate = maxPossibleSessions > 0 ? Math.round((periodSessions.length / maxPossibleSessions) * 100) : 0;
+
+          // Получение последней сессии
+          const lastSession = trainerSessions.length > 0
+            ? trainerSessions
+              .sort((a: any, b: any) => new Date(`${b.date}T${b.startTime}`).getTime() - new Date(`${a.date}T${a.startTime}`).getTime())[0]
+            : null;
+
+          return {
+            id: trainer.id,
+            name: trainer.name,
+            email: trainer.email,
+            avatar: trainer.avatar || null,
+            specialization: Array.isArray(trainer.specialization) ? trainer.specialization : [],
+            rating: trainer.rating || 0,
+            experience: trainer.experience || 0,
+            joinDate: trainer.createdAt || new Date().toISOString(),
+
+            // Основные метрики
+            totalSessions: periodSessions.length,
+            completedSessions: completedSessions.length,
+            cancelledSessions: cancelledSessions.length,
+            scheduledSessions: scheduledSessions.length,
+            revenue: completedSessions.length * 2000,
+
+            // Клиентские метрики
+            totalClients: trainerClients.length,
+            activeClients: trainerClients.filter((c: any) => c.status === 'active').length,
+            uniqueClientsInPeriod: new Set(periodSessions.map((s: any) => s.clientId)).size,
+
+            // Эффективность
+            completionRate: periodSessions.length > 0 ?
+              Math.round((completedSessions.length / periodSessions.length) * 100) : 0,
+            cancellationRate: periodSessions.length > 0 ?
+              Math.round((cancelledSessions.length / periodSessions.length) * 100) : 0,
+            utilizationRate: Math.min(utilizationRate, 100),
+
+            // Рост
+            sessionsGrowth,
+            revenueGrowth,
+
+            // Дополнительные метрики
+            avgSessionsPerDay: daysDiff > 0 ?
+              Math.round((completedSessions.length / daysDiff) * 10) / 10 : 0,
+            avgRevenuePerSession: 2000,
+
+            // Типы сессий
+            sessionTypes: {
+              personal: periodSessions.filter((s: any) => s.type === 'personal').length,
+              group: periodSessions.filter((s: any) => s.type === 'group').length,
+              consultation: periodSessions.filter((s: any) => s.type === 'consultation').length
+            },
+
+            // Статус активности
+            lastSessionDate: lastSession?.date || null,
+
+            // Оценка производительности
+            performanceScore: calculatePerformanceScore({
+              completionRate: periodSessions.length > 0 ? (completedSessions.length / periodSessions.length) * 100 : 0,
+              utilizationRate: Math.min(utilizationRate, 100),
+              rating: trainer.rating || 0,
+              clientRetention: trainerClients.length > 0 ? (trainerClients.filter((c: any) => c.status === 'active').length / trainerClients.length) * 100 : 0,
+              growth: sessionsGrowth
+            })
+          };
+        });
+
+        // Сортировка с правильной типизацией
+        const sortedTrainers = [...trainersOverview].sort((a, b) => {
+          let aValue: string | number;
+          let bValue: string | number;
+
+          switch (sortBy) {
+            case 'name':
+              aValue = a.name.toLowerCase();
+              bValue = b.name.toLowerCase();
+              break;
+            case 'sessions':
+              aValue = a.completedSessions;
+              bValue = b.completedSessions;
+              break;
+            case 'revenue':
+              aValue = a.revenue;
+              bValue = b.revenue;
+              break;
+            case 'efficiency':
+              aValue = a.completionRate;
+              bValue = b.completionRate;
+              break;
+            case 'rating':
+              aValue = a.rating;
+              bValue = b.rating;
+              break;
+            case 'clients':
+              aValue = a.uniqueClientsInPeriod;
+              bValue = b.uniqueClientsInPeriod;
+              break;
+            case 'performance':
+              aValue = a.performanceScore;
+              bValue = b.performanceScore;
+              break;
+            default:
+              aValue = a.completedSessions;
+              bValue = b.completedSessions;
+          }
+
+          // Правильная обработка сортировки для строк и чисел
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+            return order === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+          }
+
+          if (typeof aValue === 'number' && typeof bValue === 'number') {
+            return order === 'asc' ? aValue - bValue : bValue - aValue;
+          }
+
+          // Fallback для смешанных типов
+          return 0;
+        });
+
+        // Общая статистика
+        const totalStats = {
+          totalTrainers: activeTrainers.length,
+          totalSessions: trainersOverview.reduce((sum, t) => sum + t.completedSessions, 0),
+          totalRevenue: trainersOverview.reduce((sum, t) => sum + t.revenue, 0),
+          totalClients: trainersOverview.reduce((sum, t) => sum + t.uniqueClientsInPeriod, 0),
+          avgCompletionRate: trainersOverview.length > 0 ?
+            Math.round(trainersOverview.reduce((sum, t) => sum + t.completionRate, 0) / trainersOverview.length) : 0,
+          avgRating: trainersOverview.length > 0 ?
+            Math.round(trainersOverview.reduce((sum, t) => sum + t.rating, 0) / trainersOverview.length * 10) / 10 : 0,
+          avgUtilization: trainersOverview.length > 0 ?
+            Math.round(trainersOverview.reduce((sum, t) => sum + t.utilizationRate, 0) / trainersOverview.length) : 0
+        };
+
+        // Категории производительности
+        const performanceCategories = {
+          excellent: sortedTrainers.filter(t => t.performanceScore >= 85).length,
+          good: sortedTrainers.filter(t => t.performanceScore >= 70 && t.performanceScore < 85).length,
+          average: sortedTrainers.filter(t => t.performanceScore >= 50 && t.performanceScore < 70).length,
+          needsImprovement: sortedTrainers.filter(t => t.performanceScore < 50).length
+        };
+
+        // Топ исполнители
+        const topPerformers = {
+          bySessions: [...sortedTrainers].sort((a, b) => b.completedSessions - a.completedSessions).slice(0, 3),
+          byRevenue: [...sortedTrainers].sort((a, b) => b.revenue - a.revenue).slice(0, 3),
+          byEfficiency: [...sortedTrainers].sort((a, b) => b.completionRate - a.completionRate).slice(0, 3),
+          byRating: [...sortedTrainers].sort((a, b) => b.rating - a.rating).slice(0, 3),
+          byGrowth: [...sortedTrainers].sort((a, b) => b.sessionsGrowth - a.sessionsGrowth).slice(0, 3)
+        };
+
+        // Анализ трендов
+        const trends = {
+          growingTrainers: sortedTrainers.filter(t => t.sessionsGrowth > 10).length,
+          decliningTrainers: sortedTrainers.filter(t => t.sessionsGrowth < -10).length,
+          stableTrainers: sortedTrainers.filter(t => t.sessionsGrowth >= -10 && t.sessionsGrowth <= 10).length,
+          highUtilization: sortedTrainers.filter(t => t.utilizationRate > 70).length,
+          lowUtilization: sortedTrainers.filter(t => t.utilizationRate < 30).length
+        };
+
+        // Рекомендации для управления
+        const managementInsights = generateManagementInsights(sortedTrainers, totalStats);
+
+        const overview = {
+          period: {
+            type: period,
+            start: startDate.toISOString(),
+            end: now.toISOString()
+          },
+          sorting: {
+            sortBy,
+            order
+          },
+          totalStats,
+          performanceCategories,
+          topPerformers,
+          trends,
+          trainers: sortedTrainers,
+          insights: managementInsights,
+          recommendations: generateOverviewRecommendations(sortedTrainers, totalStats, trends)
+        };
+
+        console.log(`✅ API: обзор ${activeTrainers.length} тренеров сформирован`);
+
+        return NextResponse.json({
+          success: true,
+          data: overview,
+          meta: {
+            generatedAt: now.toISOString(),
+            requestedBy: user.email,
+            trainersCount: activeTrainers.length,
+            period: period
+          }
+        });
+
+      } catch (error: any) {
+        console.error('💥 API: ошибка получения обзора тренеров:', error);
+        return NextResponse.json(
+          { success: false, error: 'Ошибка получения обзора тренеров' },
+          { status: 500 }
+        );
+      }
     }
-  }
-);
+  )(req);
+}
+
+// ВНУТРЕННИЕ ФУНКЦИИ (НЕ ЭКСПОРТИРУЕМЫЕ)
 
 // Функция расчета общего балла производительности
 function calculatePerformanceScore(metrics: PerformanceMetrics): number {
@@ -463,7 +467,7 @@ function generateManagementInsights(trainers: TrainerOverview[], totalStats: any
     const types = Object.values(t.sessionTypes) as number[];
     return types.filter(count => count > 0).length === 1;
   });
-  
+
   if (limitedServices.length > 0) {
     insights.push({
       type: 'info',
@@ -629,11 +633,12 @@ function generateOverviewRecommendations(trainers: TrainerOverview[], totalStats
   return recommendations;
 }
 
-// Утилитарные функции для дополнительной аналитики
-export function calculateTeamEfficiency(trainers: TrainerOverview[]): {
-  overall: number;
-  distribution: { excellent: number; good: number; average: number; poor: number };
-} {
+// Утилитарные функции для дополнительной аналитики (НЕ ЭКСПОРТИРУЕМЫЕ)
+function calculateTeamEfficiency(
+  trainers: TrainerOverview[]): {
+    overall: number;
+    distribution: { excellent: number; good: number; average: number; poor: number };
+  } {
   if (trainers.length === 0) {
     return {
       overall: 0,
@@ -646,7 +651,7 @@ export function calculateTeamEfficiency(trainers: TrainerOverview[]): {
   );
 
   const distribution = {
-        excellent: trainers.filter(t => t.completionRate >= 90).length,
+    excellent: trainers.filter(t => t.completionRate >= 90).length,
     good: trainers.filter(t => t.completionRate >= 80 && t.completionRate < 90).length,
     average: trainers.filter(t => t.completionRate >= 70 && t.completionRate < 80).length,
     poor: trainers.filter(t => t.completionRate < 70).length
@@ -655,13 +660,13 @@ export function calculateTeamEfficiency(trainers: TrainerOverview[]): {
   return { overall: overallEfficiency, distribution };
 }
 
-export function calculateRevenueDistribution(trainers: TrainerOverview[]): {
+function calculateRevenueDistribution(trainers: TrainerOverview[]): {
   total: number;
   byTrainer: Array<{ name: string; revenue: number; percentage: number }>;
   topEarners: Array<{ name: string; revenue: number }>;
 } {
   const totalRevenue = trainers.reduce((sum, trainer) => sum + trainer.revenue, 0);
-  
+
   const byTrainer = trainers.map(trainer => ({
     name: trainer.name,
     revenue: trainer.revenue,
@@ -679,7 +684,7 @@ export function calculateRevenueDistribution(trainers: TrainerOverview[]): {
   return { total: totalRevenue, byTrainer, topEarners };
 }
 
-export function calculateCapacityUtilization(trainers: TrainerOverview[]): {
+function calculateCapacityUtilization(trainers: TrainerOverview[]): {
   current: number;
   potential: number;
   utilizationRate: number;
@@ -707,7 +712,7 @@ export function calculateCapacityUtilization(trainers: TrainerOverview[]): {
   };
 }
 
-export function identifyTrainingNeeds(trainers: TrainerOverview[]): Array<{
+function identifyTrainingNeeds(trainers: TrainerOverview[]): Array<{
   category: string;
   trainers: string[];
   priority: 'high' | 'medium' | 'low';
@@ -786,7 +791,7 @@ export function identifyTrainingNeeds(trainers: TrainerOverview[]): Array<{
   return needs;
 }
 
-export function generateBenchmarkComparison(trainers: TrainerOverview[]): {
+function generateBenchmarkComparison(trainers: TrainerOverview[]): {
   metrics: Array<{
     name: string;
     current: number;
@@ -806,25 +811,25 @@ export function generateBenchmarkComparison(trainers: TrainerOverview[]): {
   };
 
   const currentMetrics = {
-    completionRate: trainers.length > 0 ? 
+    completionRate: trainers.length > 0 ?
       Math.round(trainers.reduce((sum, t) => sum + t.completionRate, 0) / trainers.length) : 0,
-    utilizationRate: trainers.length > 0 ? 
+    utilizationRate: trainers.length > 0 ?
       Math.round(trainers.reduce((sum, t) => sum + t.utilizationRate, 0) / trainers.length) : 0,
-    rating: trainers.length > 0 ? 
+    rating: trainers.length > 0 ?
       Math.round(trainers.reduce((sum, t) => sum + t.rating, 0) / trainers.length * 10) / 10 : 0,
-    avgSessionsPerDay: trainers.length > 0 ? 
+    avgSessionsPerDay: trainers.length > 0 ?
       Math.round(trainers.reduce((sum, t) => sum + t.avgSessionsPerDay, 0) / trainers.length * 10) / 10 : 0,
-    cancellationRate: trainers.length > 0 ? 
+    cancellationRate: trainers.length > 0 ?
       Math.round(trainers.reduce((sum, t) => sum + t.cancellationRate, 0) / trainers.length) : 0
   };
 
   const metrics = Object.entries(benchmarks).map(([key, benchmark]) => {
     const current = currentMetrics[key as keyof typeof currentMetrics];
     const isInverted = key === 'cancellationRate'; // Для этой метрики меньше = лучше
-    
+
     let status: 'above' | 'below' | 'meeting';
     const gap = isInverted ? benchmark - current : current - benchmark;
-    
+
     if (Math.abs(gap) <= (benchmark * 0.05)) { // В пределах 5%
       status = 'meeting';
     } else if (gap > 0) {
@@ -849,7 +854,7 @@ export function generateBenchmarkComparison(trainers: TrainerOverview[]): {
   return { metrics, overallScore };
 }
 
-export function predictFuturePerformance(trainers: TrainerOverview[]): {
+function predictFuturePerformance(trainers: TrainerOverview[]): {
   predictions: Array<{
     trainerId: string;
     name: string;
@@ -915,9 +920,9 @@ export function predictFuturePerformance(trainers: TrainerOverview[]): {
   });
 
   // Прогноз для команды в целом
-  const avgPredictedGrowth = predictions.length > 0 ? 
+  const avgPredictedGrowth = predictions.length > 0 ?
     Math.round(predictions.reduce((sum, p) => sum + p.predictedGrowth, 0) / predictions.length) : 0;
-  
+
   const highRiskCount = predictions.filter(p => p.riskLevel === 'high').length;
   const confidenceLevel = Math.max(0, 100 - (highRiskCount / predictions.length) * 50);
 
@@ -941,5 +946,3 @@ export function predictFuturePerformance(trainers: TrainerOverview[]): {
     }
   };
 }
-
-

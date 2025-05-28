@@ -49,8 +49,8 @@ export const withAuth = (
       console.log(`🔐 API Middleware: проверка авторизации для ${req.method} ${req.nextUrl.pathname}`);
 
       // Получаем session ID из cookies
-      const sessionId = req.cookies.get('session_id')?.value || 
-                       req.cookies.get('session_id_debug')?.value;
+      const sessionId = req.cookies.get('session_id')?.value ||
+        req.cookies.get('session_id_debug')?.value;
 
       if (!sessionId) {
         console.log('❌ API Middleware: session ID не найден');
@@ -112,7 +112,7 @@ export const withPermissions = (
       // Проверяем владение объектом если требуется
       if (requireOwnership && getOwnerId) {
         const ownerId = await getOwnerId(req);
-        
+
         if (!canAccessObject(user.role, user.id, ownerId, resource, action)) {
           console.log(`❌ API Middleware: нет доступа к объекту владельца ${ownerId}`);
           return NextResponse.json(
@@ -143,12 +143,12 @@ export const withValidation = <T = any>(
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     try {
       let data: any;
-      
+
       if (req.method === 'GET' || req.method === 'DELETE') {
         // Для GET и DELETE берем параметры из URL
         const url = new URL(req.url);
         data = Object.fromEntries(url.searchParams.entries());
-        
+
         // Добавляем параметры из пути
         if (context?.params) {
           data = { ...data, ...context.params };
@@ -169,24 +169,24 @@ export const withValidation = <T = any>(
           data = {};
         }
       }
-      
+
       const validation = schema.validate(data);
-      
+
       if (!validation.isValid) {
         console.log('❌ API Middleware: ошибка валидации:', validation.errors);
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: 'Ошибка валидации данных',
             details: validation.errors
           },
           { status: 400 }
         );
       }
-      
+
       console.log('✅ API Middleware: данные валидированы');
       return await handler(req, validation.data || data, context);
-      
+
     } catch (error) {
       console.error('💥 API Middleware: ошибка валидации:', error);
       return NextResponse.json(
@@ -207,9 +207,9 @@ export const withRateLimit = (
       const { maxRequests, windowMs, keyGenerator } = config;
       const key = keyGenerator ? keyGenerator(req) : `${req.user.id}_${req.method}_${new URL(req.url).pathname}`;
       const now = Date.now();
-      
+
       const current = rateLimitStore.get(key);
-      
+
       if (!current || now > current.resetTime) {
         // Новое окно или окно истекло
         rateLimitStore.set(key, {
@@ -219,18 +219,18 @@ export const withRateLimit = (
       } else {
         // Увеличиваем счетчик
         current.count++;
-        
+
         if (current.count > maxRequests) {
           const resetIn = Math.ceil((current.resetTime - now) / 1000);
-          
+
           console.log(`🚫 API Middleware: превышен лимит запросов для ${key}`);
           return NextResponse.json(
-            { 
-              success: false, 
+            {
+              success: false,
               error: 'Превышен лимит запросов',
               retryAfter: resetIn
             },
-            { 
+            {
               status: 429,
               headers: {
                 'Retry-After': resetIn.toString(),
@@ -241,12 +241,12 @@ export const withRateLimit = (
             }
           );
         }
-        
+
         rateLimitStore.set(key, current);
       }
-      
+
       const response = await handler(req, context);
-      
+
       // Добавляем заголовки лимита
       const currentLimit = rateLimitStore.get(key);
       if (currentLimit) {
@@ -254,9 +254,9 @@ export const withRateLimit = (
         response.headers.set('X-RateLimit-Remaining', (maxRequests - currentLimit.count).toString());
         response.headers.set('X-RateLimit-Reset', currentLimit.resetTime.toString());
       }
-      
+
       return response;
-      
+
     } catch (error) {
       console.error('💥 API Middleware: ошибка rate limiting:', error);
       return NextResponse.json(
@@ -278,10 +278,10 @@ export const withCache = (
       if (req.method !== 'GET') {
         return await handler(req, context);
       }
-      
+
       const cacheKey = config.key(req);
       const now = Date.now();
-      
+
       // Проверяем кэш
       const cached = cacheStore.get(cacheKey);
       if (cached && now < cached.expiry) {
@@ -293,10 +293,10 @@ export const withCache = (
           }
         });
       }
-      
+
       // Выполняем запрос
       const response = await handler(req, context);
-      
+
       // Кэшируем успешные ответы
       if (response.status === 200) {
         const responseData = await response.json();
@@ -304,9 +304,9 @@ export const withCache = (
           data: responseData,
           expiry: now + (config.ttl * 1000)
         });
-        
+
         console.log(`💾 API Middleware: сохраняем в кэш ${cacheKey}`);
-        
+
         return NextResponse.json(responseData, {
           headers: {
             'X-Cache': 'MISS',
@@ -314,9 +314,9 @@ export const withCache = (
           }
         });
       }
-      
+
       return response;
-      
+
     } catch (error) {
       console.error('💥 API Middleware: ошибка кэширования:', error);
       return await handler(req, context);
@@ -333,24 +333,24 @@ export const withLogging = (
     const { user } = req;
     const method = req.method;
     const url = req.nextUrl.pathname;
-    
+
     console.log(`📝 API Request: ${method} ${url} by ${user.role} ${user.email}`);
-    
+
     try {
       const response = await handler(req, context);
       const duration = Date.now() - startTime;
-      
+
       console.log(`✅ API Response: ${method} ${url} - ${response.status} (${duration}ms)`);
-      
+
       // Добавляем заголовки для отладки
       response.headers.set('X-Response-Time', `${duration}ms`);
       response.headers.set('X-User-Role', user.role);
-      
+
       return response;
     } catch (error) {
       const duration = Date.now() - startTime;
       console.error(`❌ API Error: ${method} ${url} - Error (${duration}ms):`, error);
-      
+
       return NextResponse.json(
         { success: false, error: 'Внутренняя ошибка сервера' },
         { status: 500 }
@@ -371,34 +371,34 @@ export const withMiddleware = (
   handler: (req: AuthenticatedRequest, validatedData?: any, context?: { params: any }) => Promise<NextResponse>
 ) => {
   let middlewareHandler = handler;
-  
+
   // Применяем middleware в обратном порядке (последний применяется первым)
-  
+
   if (options.cache) {
     const originalHandler = middlewareHandler;
     middlewareHandler = withCache(options.cache, originalHandler);
   }
-  
+
   if (options.rateLimit) {
     const originalHandler = middlewareHandler;
     middlewareHandler = withRateLimit(options.rateLimit, originalHandler);
   }
-  
+
   if (options.validation) {
     const originalHandler = middlewareHandler;
     middlewareHandler = withValidation(options.validation, originalHandler as any);
   }
-  
+
   if (options.permissions) {
     const originalHandler = middlewareHandler;
     middlewareHandler = withPermissions(options.permissions, originalHandler);
   }
-  
+
   if (options.logging !== false) {
     const originalHandler = middlewareHandler;
     middlewareHandler = withLogging(originalHandler);
   }
-  
+
   return middlewareHandler;
 };
 
@@ -419,9 +419,18 @@ export const withTrainerManagement = (
   handler: (req: AuthenticatedRequest, context?: { params: any }) => Promise<NextResponse>
 ) => withPermissions({ resource: 'trainers', action: 'read' }, handler);
 
-export const withScheduleManagement = (
-  handler: (req: AuthenticatedRequest, context?: { params: any }) => Promise<NextResponse>
-) => withPermissions({ resource: 'schedule', action: 'read' }, handler);
+export function withScheduleManagement(
+  handler: (req: AuthenticatedRequest) => Promise<NextResponse>
+) {
+  return withPermissions(
+    { resource: 'schedule', action: 'read' },
+    async (req: AuthenticatedRequest) => {
+      console.log(`📅 Schedule access by ${req.user.role}: ${req.user.id}`);
+
+      return await handler(req);
+    }
+  );
+}
 
 export const withAnalyticsAccess = (
   handler: (req: AuthenticatedRequest, context?: { params: any }) => Promise<NextResponse>
@@ -440,8 +449,8 @@ export const withTrainerOwnership = (
   requireOwnership: true,
   getOwnerId: async (req) => {
     const url = new URL(req.url);
-    const trainerId = url.searchParams.get('trainerId') || 
-                     url.pathname.split('/').filter(Boolean).pop();
+    const trainerId = url.searchParams.get('trainerId') ||
+      url.pathname.split('/').filter(Boolean).pop();
     return trainerId || undefined;
   }
 }, handler);
@@ -456,11 +465,11 @@ export const withClientOwnership = (
   getOwnerId: async (req) => {
     const { mockClients } = await import('@/lib/mock-data');
     const url = new URL(req.url);
-    const clientId = url.searchParams.get('clientId') || 
-                    url.pathname.split('/').filter(Boolean).pop();
-    
+    const clientId = url.searchParams.get('clientId') ||
+      url.pathname.split('/').filter(Boolean).pop();
+
     if (!clientId) return undefined;
-    
+
     const client = mockClients.find((c: any) => c.id === clientId);
     return client?.trainerId;
   }
@@ -476,11 +485,11 @@ export const withSessionOwnership = (
   getOwnerId: async (req) => {
     const { mockSessions } = await import('@/lib/mock-data');
     const url = new URL(req.url);
-    const sessionId = url.searchParams.get('sessionId') || 
-                     url.pathname.split('/').filter(Boolean).pop();
-    
+    const sessionId = url.searchParams.get('sessionId') ||
+      url.pathname.split('/').filter(Boolean).pop();
+
     if (!sessionId) return undefined;
-    
+
     const session = mockSessions.find((s: any) => s.id === sessionId);
     return session?.trainerId;
   }
@@ -507,7 +516,7 @@ export const withRole = (
 ) => {
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     const { user } = req;
-    
+
     if (!allowedRoles.includes(user.role)) {
       console.log(`❌ API Middleware: роль ${user.role} не разрешена. Требуется: ${allowedRoles.join(', ')}`);
       return NextResponse.json(
@@ -515,7 +524,7 @@ export const withRole = (
         { status: 403 }
       );
     }
-    
+
     return await handler(req, context);
   });
 };
@@ -542,15 +551,15 @@ export const withOwnProfileAccess = (
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     const { user } = req;
     const url = new URL(req.url);
-    const targetUserId = url.searchParams.get('userId') || 
-                        context?.params?.id ||
-                        url.pathname.split('/').filter(Boolean).pop();
-    
+    const targetUserId = url.searchParams.get('userId') ||
+      context?.params?.id ||
+      url.pathname.split('/').filter(Boolean).pop();
+
     // Разрешаем доступ к собственному профилю или если есть права управления пользователями
     if (targetUserId === user.id || hasPermission(user.role, 'users', 'update')) {
       return await handler(req, context);
     }
-    
+
     return NextResponse.json(
       { success: false, error: 'Нет доступа к данному профилю' },
       { status: 403 }
@@ -565,10 +574,10 @@ export const withTrainerAccess = (
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     const { user } = req;
     const url = new URL(req.url);
-    const targetTrainerId = url.searchParams.get('trainerId') || 
-                           context?.params?.id ||
-                           url.pathname.split('/').filter(Boolean).pop();
-    
+    const targetTrainerId = url.searchParams.get('trainerId') ||
+      context?.params?.id ||
+      url.pathname.split('/').filter(Boolean).pop();
+
     // Тренеры могут видеть только свой профиль, менеджеры и админы - все
     if (user.role === 'trainer' && targetTrainerId !== user.id) {
       return NextResponse.json(
@@ -576,14 +585,14 @@ export const withTrainerAccess = (
         { status: 403 }
       );
     }
-    
+
     if (!hasPermission(user.role, 'trainers', 'read')) {
       return NextResponse.json(
         { success: false, error: 'Недостаточно прав для просмотра тренеров' },
         { status: 403 }
       );
     }
-    
+
     return await handler(req, context);
   });
 };
@@ -594,14 +603,14 @@ export const withClientAccess = (
 ) => {
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     const { user } = req;
-    
+
     if (!hasPermission(user.role, 'clients', 'read')) {
       return NextResponse.json(
         { success: false, error: 'Недостаточно прав для просмотра клиентов' },
         { status: 403 }
       );
     }
-    
+
     return await handler(req, context);
   });
 };
@@ -622,14 +631,14 @@ export const clearCache = (pattern?: string): void => {
     console.log('💾 Cache: очищен весь кэш');
     return;
   }
-  
+
   const keysToDelete: string[] = [];
   for (const key of cacheStore.keys()) {
     if (key.includes(pattern)) {
       keysToDelete.push(key);
     }
   }
-  
+
   keysToDelete.forEach(key => cacheStore.delete(key));
   console.log(`💾 Cache: очищено ${keysToDelete.length} записей по паттерну "${pattern}"`);
 };
@@ -652,14 +661,14 @@ export const clearRateLimit = (pattern?: string): void => {
     console.log('🚫 RateLimit: очищены все лимиты');
     return;
   }
-  
+
   const keysToDelete: string[] = [];
   for (const key of rateLimitStore.keys()) {
     if (key.includes(pattern)) {
       keysToDelete.push(key);
     }
   }
-  
+
   keysToDelete.forEach(key => rateLimitStore.delete(key));
   console.log(`🚫 RateLimit: очищено ${keysToDelete.length} лимитов по паттерну "${pattern}"`);
 };
@@ -670,13 +679,13 @@ export const getRateLimitStats = (): {
 } => {
   const now = Date.now();
   const activeLimits: Array<{ key: string; count: number; resetTime: number }> = [];
-  
+
   for (const [key, value] of rateLimitStore.entries()) {
     if (now < value.resetTime) {
       activeLimits.push({ key, count: value.count, resetTime: value.resetTime });
     }
   }
-  
+
   return {
     activeKeys: activeLimits.length,
     limits: activeLimits
@@ -695,22 +704,22 @@ export const withCORS = (
 ) => {
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     const response = await handler(req, context);
-    
+
     // Устанавливаем CORS заголовки
     const origin = req.headers.get('origin');
     const allowedOrigins = Array.isArray(options.origin) ? options.origin : [options.origin || '*'];
-    
+
     if (origin && (allowedOrigins.includes('*') || allowedOrigins.includes(origin))) {
       response.headers.set('Access-Control-Allow-Origin', origin);
     }
-    
+
     response.headers.set('Access-Control-Allow-Methods', (options.methods || ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']).join(', '));
     response.headers.set('Access-Control-Allow-Headers', (options.headers || ['Content-Type', 'Authorization']).join(', '));
-    
+
     if (options.credentials) {
       response.headers.set('Access-Control-Allow-Credentials', 'true');
     }
-    
+
     return response;
   });
 };
@@ -724,7 +733,7 @@ export const withErrorHandling = (
       return await handler(req, context);
     } catch (error: any) {
       console.error('💥 API Error Handler:', error);
-      
+
       // Определяем тип ошибки и возвращаем соответствующий ответ
       if (error.name === 'ValidationError') {
         return NextResponse.json(
@@ -732,32 +741,32 @@ export const withErrorHandling = (
           { status: 400 }
         );
       }
-      
+
       if (error.name === 'UnauthorizedError') {
         return NextResponse.json(
           { success: false, error: 'Не авторизован' },
           { status: 401 }
         );
       }
-      
+
       if (error.name === 'ForbiddenError') {
         return NextResponse.json(
           { success: false, error: 'Доступ запрещен' },
           { status: 403 }
         );
       }
-      
+
       if (error.name === 'NotFoundError') {
         return NextResponse.json(
           { success: false, error: 'Ресурс не найден' },
           { status: 404 }
         );
       }
-      
+
       // Общая ошибка сервера
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Внутренняя ошибка сервера',
           ...(process.env.NODE_ENV === 'development' && typeof error === 'object' && error !== null && 'message' in error ? { details: (error as { message?: string }).message } : {})
         },
@@ -774,35 +783,35 @@ export const withMetrics = (
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     const startTime = process.hrtime.bigint();
     const startMemory = process.memoryUsage();
-    
+
     try {
       const response = await handler(req, context);
-      
+
       const endTime = process.hrtime.bigint();
       const endMemory = process.memoryUsage();
-      
+
       const duration = Number(endTime - startTime) / 1000000; // в миллисекундах
       const memoryDelta = endMemory.heapUsed - startMemory.heapUsed;
-      
-            // Добавляем метрики в заголовки ответа
+
+      // Добавляем метрики в заголовки ответа
       response.headers.set('X-Response-Time', `${duration.toFixed(2)}ms`);
       response.headers.set('X-Memory-Delta', `${(memoryDelta / 1024 / 1024).toFixed(2)}MB`);
       response.headers.set('X-Memory-Usage', `${(endMemory.heapUsed / 1024 / 1024).toFixed(2)}MB`);
-      
+
       // Логируем метрики для мониторинга
       if (duration > 1000) { // Медленные запросы > 1 сек
         console.warn(`⚠️ Slow API: ${req.method} ${req.nextUrl.pathname} took ${duration.toFixed(2)}ms`);
       }
-      
+
       if (memoryDelta > 10 * 1024 * 1024) { // Большое потребление памяти > 10MB
         console.warn(`⚠️ Memory spike: ${req.method} ${req.nextUrl.pathname} used ${(memoryDelta / 1024 / 1024).toFixed(2)}MB`);
       }
-      
+
       return response;
     } catch (error) {
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1000000;
-      
+
       console.error(`💥 API Error after ${duration.toFixed(2)}ms:`, error);
       throw error;
     }
@@ -815,15 +824,15 @@ export const withCompression = (
 ) => {
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     const response = await handler(req, context);
-    
+
     // Проверяем поддержку сжатия клиентом
     const acceptEncoding = req.headers.get('accept-encoding') || '';
-    
+
     if (acceptEncoding.includes('gzip')) {
       response.headers.set('Content-Encoding', 'gzip');
       response.headers.set('Vary', 'Accept-Encoding');
     }
-    
+
     return response;
   });
 };
@@ -839,21 +848,21 @@ export const withApiVersion = (
     const versionFromHeader = req.headers.get('api-version');
     const versionFromUrl = req.nextUrl.pathname.match(/\/api\/(v\d+)\//)?.[1];
     const version = versionFromHeader || versionFromUrl || defaultVersion;
-    
+
     if (!supportedVersions.includes(version)) {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: `Неподдерживаемая версия API: ${version}`,
-          supportedVersions 
+          supportedVersions
         },
         { status: 400 }
       );
     }
-    
+
     const response = await handler(req, version, context);
     response.headers.set('API-Version', version);
-    
+
     return response;
   });
 };
@@ -866,15 +875,15 @@ export const withMaintenanceMode = (
   return withAuth(async (req: AuthenticatedRequest, context?: { params: any }): Promise<NextResponse> => {
     if (isMaintenanceMode() && req.user.role !== 'admin') {
       return NextResponse.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: 'Сервис временно недоступен из-за технического обслуживания',
           maintenanceMode: true
         },
         { status: 503 }
       );
     }
-    
+
     return await handler(req, context);
   });
 };
@@ -897,7 +906,7 @@ export const createValidationSchema = <T = any>(rules: {
     validate: (data: any) => {
       const errors: string[] = [];
       const validatedData: any = {};
-      
+
       // Определяем тип для правила валидации
       type ValidationRule = {
         required?: boolean;
@@ -910,22 +919,22 @@ export const createValidationSchema = <T = any>(rules: {
         enum?: any[];
         custom?: (value: any) => boolean | string;
       };
-      
+
       for (const [field, ruleUnknown] of Object.entries(rules)) {
         const rule = ruleUnknown as ValidationRule;
         const value = data[field];
-        
+
         // Проверка обязательности
         if (rule.required && (value === undefined || value === null || value === '')) {
           errors.push(`Поле ${field} обязательно для заполнения`);
           continue;
         }
-        
+
         // Если поле не обязательное и пустое, пропускаем остальные проверки
         if (!rule.required && (value === undefined || value === null || value === '')) {
           continue;
         }
-        
+
         // Проверка типа
         if (rule.type) {
           const actualType = Array.isArray(value) ? 'array' : typeof value;
@@ -934,7 +943,7 @@ export const createValidationSchema = <T = any>(rules: {
             continue;
           }
         }
-        
+
         // Проверка длины строки
         if (rule.type === 'string' && typeof value === 'string') {
           if (rule.minLength && value.length < rule.minLength) {
@@ -944,7 +953,7 @@ export const createValidationSchema = <T = any>(rules: {
             errors.push(`Поле ${field} должно содержать максимум ${rule.maxLength} символов`);
           }
         }
-        
+
         // Проверка числовых значений
         if (rule.type === 'number' && typeof value === 'number') {
           if (rule.min !== undefined && value < rule.min) {
@@ -954,19 +963,19 @@ export const createValidationSchema = <T = any>(rules: {
             errors.push(`Поле ${field} должно быть не более ${rule.max}`);
           }
         }
-        
+
         // Проверка регулярного выражения
         if (rule.pattern && typeof value === 'string') {
           if (!rule.pattern.test(value)) {
             errors.push(`Поле ${field} имеет некорректный формат`);
           }
         }
-        
+
         // Проверка перечисления
         if (rule.enum && !rule.enum.includes(value)) {
           errors.push(`Поле ${field} должно быть одним из: ${rule.enum.join(', ')}`);
         }
-        
+
         // Кастомная валидация
         if (rule.custom) {
           const customResult = rule.custom(value);
@@ -976,10 +985,10 @@ export const createValidationSchema = <T = any>(rules: {
             errors.push(`Поле ${field} не прошло валидацию`);
           }
         }
-        
+
         validatedData[field] = value;
       }
-      
+
       return {
         isValid: errors.length === 0,
         errors,
@@ -1025,6 +1034,7 @@ export const sessionValidationSchema = createValidationSchema({
   status: { type: 'string', enum: ['scheduled', 'completed', 'cancelled', 'no-show'] }
 });
 
+
 // Middleware для аудита действий
 export const withAudit = (
   handler: (req: AuthenticatedRequest, context?: { params: any }) => Promise<NextResponse>
@@ -1039,23 +1049,23 @@ export const withAudit = (
       ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown',
       userAgent: req.headers.get('user-agent') || 'unknown'
     };
-    
+
     try {
       const response = await handler(req, context);
-      
+
       // Логируем успешные действия
       console.log(`📋 Audit: ${auditLog.userRole} ${auditLog.userId} performed ${auditLog.action} on ${auditLog.resource}`);
-      
+
       // В реальном приложении здесь было бы сохранение в базу данных аудита
       // await saveAuditLog({ ...auditLog, status: 'success', responseStatus: response.status });
-      
+
       return response;
     } catch (error) {
       // Логируем неудачные действия
       console.error(`📋 Audit Error: ${auditLog.userRole} ${auditLog.userId} failed ${auditLog.action} on ${auditLog.resource}:`, error);
-      
+
       // await saveAuditLog({ ...auditLog, status: 'error', error: error.message });
-      
+
       throw error;
     }
   });
@@ -1070,11 +1080,11 @@ export const withIPWhitelist = (
     if (allowedIPs.length === 0) {
       return await handler(req, context);
     }
-    
-    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0] || 
-                    req.headers.get('x-real-ip') || 
-                    'unknown';
-    
+
+    const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0] ||
+      req.headers.get('x-real-ip') ||
+      'unknown';
+
     if (!allowedIPs.includes(clientIP) && !allowedIPs.includes('*')) {
       console.log(`🚫 IP blocked: ${clientIP} attempted to access ${req.nextUrl.pathname}`);
       return NextResponse.json(
@@ -1082,7 +1092,7 @@ export const withIPWhitelist = (
         { status: 403 }
       );
     }
-    
+
     return await handler(req, context);
   });
 };
@@ -1094,7 +1104,7 @@ export const middlewareUtils = {
   clearRateLimit,
   getRateLimitStats,
   createValidationSchema,
-  
+
   // Готовые схемы валидации
   schemas: {
     user: userValidationSchema,
@@ -1102,20 +1112,20 @@ export const middlewareUtils = {
     client: clientValidationSchema,
     session: sessionValidationSchema
   },
-  
+
   // Готовые конфигурации rate limiting
   rateLimits: {
     strict: { maxRequests: 10, windowMs: 60000 }, // 10 запросов в минуту
     normal: { maxRequests: 100, windowMs: 60000 }, // 100 запросов в минуту
     relaxed: { maxRequests: 1000, windowMs: 60000 } // 1000 запросов в минуту
   },
-  
+
   // Готовые конфигурации кэширования
   cache: {
     short: { ttl: 60 }, // 1 минута
     medium: { ttl: 300 }, // 5 минут
     long: { ttl: 3600 }, // 1 час
-    
+
     // Генераторы ключей кэша
     keyGenerators: {
       userBased: (req: AuthenticatedRequest) => `user_${req.user.id}_${req.nextUrl.pathname}`,
@@ -1312,7 +1322,7 @@ export const withApiErrorHandling = (
           { status: error.statusCode }
         );
       }
-      
+
       // Обработка других типов ошибок
       console.error('💥 Unhandled API Error:', error);
       return NextResponse.json(
@@ -1332,7 +1342,7 @@ export const getRequestParams = (req: NextRequest, context?: { params: any }) =>
   const url = new URL(req.url);
   const searchParams = Object.fromEntries(url.searchParams.entries());
   const pathParams = context?.params || {};
-  
+
   return {
     query: searchParams,
     params: pathParams,
@@ -1344,7 +1354,7 @@ export const getRequestBody = async <T = any>(req: NextRequest): Promise<T | nul
   if (req.method === 'GET' || req.method === 'DELETE') {
     return null;
   }
-  
+
   try {
     const body = await req.text();
     return body ? JSON.parse(body) : null;
@@ -1360,7 +1370,7 @@ export const setSecurityHeaders = (response: NextResponse): NextResponse => {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  
+
   return response;
 };
 
@@ -1384,7 +1394,7 @@ export default {
   withCache,
   withLogging,
   withMiddleware,
-  
+
   // Специализированные middleware
   withRole,
   withAdminOnly,
@@ -1397,11 +1407,11 @@ export default {
   withClientOwnership,
   withSessionOwnership,
   withDynamicOwnership,
-  
+
   // Готовые комбинации
   apiMiddlewares,
   createApiHandler,
-  
+
   // Дополнительные middleware
   withCORS,
   withErrorHandling,
@@ -1413,7 +1423,7 @@ export default {
   withAudit,
   withIPWhitelist,
   withSecurity,
-  
+
   // Утилиты
   middlewareUtils,
   createApiError,
@@ -1421,14 +1431,14 @@ export default {
   getRequestParams,
   getRequestBody,
   setSecurityHeaders,
-  
+
   // Готовые схемы валидации
   userValidationSchema,
   trainerValidationSchema,
   clientValidationSchema,
   sessionValidationSchema,
   createValidationSchema,
-  
+
   // Готовые middleware для ресурсов
   withUserManagement,
   withUserCreation,

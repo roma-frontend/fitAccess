@@ -1,4 +1,4 @@
-// components/debug/ContextRegistrar.tsx (улучшенная версия)
+// components/debug/ContextRegistrar.tsx (исправленная версия)
 "use client";
 
 import { useEffect } from 'react';
@@ -50,29 +50,60 @@ export default function ContextRegistrar() {
         console.log(`📊 Schedule: ${schedule.events.length} событий, ${schedule.trainers.length} тренеров`);
       }
       
-      // ✅ ПРИНУДИТЕЛЬНО РЕГИСТРИРУЕМ DASHBOARD
+      // ✅ ПРИНУДИТЕЛЬНО РЕГИСТРИРУЕМ DASHBOARD (ИСПРАВЛЕНО)
       if (dashboard && !window.fitAccessDebug.dashboard) {
         window.fitAccessDebug.dashboard = {
+          // Основные данные
           events: dashboard.events,
           trainers: dashboard.trainers,
           clients: dashboard.clients,
+          notifications: dashboard.notifications, // ✅ ДОБАВЛЕНО
           stats: dashboard.stats,
           analytics: dashboard.analytics,
+          
+          // Состояние
           loading: dashboard.loading,
           error: dashboard.error,
+          
+          // Действия (используем правильные методы)
           syncAllData: dashboard.syncAllData,
           refreshStats: dashboard.refreshStats,
-          addEvent: dashboard.addEvent,
-          updateEvent: dashboard.updateEvent,
-          removeEvent: dashboard.removeEvent,
+          markNotificationAsRead: dashboard.markNotificationAsRead, // ✅ ПРАВИЛЬНЫЙ МЕТОД
+          clearAllNotifications: dashboard.clearAllNotifications, // ✅ ПРАВИЛЬНЫЙ МЕТОД
+          subscribeToUpdates: dashboard.subscribeToUpdates,
+          
+          // Дополнительные методы для debug
           getStats: () => ({
             totalEvents: dashboard.events.length,
             totalTrainers: dashboard.trainers.length,
-            totalClients: dashboard.clients.length
+            totalClients: dashboard.clients.length,
+            totalNotifications: dashboard.notifications.length,
+            unreadNotifications: dashboard.notifications.filter(n => !n.read).length,
+            lastUpdate: new Date().toISOString()
+          }),
+          
+          // Методы для работы с уведомлениями
+          getNotificationsSummary: () => ({
+            total: dashboard.notifications.length,
+            unread: dashboard.notifications.filter(n => !n.read).length,
+            byPriority: {
+              high: dashboard.notifications.filter(n => n.priority === 'high').length,
+              medium: dashboard.notifications.filter(n => n.priority === 'medium').length,
+              low: dashboard.notifications.filter(n => n.priority === 'low').length
+            }
+          }),
+          
+          // Методы для аналитики
+          getAnalyticsSummary: () => ({
+            clientGrowthPoints: dashboard.analytics.clientGrowth.length,
+            trainersTracked: dashboard.analytics.trainerPerformance.length,
+            equipmentItems: dashboard.analytics.equipmentUsage.length,
+            revenueStreams: dashboard.analytics.revenueByService.length
           })
         };
+        
         console.log('✅ Dashboard контекст принудительно зарегистрирован');
-        console.log(`📊 Dashboard: ${dashboard.events.length} событий, ${dashboard.trainers.length} тренеров, ${dashboard.clients.length} клиентов`);
+        console.log(`📊 Dashboard: ${dashboard.events.length} событий, ${dashboard.trainers.length} тренеров, ${dashboard.clients.length} клиентов, ${dashboard.notifications.length} уведомлений`);
       }
       
       // ✅ ПРИНУДИТЕЛЬНО РЕГИСТРИРУЕМ SUPERADMIN
@@ -93,6 +124,112 @@ export default function ContextRegistrar() {
         console.log(`📊 SuperAdmin: ${superAdmin.trainers.length} тренеров, ${superAdmin.clients.length} клиентов`);
       }
       
+      // ✅ ДОБАВЛЯЕМ ГЛОБАЛЬНЫЕ HELPER ФУНКЦИИ
+      if (!window.fitAccessDebug.help) {
+        window.fitAccessDebug.help = () => {
+          console.log(`
+🔧 FitAccess Debug System - Доступные команды:
+
+📊 ОБЩАЯ ИНФОРМАЦИЯ:
+• fitAccessDebug.getOverview() - общий обзор системы
+• fitAccessDebug.help() - эта справка
+
+📅 SCHEDULE КОНТЕКСТ:
+• fitAccessDebug.schedule.events - все события
+• fitAccessDebug.schedule.trainers - все тренеры
+• fitAccessDebug.schedule.getStats() - статистика событий
+• fitAccessDebug.schedule.createEvent(data) - создать событие
+• fitAccessDebug.schedule.refreshData() - обновить данные
+
+📈 DASHBOARD КОНТЕКСТ:
+• fitAccessDebug.dashboard.stats - статистика дашборда
+• fitAccessDebug.dashboard.notifications - уведомления
+• fitAccessDebug.dashboard.analytics - аналитика
+• fitAccessDebug.dashboard.getStats() - общая статистика
+• fitAccessDebug.dashboard.getNotificationsSummary() - сводка уведомлений
+• fitAccessDebug.dashboard.syncAllData() - полная синхронизация
+
+👑 SUPERADMIN КОНТЕКСТ:
+• fitAccessDebug.superAdmin.trainers - все тренеры
+• fitAccessDebug.superAdmin.clients - все клиенты
+• fitAccessDebug.superAdmin.getStats() - статистика админки
+
+🔄 СИНХРОНИЗАЦИЯ:
+• fitAccessDebug.syncAll() - синхронизировать все контексты
+• fitAccessDebug.clearAll() - очистить все данные
+          `);
+        };
+        
+        window.fitAccessDebug.getOverview = () => {
+          const overview = {
+            schedule: {
+              registered: !!window.fitAccessDebug.schedule,
+              events: window.fitAccessDebug.schedule?.events?.length || 0,
+              trainers: window.fitAccessDebug.schedule?.trainers?.length || 0,
+              loading: window.fitAccessDebug.schedule?.loading || false
+            },
+            dashboard: {
+              registered: !!window.fitAccessDebug.dashboard,
+              events: window.fitAccessDebug.dashboard?.events?.length || 0,
+              clients: window.fitAccessDebug.dashboard?.clients?.length || 0,
+              notifications: window.fitAccessDebug.dashboard?.notifications?.length || 0,
+              loading: window.fitAccessDebug.dashboard?.loading || false
+            },
+            superAdmin: {
+              registered: !!window.fitAccessDebug.superAdmin,
+              trainers: window.fitAccessDebug.superAdmin?.trainers?.length || 0,
+              clients: window.fitAccessDebug.superAdmin?.clients?.length || 0,
+              loading: window.fitAccessDebug.superAdmin?.loading || false
+            },
+            timestamp: new Date().toISOString()
+          };
+          
+          console.table(overview);
+          return overview;
+        };
+        
+        window.fitAccessDebug.syncAll = async () => {
+          console.log('🔄 Синхронизация всех контекстов...');
+          
+          const promises = [];
+          
+          if (window.fitAccessDebug.schedule?.refreshData) {
+            promises.push(window.fitAccessDebug.schedule.refreshData());
+          }
+          
+          if (window.fitAccessDebug.dashboard?.syncAllData) {
+            promises.push(window.fitAccessDebug.dashboard.syncAllData());
+          }
+          
+          if (window.fitAccessDebug.superAdmin?.refreshData) {
+            promises.push(window.fitAccessDebug.superAdmin.refreshData());
+          }
+          
+          try {
+            await Promise.all(promises);
+            console.log('✅ Все контексты синхронизированы');
+            return window.fitAccessDebug.getOverview();
+          } catch (error) {
+            console.error('❌ Ошибка синхронизации:', error);
+            throw error;
+          }
+        };
+        
+        window.fitAccessDebug.clearAll = () => {
+          console.log('🧹 Очистка всех debug данных...');
+          
+          if (window.fitAccessDebug.schedule?.clearAllEvents) {
+            window.fitAccessDebug.schedule.clearAllEvents();
+          }
+          
+          if (window.fitAccessDebug.dashboard?.clearAllNotifications) {
+            window.fitAccessDebug.dashboard.clearAllNotifications();
+          }
+          
+          console.log('✅ Все данные очищены');
+        };
+      }
+      
       // ✅ ЛОГИРУЕМ ФИНАЛЬНОЕ СОСТОЯНИЕ
       const finalState = {
         schedule: !!window.fitAccessDebug.schedule,
@@ -100,6 +237,7 @@ export default function ContextRegistrar() {
         superAdmin: !!window.fitAccessDebug.superAdmin,
         scheduleEvents: window.fitAccessDebug.schedule?.events?.length || 0,
         dashboardEvents: window.fitAccessDebug.dashboard?.events?.length || 0,
+        dashboardNotifications: window.fitAccessDebug.dashboard?.notifications?.length || 0,
         superAdminTrainers: window.fitAccessDebug.superAdmin?.trainers?.length || 0
       };
       
@@ -110,6 +248,7 @@ export default function ContextRegistrar() {
       if (allRegistered) {
         console.log('🎉 Все контексты успешно зарегистрированы!');
         console.log('💡 Попробуйте: fitAccessDebug.help()');
+        console.log('📊 Обзор системы: fitAccessDebug.getOverview()');
       } else {
         console.warn('⚠️ Не все контексты зарегистрированы:', {
           missing: {

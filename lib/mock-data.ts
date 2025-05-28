@@ -23,6 +23,7 @@ export interface Trainer {
   id: string;
   name: string;
   email: string;
+  avatar?: string;
   role: string;
   status: 'active' | 'inactive' | 'suspended' | 'deleted';
   phone: string;
@@ -38,6 +39,7 @@ export interface Trainer {
   createdBy: string;
   updatedAt?: string;
   updatedBy?: string;
+  bio?: string;
 }
 
 export interface Client {
@@ -45,7 +47,7 @@ export interface Client {
   name: string;
   email: string;
   phone?: string;
-  status: 'active' | 'inactive' | 'suspended' | 'deleted';
+  status: 'active' | 'inactive' | 'suspended' | 'deleted' | 'trial';
   trainerId?: string;
   membershipType: 'basic' | 'premium' | 'vip';
   joinDate: string;
@@ -58,6 +60,7 @@ export interface Client {
   medicalInfo?: string;
   emergencyContact?: string;
   goals?: string[];
+  notes?: string;
 }
 
 export interface Session {

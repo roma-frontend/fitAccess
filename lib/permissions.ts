@@ -23,6 +23,7 @@ export type Action =
   | 'manage' 
   | 'maintenance' 
   | 'write'
+  | 'restore'
   | 'backup';
 
 // Матрица разрешений для каждой роли

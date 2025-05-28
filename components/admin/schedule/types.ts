@@ -3,7 +3,7 @@ export interface ScheduleEvent {
   _id: string;
   title: string;
   description?: string;
-  type: 'training' | 'consultation' | 'group' | 'break' | 'other';
+  type: 'training' | 'consultation' | 'group' | 'break' | 'other'  | 'meeting';
   startTime: string;
   endTime: string;
   trainerId: string;
@@ -44,7 +44,11 @@ export interface ScheduleStats {
   cancelledEvents: number;
   pendingConfirmation: number;
   overdueEvents: number;
-  utilizationRate: number; 
+  byTrainer: Array<{
+    trainerId: string;
+    trainerName: string;
+    eventCount: number;
+  }>;
   byType: {
     training: number;
     consultation: number;
@@ -60,17 +64,14 @@ export interface ScheduleStats {
     cancelled: number;
     'no-show': number;
   };
-  byTrainer: Array<{
-    trainerId: string;
-    trainerName: string;
-    eventCount: number;
-  }>;
-  averageDuration: number;
+  utilizationRate: number;
+  averageDuration: number; // в минутах
   busyHours: Array<{
     hour: number;
     eventCount: number;
   }>;
 }
+
 
 export interface CreateEventData {
   title: string;

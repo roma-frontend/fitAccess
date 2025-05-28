@@ -1,4 +1,4 @@
-// components/debug/TestButtons.tsx
+// components/debug/TestButtons.tsx (исправленная версия)
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSchedule } from '@/contexts/ScheduleContext';
 import { useDashboard } from '@/contexts/DashboardContext';
 import { useSuperAdmin } from '@/contexts/SuperAdminContext';
-import { useState, useEffect } from 'react'; // ✅ Добавили useEffect
+import { useState, useEffect } from 'react';
 import { Plus, Trash2, RefreshCw, Zap, Database } from 'lucide-react';
-import { initDebugCommands } from '@/utils/debugCommands'; // ✅ Добавили импорт
+import { initDebugCommands, registerGlobalDebugCommands } from '@/utils/debugCommands';
 
 export default function TestButtons() {
   const schedule = useSchedule();
@@ -16,32 +16,33 @@ export default function TestButtons() {
   const superAdmin = useSuperAdmin();
   const [loading, setLoading] = useState<string | null>(null);
 
-  // ✅ ДОБАВЛЯЕМ useEffect ЗДЕСЬ
+  // ✅ ИСПРАВЛЕНО: убираем несуществующие свойства
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       const debugCommands = initDebugCommands({
-        dashboard,
         schedule,
-        superAdmin,
-        admin: null, // Если нет admin контекста
-        manager: null, // Если нет manager контекста
-        trainer: null, // Если нет trainer контекста
+        dashboard,
+        superAdmin
       });
 
-      (window as any).fitAccessDebug = debugCommands;
+      // ✅ РЕГИСТРИРУЕМ КОМАНДЫ ГЛОБАЛЬНО
+      registerGlobalDebugCommands(debugCommands);
       
       console.log('🎯 FitAccess Debug Commands инициализированы:');
+      console.log('• fitAccessDebug.help() - показать справку');
       console.log('• fitAccessDebug.addEvents(count) - добавить события');
       console.log('• fitAccessDebug.checkSync() - проверить синхронизацию');
       console.log('• fitAccessDebug.refreshAll() - обновить все данные');
       console.log('• fitAccessDebug.stressTest(count) - стресс-тест');
       console.log('• fitAccessDebug.getStats() - получить статистику');
       console.log('• fitAccessDebug.clearEvents() - очистить события');
+      console.log('• diagnoseContexts() - диагностика контекстов');
       
       console.log('📋 Доступные методы Schedule:', Object.keys(schedule));
       console.log('📋 Доступные методы Dashboard:', Object.keys(dashboard));
+      console.log('📋 Доступные методы SuperAdmin:', Object.keys(superAdmin));
     }
-  }, [dashboard, schedule, superAdmin]); // ✅ Зависимости useEffect
+  }, [dashboard, schedule, superAdmin]);
 
   // ✅ ИСПРАВЛЕНО: используем createEvent вместо addEvent
   const addTestEvent = async () => {
@@ -132,6 +133,7 @@ export default function TestButtons() {
       
       // Не добавляем в dashboard - создаем рассинхронизацию
       console.log('⚠️ Симуляция рассинхронизации данных');
+      console.log('💡 Проверьте: fitAccessDebug.checkSync()');
     } catch (error) {
       console.error('❌ Ошибка симуляции:', error);
     } finally {
@@ -160,10 +162,36 @@ export default function TestButtons() {
       
       await Promise.all(promises);
       console.log('✅ Стресс-тест завершен');
+      console.log('💡 Проверьте синхронизацию: fitAccessDebug.checkSync()');
     } catch (error) {
       console.error('❌ Ошибка стресс-теста:', error);
     } finally {
       setLoading(null);
+    }
+  };
+
+  // ✅ ДОБАВЛЯЕМ БЫСТРЫЕ КОМАНДЫ ЧЕРЕЗ DEBUG SYSTEM
+  const quickAddEvents = async () => {
+    setLoading('quick');
+    try {
+      if (typeof window !== 'undefined' && window.fitAccessDebug?.addEvents) {
+        await window.fitAccessDebug.addEvents(5);
+        console.log('✅ Быстро добавлено 5 событий');
+      } else {
+        console.warn('⚠️ Debug команды не инициализированы');
+      }
+    } catch (error) {
+      console.error('❌ Ошибка быстрого добавления:', error);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const quickCheckSync = () => {
+    if (typeof window !== 'undefined' && window.fitAccessDebug?.checkSync) {
+      window.fitAccessDebug.checkSync();
+    } else {
+      console.warn('⚠️ Debug команды не инициализированы');
     }
   };
 
@@ -188,6 +216,21 @@ export default function TestButtons() {
             <Plus className="h-3 w-3" />
           )}
           Добавить событие
+        </Button>
+
+        <Button
+          onClick={quickAddEvents}
+          disabled={loading === 'quick'}
+          size="sm"
+          variant="outline"
+          className="w-full flex items-center gap-2"
+        >
+          {loading === 'quick' ? (
+            <RefreshCw className="h-3 w-3 animate-spin" />
+          ) : (
+            <Plus className="h-3 w-3" />
+          )}
+          Быстро +5 событий
         </Button>
 
         <Button
@@ -237,6 +280,17 @@ export default function TestButtons() {
           </Button>
 
           <Button
+            onClick={quickCheckSync}
+            disabled={false}
+            size="sm"
+            variant="outline"
+            className="w-full flex items-center gap-2 text-blue-600 border-blue-300"
+          >
+            <Zap className="h-3 w-3" />
+            Проверить синхр.
+          </Button>
+
+          <Button
             onClick={simulateDataCorruption}
             disabled={loading === 'corrupt'}
             size="sm"
@@ -270,6 +324,15 @@ export default function TestButtons() {
         <div className="text-xs text-gray-500 pt-2 border-t">
           События: {schedule.events?.length || 0} | 
           Загрузка: {schedule.loading ? 'Да' : 'Нет'}
+          {dashboard.events?.length !== schedule.events?.length && (
+            <div className="text-orange-500 font-medium">
+              ⚠️ Рассинхронизация
+            </div>
+          )}
+        </div>
+
+        <div className="text-xs text-blue-600 pt-1">
+          💡 Консоль: fitAccessDebug.help()
         </div>
       </CardContent>
     </Card>
