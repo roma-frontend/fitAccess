@@ -1,7 +1,7 @@
 // app/api/auth/login/route.ts (обновленная версия для БД)
 import { NextRequest, NextResponse } from 'next/server';
 import { validatePassword } from '@/lib/users-db'; // Используем БД версию
-import { createSession } from '@/lib/simple-auth';
+import { createSession, getSession } from '@/lib/simple-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаем сессию
+    console.log('🔧 Создаем сессию для пользователя:', {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      name: user.name
+    });
+
     const sessionId = createSession({
       id: user._id,
       email: user.email,
@@ -43,25 +50,13 @@ export async function POST(request: NextRequest) {
       name: user.name
     });
 
-    console.log(`✅ Успешный вход: ${user.email} (${user.role})`);
+    console.log(`✅ Сессия создана с ID: ${sessionId.substring(0, 20)}...`);
 
-    // Определяем URL для перенаправления
-    let dashboardUrl = '/';
-    switch (user.role) {
-      case 'super-admin':
-      case 'admin':
-        dashboardUrl = '/admin';
-        break;
-      case 'manager':
-        dashboardUrl = '/manager-dashboard';
-        break;
-      case 'trainer':
-        dashboardUrl = '/trainer-dashboard';
-        break;
-      case 'member':
-        dashboardUrl = '/member-dashboard';
-        break;
-    }
+    // Проверяем, что сессия действительно сохранилась
+    const testSession = getSession(sessionId);
+    console.log('🧪 Тестовая проверка созданной сессии:', testSession ? 'найдена' : 'НЕ НАЙДЕНА');
+
+    console.log(`✅ Успешный вход: ${user.email} (${user.role})`);
 
     const response = NextResponse.json({
       success: true,
@@ -71,26 +66,30 @@ export async function POST(request: NextRequest) {
         email: user.email,
         role: user.role,
         name: user.name
-      },
-      dashboardUrl
+      }
     });
 
     // Устанавливаем cookies
     response.cookies.set('session_id', sessionId, {
-            httpOnly: true,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 // 7 дней
+      maxAge: 7 * 24 * 60 * 60, // 7 дней
+      path: '/'
     });
 
     response.cookies.set('session_id_debug', sessionId, {
-      maxAge: 7 * 24 * 60 * 60 // 7 дней для отладки
+      maxAge: 7 * 24 * 60 * 60, // 7 дней для отладки
+      path: '/'
     });
+
+    console.log('🍪 Куки установлены в ответе');
 
     return response;
 
   } catch (error) {
-    console.error('Ошибка авторизации:', error);
+    console.error('❌ КРИТИЧЕСКАЯ ошибка авторизации:', error);
+    console.error('❌ Стек ошибки:', error instanceof Error ? error.stack : 'Нет стека');
     return NextResponse.json({
       success: false,
       error: 'Внутренняя ошибка сервера'

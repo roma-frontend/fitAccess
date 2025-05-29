@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     const payload = await verifyToken(token);
     
-    if (!['super_admin', 'admin'].includes(payload.role)) {
+    if (!['super-admin', 'admin'].includes(payload.role)) {
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 });
     }
 
@@ -28,15 +28,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем права на изменение роли
-    if (user.role === 'super_admin') {
+    if (user.role === 'super-admin') {
       return NextResponse.json({ error: 'Нельзя изменить роль супер-админа' }, { status: 403 });
     }
 
-    if (role === 'admin' && payload.role !== 'super_admin') {
+    if (role === 'admin' && payload.role !== 'super-admin') {
       return NextResponse.json({ error: 'Только супер-админ может назначать админов' }, { status: 403 });
     }
 
-    if (role === 'super_admin') {
+    if (role === 'super-admin') {
       return NextResponse.json({ error: 'Нельзя назначить роль супер-админа' }, { status: 403 });
     }
 

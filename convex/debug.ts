@@ -51,7 +51,7 @@ export const createTestSuperAdmin = mutation({
       email: "super@example.com",
       password: "super123",
       name: "Test Super Admin",
-      role: "super_admin",
+      role: "super-admin",
       isActive: true,
       createdAt: Date.now(),
     });

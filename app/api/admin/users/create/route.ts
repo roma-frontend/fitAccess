@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const payload = await verifyToken(token);
     
     // Только админы могут создавать пользователей
-    if (!['super_admin', 'admin'].includes(payload.role)) {
+    if (!['super-admin', 'admin'].includes(payload.role)) {
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 });
     }
 
@@ -25,11 +25,11 @@ export async function POST(request: NextRequest) {
     const { email, name, password, role } = body;
 
     // Проверяем права на создание роли
-    if (role === 'admin' && payload.role !== 'super_admin') {
+    if (role === 'admin' && payload.role !== 'super-admin') {
       return NextResponse.json({ error: 'Только супер-админ может создавать админов' }, { status: 403 });
     }
 
-    if (role === 'super_admin') {
+    if (role === 'super-admin') {
       return NextResponse.json({ error: 'Нельзя создать супер-админа' }, { status: 403 });
     }
 

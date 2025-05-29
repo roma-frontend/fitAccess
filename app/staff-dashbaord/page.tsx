@@ -22,7 +22,7 @@ export default function StaffDashboardPage() {
       const data = await response.json();
       
       if (data.authenticated && data.user) {
-        const allowedRoles = ['super_admin', 'admin', 'manager', 'trainer', 'staff'];
+        const allowedRoles = ['super-admin', 'admin', 'manager', 'trainer', 'staff'];
         if (allowedRoles.includes(data.user.role)) {
           setUser(data.user);
         } else {
@@ -136,7 +136,7 @@ export default function StaffDashboardPage() {
                 </div>
               </div>
               
-              {(user?.role === 'super_admin' || user?.role === 'admin') && (
+              {(user?.role === 'super-admin' || user?.role === 'admin') && (
                 <div>
                   <h4 className="font-medium text-gray-900 mb-2">Доступные панели:</h4>
                   <a 

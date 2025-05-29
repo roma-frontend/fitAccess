@@ -60,7 +60,7 @@ export const createSuperAdmin = mutation({
     // Проверяем, что супер-админ еще не существует
     const existingSuperAdmin = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("role"), "super_admin"))
+      .filter((q) => q.eq(q.field("role"), "super-admin"))
       .first();
 
     if (existingSuperAdmin) {
@@ -71,7 +71,7 @@ export const createSuperAdmin = mutation({
       email: args.email,
       password: args.password,
       name: args.name,
-      role: "super_admin",
+      role: "super-admin",
       isActive: true,
       createdAt: Date.now(),
     });

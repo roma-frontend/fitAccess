@@ -19,7 +19,7 @@ export interface Session {
 // Моковые пользователи с правильной типизацией
 const mockUsers: User[] = [
   {
-    id: 'super_admin_1',
+    id: 'super-admin_1',
     email: 'romangulanyan@gmail.com',
     role: 'super-admin',
     name: 'Роман Гуланян'

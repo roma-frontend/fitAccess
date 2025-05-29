@@ -253,20 +253,37 @@ export default function HomePage() {
     checkAuth();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      const response = await fetch("/api/auth/logout", {
-        method: "POST",
-      });
+const handleLogout = async () => {
+  try {
+    const response = await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: 'include'
+    });
 
-      if (response.ok) {
-        setAuthStatus({ authenticated: false });
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error("Ошибка выхода:", error);
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      setAuthStatus({ authenticated: false });
+      
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      document.cookie.split(";").forEach(function(c) { 
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+      });
+      
+      window.location.replace('/');
+    } else {
+      console.error("Ошибка выхода:", data.error);
     }
-  };
+  } catch (error) {
+    console.error("Ошибка выхода:", error);
+    setAuthStatus({ authenticated: false });
+    window.location.replace('/');
+  }
+};
+
+
 
   const handleDashboardRedirect = () => {
     if (authStatus?.dashboardUrl) {

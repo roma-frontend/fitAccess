@@ -1,21 +1,32 @@
-// app/admin/users/page.tsx (обновленная версия с улучшенным дизайном)
+// app/admin/users/page.tsx (обновите импорты и используйте систему разрешений)
+
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Users, BarChart3, Zap, Sparkles } from "lucide-react";
+import { Users, BarChart3, Zap, Sparkles } from "lucide-react";
+
+// Импорт типов
+import { User, UserRole, CreateUserData, UpdateUserData } from "@/types/user";
+
+// Импорт функций разрешений
+import { 
+  canCreateUsers, 
+  canUpdateUsers, 
+  canDeleteUsers,
+  canManageUser,
+  getCreatableRoles 
+} from "@/lib/permissions";
 
 // Импорт всех компонентов
 import { UserStats } from "@/components/admin/users/UserStats";
 import { UserFilters } from "@/components/admin/users/UserFilters";
 import { UserGrid } from "@/components/admin/users/UserGrid";
 import { CreateUserDialog } from "@/components/admin/users/CreateUserDialog";
-import { EditUserDialog } from "@/components/admin/users/EditUserDialog";
 import { RoleHierarchy } from "@/components/admin/users/RoleHierarchy";
 import { QuickActions } from "@/components/admin/users/QuickActions";
 import { UserAnalytics } from "@/components/admin/users/UserAnalytics";
-import { User, UserRole } from "@/components/admin/users/UserCard";
 import { useRouter } from 'next/navigation';
 import { AdminSecondHeader, MobileActionGroup } from '@/components/admin/users/AdminSecondHeader';
 
@@ -24,19 +35,61 @@ export default function UsersManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole>('member');
-  const [canCreate, setCanCreate] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const router = useRouter()
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const router = useRouter();
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
+  // Проверка разрешений
+  const canCreate = canCreateUsers(userRole);
+  const canUpdate = canUpdateUsers(userRole);
+  const canDelete = canDeleteUsers(userRole);
+
   // Load users
   useEffect(() => {
     loadUsers();
   }, []);
+
+
+  
+
+
+  useEffect(() => {
+  const checkAuthAndLoadUsers = async () => {
+    // Сначала проверяем авторизацию
+    try {
+      console.log('🔍 Проверяем авторизацию...');
+      const authResponse = await fetch('/api/auth/me', {
+        credentials: 'include'
+      });
+      
+      if (!authResponse.ok) {
+        console.log('❌ Не авторизован, перенаправляем на логин');
+        router.push('/login');
+        return;
+      }
+      
+      const authData = await authResponse.json();
+      console.log('✅ Авторизован как:', authData.user);
+      setUserRole(authData.user.role);
+      
+      // Теперь загружаем пользователей
+      await loadUsers();
+    } catch (error) {
+      console.error('❌ Ошибка проверки авторизации:', error);
+      router.push('/login');
+    }
+  };
+
+  checkAuthAndLoadUsers();
+}, []);
+
+
+
 
   const loadUsers = async () => {
     try {
@@ -46,7 +99,6 @@ export default function UsersManagementPage() {
       if (data.success) {
         setUsers(data.users);
         setUserRole(data.userRole);
-        setCanCreate(data.canCreate);
       } else {
         alert('Ошибка загрузки пользователей: ' + data.error);
       }
@@ -75,13 +127,8 @@ export default function UsersManagementPage() {
     });
   }, [users, searchTerm, roleFilter, statusFilter]);
 
-  // Handlers (остаются те же)
-  const handleCreateUser = async (userData: {
-    email: string;
-    password: string;
-    role: UserRole;
-    name: string;
-  }) => {
+  // Handlers
+  const handleCreateUser = async (userData: CreateUserData): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await fetch('/api/admin/users', {
         method: 'POST',
@@ -92,56 +139,121 @@ export default function UsersManagementPage() {
       const data = await response.json();
       
       if (data.success) {
-        alert('Пользователь создан успешно!');
-        loadUsers();
+        await loadUsers();
+        return { success: true };
       } else {
-        alert('Ошибка создания пользователя: ' + data.error);
+        return { success: false, error: data.error || 'Ошибка создания пользователя' };
       }
     } catch (error) {
       console.error('Ошибка создания пользователя:', error);
-      alert('Ошибка создания пользователя');
+      return { success: false, error: 'Ошибка создания пользователя' };
     }
   };
 
-  const handleUpdateUser = async (id: string, updates: Partial<User>) => {
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, updates })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('Пользователь обновлен успешно!');
-        loadUsers();
-      } else {
-        alert('Ошибка обновления пользователя: ' + data.error);
-      }
-    } catch (error) {
-      console.error('Ошибка обновления пользователя:', error);
-      alert('Ошибка обновления пользователя');
-    }
-  };
+const handleUserUpdate = async (userData: CreateUserData): Promise<{ success: boolean; error?: string }> => {
+  console.log('🔄 handleUserUpdate: НАЧАЛО обновления');
+  console.log('👤 Редактируемый пользователь:', editingUser);
+  
+  if (!editingUser) {
+    console.log('❌ Редактируемый пользователь не найден');
+    return { success: false, error: 'Пользователь для редактирования не найден' };
+  }
 
-  const handleDeleteUser = async (id: string, userName: string) => {
+  try {
+    const updateData: UpdateUserData = {
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+      isActive: userData.isActive,
+      photoUrl: userData.photoUrl
+    };
+
+    if (userData.password && userData.password.trim()) {
+      updateData.password = userData.password;
+    }
+
+    console.log('📝 Данные для обновления:', updateData);
+    console.log('🎯 URL запроса:', `/api/admin/users/${editingUser.id}`);
+    
+    // Проверяем куки перед запросом
+    console.log('🍪 ВСЕ куки перед PUT запросом:', document.cookie);
+    
+    // Проверяем конкретно session_id
+    const sessionIdCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('session_id='));
+    console.log('🔑 Session ID cookie найден:', !!sessionIdCookie);
+    if (sessionIdCookie) {
+      const sessionId = sessionIdCookie.split('=')[1];
+      console.log('🔑 Session ID значение:', sessionId.substring(0, 20) + '...');
+    }
+    
+    // Также проверим debug cookie
+    const debugCookie = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('session_id_debug='));
+    console.log('🐛 Debug cookie найден:', !!debugCookie);
+    
+    console.log('📡 Отправляем PUT запрос...');
+    
+    const response = await fetch(`/api/admin/users/${editingUser.id}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Важно для передачи куки
+      body: JSON.stringify(updateData)
+    });
+    
+    console.log('📡 Статус ответа PUT:', response.status);
+    console.log('📡 Заголовки ответа PUT:', Object.fromEntries(response.headers.entries()));
+    
+    const data = await response.json();
+    console.log('📄 Данные ответа PUT:', data);
+    
+    if (data.success) {
+      console.log('✅ Пользователь обновлен успешно');
+      await loadUsers();
+      return { success: true };
+    } else {
+      console.log('❌ Ошибка от API:', data.error);
+      return { success: false, error: data.error || 'Ошибка обновления пользователя' };
+    }
+  } catch (error) {
+    console.error('❌ Исключение в handleUserUpdate:', error);
+    return { success: false, error: 'Ошибка обновления пользователя' };
+  }
+};
+
+const handleCreateOrUpdate = async (userData: CreateUserData): Promise<{ success: boolean; error?: string }> => {
+  console.log('🔀 handleCreateOrUpdate: определяем тип операции');
+  console.log('📝 Данные:', userData);
+  console.log('👤 editingUser:', editingUser?.name || 'null');
+  
+  if (editingUser) {
+    console.log('✏️ Режим редактирования');
+    return await handleUserUpdate(userData);
+  } else {
+    console.log('➕ Режим создания');
+    return await handleCreateUser(userData);
+  }
+};
+  
+  const handleDeleteUser = async (id: string, userName: string): Promise<void> => {
     if (!confirm(`Вы уверены, что хотите удалить пользователя ${userName}?`)) {
       return;
     }
-
+  
     try {
-      const response = await fetch('/api/admin/users', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: 'DELETE'
       });
       
       const data = await response.json();
       
       if (data.success) {
         alert('Пользователь удален успешно!');
-        loadUsers();
+        await loadUsers();
       } else {
         alert('Ошибка удаления пользователя: ' + data.error);
       }
@@ -150,27 +262,34 @@ export default function UsersManagementPage() {
       alert('Ошибка удаления пользователя');
     }
   };
-
-  const handleToggleStatus = async (id: string, isActive: boolean) => {
-    await handleUpdateUser(id, { isActive });
-  };
-
-  const handleBulkAction = async (action: string, userIds: string[]) => {
+  
+  const handleBulkAction = async (action: string, userIds: string[]): Promise<void> => {
+    if (userIds.length === 0) {
+      alert('Выберите пользователей для выполнения операции');
+      return;
+    }
+  
+    let confirmMessage = '';
     switch (action) {
       case 'activate':
-        for (const id of userIds) {
-          await handleUpdateUser(id, { isActive: true });
-        }
+        confirmMessage = `Активировать ${userIds.length} пользователей?`;
+        break;
+      case 'deactivate':
+        confirmMessage = `Деактивировать ${userIds.length} пользователей?`;
+        break;
+      case 'delete':
+        confirmMessage = `УДАЛИТЬ ${userIds.length} пользователей? Это действие нельзя отменить!`;
         break;
       case 'export':
-        // Implement CSV export
-        const csvData = users.map(user => ({
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          status: user.isActive ? 'Активен' : 'Неактивен',
-          created: new Date(user.createdAt).toLocaleDateString()
-        }));
+        const csvData = users
+          .filter(user => userIds.includes(user.id))
+          .map(user => ({
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            status: user.isActive ? 'Активен' : 'Неактивен',
+            created: new Date(user.createdAt).toLocaleDateString()
+          }));
         
         const csv = [
           ['Имя', 'Email', 'Роль', 'Статус', 'Создан'],
@@ -181,12 +300,57 @@ export default function UsersManagementPage() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'users.csv';
+        a.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
-        break;
-      case 'notify':
-        alert(`Уведомление отправлено ${userIds.length} пользователям`);
-        break;
+        return;
+      default:
+        alert('Неизвестное действие');
+        return;
+    }
+  
+    if (!confirm(confirmMessage)) return;
+  
+    try {
+      const response = await fetch('/api/admin/users/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, userIds })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        alert(data.message);
+        await loadUsers();
+      } else {
+        alert('Ошибка: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Ошибка массовой операции:', error);
+      alert('Ошибка выполнения операции');
+    }
+  };
+
+  const handleToggleStatus = async (id: string, isActive: boolean): Promise<void> => {
+    try {
+      const updateData: UpdateUserData = { isActive };
+      
+      const response = await fetch(`/api/admin/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        await loadUsers();
+      } else {
+        alert('Ошибка изменения статуса: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Ошибка изменения статуса:', error);
+      alert('Ошибка изменения статуса');
     }
   };
 
@@ -215,17 +379,23 @@ export default function UsersManagementPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-pink-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
       </div>
 
-      {/* Header - упрощенный в едином стиле */}
+      {/* Header */}
       <AdminSecondHeader
         title="Управление пользователями"
         icon={Users}
         actions={
           canCreate ? (
             <MobileActionGroup>
-              <CreateUserDialog 
-                userRole={userRole}
-                onCreateUser={handleCreateUser}
-              />
+              <Button 
+                onClick={() => {
+                  setEditingUser(null);
+                  setShowCreateDialog(true);
+                }}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Создать пользователя
+              </Button>
             </MobileActionGroup>
           ) : undefined
         }
@@ -289,7 +459,15 @@ export default function UsersManagementPage() {
             <UserGrid
               users={filteredUsers}
               currentUserRole={userRole}
-              onEdit={setEditingUser}
+              onEdit={(user) => {
+                // Проверяем, может ли текущий пользователь редактировать этого пользователя
+                if (canManageUser(userRole, user.role)) {
+                  setEditingUser(user);
+                  setShowCreateDialog(true);
+                } else {
+                  alert('У вас нет прав для редактирования этого пользователя');
+                }
+              }}
               onDelete={handleDeleteUser}
               onToggleStatus={handleToggleStatus}
             />
@@ -316,15 +494,14 @@ export default function UsersManagementPage() {
         </Tabs>
       </main>
 
-            {/* Edit Dialog */}
-            <EditUserDialog
-        user={editingUser}
-        userRole={userRole}
-        onClose={() => setEditingUser(null)}
-        onUpdateUser={handleUpdateUser}
+      {/* Create/Edit Dialog */}
+      <CreateUserDialog
+        open={showCreateDialog}
+        setOpen={setShowCreateDialog}
+        onCreateUser={handleCreateOrUpdate}
+        editingUser={editingUser}
+        currentUserRole={userRole}
       />
     </div>
   );
 }
-
-      

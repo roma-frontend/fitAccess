@@ -13,7 +13,7 @@ export interface User {
 // Типы для ролей
 type UserRole = 'super-admin' | 'admin' | 'manager' | 'trainer' | 'member';
 
-const SUPER_ADMIN: User = {
+const super-admin: User = {
   id: 'super-admin-roman-001',
   email: 'romangulanyan@gmail.com',
   password: 'Hovik-1970',
@@ -27,11 +27,11 @@ const SUPER_ADMIN: User = {
 const users = new Map<string, User>();
 
 function initializeSuperAdmin() {
-  if (!users.has(SUPER_ADMIN.email)) {
-    users.set(SUPER_ADMIN.email, SUPER_ADMIN);
-    console.log('✅ Супер-админ инициализирован:', SUPER_ADMIN.email);
+  if (!users.has(super-admin.email)) {
+    users.set(super-admin.email, super-admin);
+    console.log('✅ Супер-админ инициализирован:', super-admin.email);
   } else {
-    console.log('ℹ️ Супер-админ уже существует:', SUPER_ADMIN.email);
+    console.log('ℹ️ Супер-админ уже существует:', super-admin.email);
   }
 }
 
@@ -97,7 +97,7 @@ export function updateUser(id: string, updates: Partial<User>, updatedBy: string
   }
 
   // Нельзя изменить супер-админа
-  if (user.role === 'super-admin' && user.email === SUPER_ADMIN.email) {
+  if (user.role === 'super-admin' && user.email === super-admin.email) {
     throw new Error('Нельзя изменить супер-администратора');
   }
 
@@ -122,7 +122,7 @@ export function deleteUser(id: string, deletedBy: string): boolean {
   }
 
   // Нельзя удалить супер-админа
-  if (user.role === 'super-admin' && user.email === SUPER_ADMIN.email) {
+  if (user.role === 'super-admin' && user.email === super-admin.email) {
     throw new Error('Нельзя удалить супер-администратора');
   }
 
@@ -235,5 +235,5 @@ export function getUsersByRole(role: UserRole): User[] {
 
 // Функция для проверки существования супер-админа
 export function hasSuperAdmin(): boolean {
-  return users.has(SUPER_ADMIN.email);
+  return users.has(super-admin.email);
 }

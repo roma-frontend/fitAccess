@@ -60,7 +60,7 @@ export function CreateEventModal({ isOpen, onClose, onEventCreated }: CreateEven
       const newEvent = {
         _id: `event_${Date.now()}`,
         ...eventData,
-        createdBy: 'super_admin',
+        createdBy: 'super-admin',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -83,7 +83,7 @@ export function CreateEventModal({ isOpen, onClose, onEventCreated }: CreateEven
           action: 'created',
           event: newEvent,
           timestamp: new Date().toISOString(),
-          createdBy: 'super_admin'
+          createdBy: 'super-admin'
         });
       }
 

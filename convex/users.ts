@@ -69,6 +69,17 @@ export const getAllFaceDescriptors = query({
   },
 });
 
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    console.log('Convex users: получаем пользователя по ID:', args.userId);
+    const user = await ctx.db.get(args.userId);
+    console.log('Convex users: пользователь найден:', user ? 'да' : 'нет');
+    return user;
+  },
+});
+
+
 // Исправляем функцию удаления пользователя
 export const deleteUser = mutation({
   args: { id: v.id("users") }, // Используем правильный тип ID
@@ -167,6 +178,106 @@ export const getById = query({
     return await ctx.db.get(args.id);
   },
 });
+
+
+// convex/users.ts (исправленная версия updateUser)
+export const updateUser = mutation({
+  args: { 
+    userId: v.id("users"),
+    updates: v.object({
+      name: v.optional(v.string()),
+      email: v.optional(v.string()),
+      role: v.optional(v.string()),
+      isActive: v.optional(v.boolean()),
+      photoUrl: v.optional(v.string()),
+      password: v.optional(v.string()),
+    })
+  },
+  handler: async (ctx, args) => {
+    console.log('Convex users: обновляем пользователя:', args.userId);
+    console.log('Convex users: данные для обновления:', args.updates);
+    
+    try {
+      // Проверяем, существует ли пользователь
+      const existingUser = await ctx.db.get(args.userId);
+      if (!existingUser) {
+        throw new Error("Пользователь не найден");
+      }
+
+      // Если обновляется email, проверяем уникальность
+      if (args.updates.email && typeof args.updates.email === 'string' && args.updates.email !== existingUser.email) {
+        const emailExists = await ctx.db
+          .query("users")
+          .withIndex("by_email", (q) => q.eq("email", args.updates.email!)) // Используем ! так как мы уже проверили
+          .first();
+        
+        if (emailExists) {
+          throw new Error("Пользователь с таким email уже существует");
+        }
+      }
+
+      // Фильтруем undefined значения перед обновлением
+      const filteredUpdates: any = {};
+      
+      if (args.updates.name !== undefined) {
+        filteredUpdates.name = args.updates.name;
+      }
+      if (args.updates.email !== undefined) {
+        filteredUpdates.email = args.updates.email;
+      }
+      if (args.updates.role !== undefined) {
+        filteredUpdates.role = args.updates.role;
+      }
+      if (args.updates.isActive !== undefined) {
+        filteredUpdates.isActive = args.updates.isActive;
+      }
+      if (args.updates.photoUrl !== undefined) {
+        filteredUpdates.photoUrl = args.updates.photoUrl;
+      }
+      if (args.updates.password !== undefined) {
+        filteredUpdates.password = args.updates.password;
+      }
+
+      console.log('Convex users: отфильтрованные обновления:', filteredUpdates);
+
+      // Обновляем пользователя только если есть что обновлять
+      if (Object.keys(filteredUpdates).length > 0) {
+        await ctx.db.patch(args.userId, filteredUpdates);
+        console.log('✅ Convex users: пользователь обновлен успешно');
+      } else {
+        console.log('ℹ️ Convex users: нет данных для обновления');
+      }
+      
+      // Возвращаем обновленного пользователя
+      const updatedUser = await ctx.db.get(args.userId);
+      return updatedUser;
+    } catch (error) {
+      console.error('❌ Convex users: ошибка обновления:', error);
+      throw error;
+    }
+  },
+});
+
+
+export const updatePhoto = mutation({
+  args: { 
+    userId: v.id("users"),
+    photoUrl: v.string()
+  },
+  handler: async (ctx, args) => {
+    console.log('🖼️ Обновляем фото пользователя:', args.userId);
+    
+    await ctx.db.patch(args.userId, {
+      photoUrl: args.photoUrl,
+      updatedAt: Date.now()
+    });
+    
+    console.log('✅ Фото обновлено в БД');
+    return args.userId;
+  },
+});
+
+
 
 export const updateLastLogin = mutation({
   args: { 

@@ -1,4 +1,4 @@
-// contexts/DashboardContext.tsx (исправленная версия)
+// contexts/DashboardContext.tsx (обновленная версия)
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -14,6 +14,16 @@ interface DashboardStats {
   clientRetention: number;
   averageRating: number;
   equipmentUtilization: number;
+  // Дополнительные поля из API
+  totalUsers?: number;
+  totalAdmins?: number;
+  newClientsThisWeek?: number;
+  monthlyEvents?: number;
+  inactiveClients?: number;
+  usersByRole?: Record<string, number>;
+  lastUpdated?: string;
+  dataSource?: string;
+  generatedBy?: string;
 }
 
 interface DashboardNotification {
@@ -25,6 +35,7 @@ interface DashboardNotification {
   read: boolean;
   actionUrl?: string;
   priority: 'low' | 'medium' | 'high';
+  userId?: string;
 }
 
 interface DashboardAnalytics {
@@ -223,7 +234,22 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log('🔄 Обновление статистики Dashboard...');
       
-      // Пытаемся получить актуальные данные из Schedule контекста
+      // Пытаемся получить данные из API
+      const response = await fetch('/api/dashboard/stats', { 
+        credentials: 'include' 
+      });
+      
+      if (response.ok) {
+        const apiData = await response.json();
+        if (apiData.success) {
+          console.log('✅ Статистика обновлена из API');
+          setStats(apiData.data);
+          notifySubscribers({ stats: apiData.data });
+          return;
+        }
+      }
+      
+      // Fallback: получаем актуальные данные из Schedule контекста
       let eventsData = events;
       let trainersData = trainers;
       
@@ -247,7 +273,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setEvents(eventsData);
       setTrainers(trainersData);
       
-      console.log('✅ Статистика Dashboard обновлена');
+      console.log('✅ Статистика Dashboard обновлена (fallback)');
       notifySubscribers({ stats: updatedStats, events: eventsData });
       
     } catch (err) {
@@ -256,7 +282,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-    const syncAllData = async (): Promise<void> => {
+  const syncAllData = async (): Promise<void> => {
     try {
       console.log('🔄 Полная синхронизация данных Dashboard...');
       setLoading(true);
@@ -264,8 +290,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       
       // Пытаемся получить данные из API
       const [statsResponse, notificationsResponse] = await Promise.allSettled([
-        fetch('/api/dashboard/stats'),
-        fetch('/api/dashboard/notifications')
+        fetch('/api/dashboard/stats', { credentials: 'include' }),
+        fetch('/api/dashboard/notifications', { credentials: 'include' })
       ]);
       
       let statsData = getMockStats();
@@ -273,18 +299,49 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       
       // Обрабатываем ответ статистики
       if (statsResponse.status === 'fulfilled' && statsResponse.value.ok) {
-        statsData = await statsResponse.value.json();
-        console.log('✅ Статистика загружена с API');
+        try {
+          const response = await statsResponse.value.json();
+          if (response.success && response.data) {
+            statsData = response.data;
+            console.log('✅ Статистика загружена с API:', {
+              totalClients: statsData.totalClients,
+              activeTrainers: statsData.activeTrainers,
+              todayEvents: statsData.todayEvents
+            });
+          } else {
+            console.log('⚠️ API статистики вернул ошибку:', response.error);
+          }
+        } catch (parseError) {
+          console.log('⚠️ Ошибка парсинга ответа статистики:', parseError);
+        }
       } else {
         console.log('⚠️ API статистики недоступен, используем mock данные');
+        if (statsResponse.status === 'fulfilled') {
+          console.log('Статус ответа:', statsResponse.value.status);
+        }
       }
       
       // Обрабатываем ответ уведомлений
       if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok) {
-        notificationsData = await notificationsResponse.value.json();
-        console.log('✅ Уведомления загружены с API');
+        try {
+          const response = await notificationsResponse.value.json();
+          if (response.success && response.data) {
+            notificationsData = response.data;
+            console.log('✅ Уведомления загружены с API:', {
+              total: notificationsData.length,
+              unread: notificationsData.filter(n => !n.read).length
+            });
+          } else {
+            console.log('⚠️ API уведомлений вернул ошибку:', response.error);
+          }
+        } catch (parseError) {
+          console.log('⚠️ Ошибка парсинга ответа уведомлений:', parseError);
+        }
       } else {
         console.log('⚠️ API уведомлений недоступен, используем mock данные');
+        if (notificationsResponse.status === 'fulfilled') {
+          console.log('Статус ответа уведомлений:', notificationsResponse.value.status);
+        }
       }
       
       // Получаем данные из Schedule контекста если доступны
@@ -313,7 +370,12 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setTrainers(trainersData);
       setClients(getMockClients());
       
-      console.log('✅ Полная синхронизация Dashboard завершена');
+      console.log('✅ Полная синхронизация Dashboard завершена:', {
+        statsSource: statsData.dataSource || 'mock',
+        notificationsCount: notificationsData.length,
+        eventsCount: eventsData.length
+      });
+      
       notifySubscribers({ 
         stats: statsData, 
         notifications: notificationsData, 
@@ -332,21 +394,70 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
       setNotifications(mockNotifications);
       setAnalytics(getMockAnalytics());
       setClients(getMockClients());
+      
+      console.log('🔄 Использованы fallback mock данные');
     } finally {
       setLoading(false);
     }
   };
 
-  const markNotificationAsRead = (id: string) => {
+  const markNotificationAsRead = async (id: string) => {
+    // Оптимистично обновляем UI
     setNotifications(prev => 
       prev.map(notif => 
         notif.id === id ? { ...notif, read: true } : notif
       )
     );
+
+    // Пытаемся отправить на сервер
+    try {
+      const response = await fetch('/api/dashboard/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          notificationId: id,
+          action: 'read'
+        })
+      });
+
+      if (!response.ok) {
+        console.warn('⚠️ Не удалось отметить уведомление как прочитанное на сервере');
+      } else {
+        const result = await response.json();
+        console.log('✅ Уведомление отмечено как прочитанное:', result.message);
+      }
+    } catch (error) {
+      console.warn('⚠️ Ошибка при отметке уведомления:', error);
+      // UI уже обновлен, не откатываем изменения
+    }
   };
 
-  const clearAllNotifications = () => {
+  const clearAllNotifications = async () => {
+    // Оптимистично очищаем UI
+    const previousNotifications = notifications;
     setNotifications([]);
+
+    // Пытаемся очистить на сервере
+    try {
+      const response = await fetch('/api/dashboard/notifications', {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        console.warn('⚠️ Не удалось очистить уведомления на сервере');
+        // Можно откатить изменения если нужно
+        // setNotifications(previousNotifications);
+      } else {
+        console.log('✅ Все уведомления очищены на сервере');
+      }
+    } catch (error) {
+      console.warn('⚠️ Ошибка при очистке уведомлений:', error);
+      // UI уже обновлен, решаем не откатывать
+    }
   };
 
   const subscribeToUpdates = (callback: (data: any) => void): (() => void) => {
@@ -375,6 +486,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         }));
         
         console.log('✅ Dashboard синхронизирован с Schedule');
+        notifySubscribers({ events: updatedEvents, stats: calculatedStats });
       };
       
       window.addEventListener('schedule-updated', handleScheduleUpdate as EventListener);
@@ -383,6 +495,16 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         window.removeEventListener('schedule-updated', handleScheduleUpdate as EventListener);
       };
     }
+  }, []);
+
+  // ✅ АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ КАЖДЫЕ 5 МИНУТ
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('⏰ Автоматическое обновление Dashboard статистики');
+      refreshStats();
+    }, 5 * 60 * 1000); // 5 минут
+
+    return () => clearInterval(interval);
   }, []);
 
   // ✅ РЕГИСТРАЦИЯ В DEBUG СИСТЕМЕ
@@ -404,6 +526,8 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
         markNotificationAsRead,
         clearAllNotifications,
         subscribeToUpdates,
+        
+        // Дополнительные debug методы
         getStats: () => ({
           totalNotifications: notifications.length,
           unreadNotifications: notifications.filter(n => !n.read).length,
@@ -411,14 +535,47 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
           totalClients: stats.totalClients,
           todayEvents: stats.todayEvents,
           monthlyRevenue: stats.monthlyRevenue,
-          lastSync: new Date().toISOString()
-        })
+          lastSync: new Date().toISOString(),
+          dataSource: stats.dataSource || 'unknown',
+          subscribersCount: subscribers.length
+        }),
+        
+        forceRefresh: async () => {
+          console.log('🔄 Принудительное обновление Dashboard из debug');
+          await syncAllData();
+        },
+        
+        getApiStatus: async () => {
+          try {
+            const [statsCheck, notificationsCheck] = await Promise.allSettled([
+              fetch('/api/dashboard/stats', { credentials: 'include' }),
+              fetch('/api/dashboard/notifications', { credentials: 'include' })
+            ]);
+            
+            return {
+              stats: {
+                available: statsCheck.status === 'fulfilled' && statsCheck.value.ok,
+                status: statsCheck.status === 'fulfilled' ? statsCheck.value.status : 'failed'
+              },
+              notifications: {
+                available: notificationsCheck.status === 'fulfilled' && notificationsCheck.value.ok,
+                status: notificationsCheck.status === 'fulfilled' ? notificationsCheck.value.status : 'failed'
+              }
+            };
+          } catch (error) {
+            return {
+              stats: { available: false, status: 'error' },
+              notifications: { available: false, status: 'error' },
+              error: error instanceof Error ? error.message : 'Unknown error'
+            };
+          }
+        }
       };
       
       window.fitAccessDebug.dashboard = dashboardContext;
       console.log('✅ Dashboard контекст зарегистрирован в debug системе');
     }
-  }, [events, trainers, clients, notifications, stats, analytics, loading, error]);
+  }, [events, trainers, clients, notifications, stats, analytics, loading, error, subscribers]);
 
   // ✅ ИНИЦИАЛИЗАЦИЯ ДАННЫХ
   useEffect(() => {
@@ -471,7 +628,8 @@ export function useDashboardStats() {
       ...stats,
       growthIndicators,
       loading,
-      isHealthy: stats.clientRetention > 80 && stats.averageRating > 4.5
+      isHealthy: stats.clientRetention > 80 && stats.averageRating > 4.5,
+      isRealData: stats.dataSource === 'convex'
     };
   }, [stats, loading]);
 }
@@ -535,29 +693,33 @@ export function useDashboardAnalytics() {
     }
     
     // Анализ пиковых часов
-    const peakHour = analytics.peakHours.reduce((max, hour) => 
-      hour.utilization > max.utilization ? hour : max, analytics.peakHours[0]
-    );
-    
-    if (peakHour && peakHour.utilization > 90) {
-      insights.push({
-        type: 'warning',
-        title: 'Высокая загруженность',
-        description: `${peakHour.hour}:00 - пиковое время (${peakHour.utilization}% загрузки)`
-      });
+    if (analytics.peakHours.length > 0) {
+      const peakHour = analytics.peakHours.reduce((max, hour) => 
+        hour.utilization > max.utilization ? hour : max, analytics.peakHours[0]
+      );
+      
+      if (peakHour && peakHour.utilization > 90) {
+        insights.push({
+          type: 'warning',
+          title: 'Высокая загруженность',
+          description: `${peakHour.hour}:00 - пиковое время (${peakHour.utilization}% загрузки)`
+        });
+      }
     }
     
     // Анализ производительности тренеров
-    const topTrainer = analytics.trainerPerformance.reduce((max, trainer) => 
-      trainer.rating > max.rating ? trainer : max, analytics.trainerPerformance[0]
-    );
-    
-    if (topTrainer && topTrainer.rating > 4.8) {
-      insights.push({
-        type: 'positive',
-        title: 'Выдающийся тренер',
-        description: `${topTrainer.name} показывает отличные результаты (${topTrainer.rating}/5)`
-      });
+    if (analytics.trainerPerformance.length > 0) {
+      const topTrainer = analytics.trainerPerformance.reduce((max, trainer) => 
+        trainer.rating > max.rating ? trainer : max, analytics.trainerPerformance[0]
+      );
+      
+      if (topTrainer && topTrainer.rating > 4.8) {
+        insights.push({
+          type: 'positive',
+          title: 'Выдающийся тренер',
+          description: `${topTrainer.name} показывает отличные результаты (${topTrainer.rating}/5)`
+        });
+      }
     }
     
     return insights;
@@ -575,7 +737,7 @@ export function useDashboardAnalytics() {
           i === 0 || month.revenue > arr[i-1].revenue
         ) ? 'growing' : 'declining' : 'stable',
       
-      utilizationTrend: stats.equipmentUtilization > 80 ? 'high' : 
+            utilizationTrend: stats.equipmentUtilization > 80 ? 'high' : 
         stats.equipmentUtilization > 60 ? 'medium' : 'low'
     };
   }, [analytics, stats]);
@@ -586,9 +748,13 @@ export function useDashboardAnalytics() {
     trends,
     summary: {
       totalRevenue: analytics.clientGrowth.reduce((sum, month) => sum + month.revenue, 0),
-      averageRating: analytics.trainerPerformance.reduce((sum, trainer) => sum + trainer.rating, 0) / analytics.trainerPerformance.length,
+      averageRating: analytics.trainerPerformance.length > 0 
+        ? analytics.trainerPerformance.reduce((sum, trainer) => sum + trainer.rating, 0) / analytics.trainerPerformance.length 
+        : 0,
       totalSessions: analytics.trainerPerformance.reduce((sum, trainer) => sum + trainer.sessions, 0),
-      peakUtilization: Math.max(...analytics.peakHours.map(h => h.utilization))
+      peakUtilization: analytics.peakHours.length > 0 
+        ? Math.max(...analytics.peakHours.map(h => h.utilization)) 
+        : 0
     }
   };
 }
@@ -597,21 +763,234 @@ export function useRealtimeUpdates() {
   const { subscribeToUpdates } = useDashboard();
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [updateCount, setUpdateCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('connected');
   
   useEffect(() => {
     const unsubscribe = subscribeToUpdates((data) => {
       setLastUpdate(new Date());
       setUpdateCount(prev => prev + 1);
+      setConnectionStatus('connected');
       console.log('📊 Dashboard получил обновление:', data);
     });
     
-    return unsubscribe;
+    // Проверяем соединение каждые 30 секунд
+    const healthCheck = setInterval(async () => {
+      try {
+        setConnectionStatus('connecting');
+        const response = await fetch('/api/dashboard/stats', { 
+          credentials: 'include',
+          signal: AbortSignal.timeout(5000) // 5 секунд таймаут
+        });
+        
+        if (response.ok) {
+          setConnectionStatus('connected');
+        } else {
+          setConnectionStatus('disconnected');
+        }
+      } catch (error) {
+        setConnectionStatus('disconnected');
+        console.warn('⚠️ Проблема с соединением Dashboard API:', error);
+      }
+    }, 30000); // 30 секунд
+    
+    return () => {
+      unsubscribe();
+      clearInterval(healthCheck);
+    };
   }, [subscribeToUpdates]);
   
   return {
     lastUpdate,
     updateCount,
-    isConnected: true // В реальном приложении это может быть состояние WebSocket
+    connectionStatus,
+    isConnected: connectionStatus === 'connected',
+    timeSinceLastUpdate: lastUpdate ? Date.now() - lastUpdate.getTime() : null
+  };
+}
+
+// ✅ ХУК ДЛЯ МОНИТОРИНГА ПРОИЗВОДИТЕЛЬНОСТИ DASHBOARD
+export function useDashboardPerformance() {
+  const { stats, notifications, events, loading } = useDashboard();
+  const [renderCount, setRenderCount] = useState(0);
+  const [lastRenderTime, setLastRenderTime] = useState<Date | null>(null);
+  
+  useEffect(() => {
+    setRenderCount(prev => prev + 1);
+    setLastRenderTime(new Date());
+  });
+  
+  const performanceMetrics = React.useMemo(() => {
+    return {
+      dataSize: {
+        stats: Object.keys(stats).length,
+        notifications: notifications.length,
+        events: events.length
+      },
+      renderMetrics: {
+        renderCount,
+        lastRenderTime,
+        isLoading: loading
+      },
+      healthScore: {
+        dataFreshness: stats.lastUpdated ? 
+          (Date.now() - new Date(stats.lastUpdated).getTime()) / (1000 * 60) : // минуты
+          null,
+        unreadNotifications: notifications.filter(n => !n.read).length,
+        criticalAlerts: notifications.filter(n => n.priority === 'high' && !n.read).length
+      }
+    };
+  }, [stats, notifications, events, renderCount, lastRenderTime, loading]);
+  
+  return performanceMetrics;
+}
+
+// ✅ ХУК ДЛЯ ЭКСПОРТА ДАННЫХ DASHBOARD
+export function useDashboardExport() {
+  const { stats, notifications, analytics, events } = useDashboard();
+  
+  const exportToJSON = React.useCallback(() => {
+    const exportData = {
+      timestamp: new Date().toISOString(),
+      stats,
+      notifications,
+      analytics,
+      events: events.length, // Только количество для безопасности
+      meta: {
+        exportedBy: 'Dashboard Export Hook',
+        version: '1.0.0'
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: 'application/json'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dashboard-export-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    console.log('📁 Dashboard данные экспортированы в JSON');
+  }, [stats, notifications, analytics, events]);
+  
+  const exportToCSV = React.useCallback(() => {
+    // Экспорт статистики в CSV
+    const csvData = [
+      ['Метрика', 'Значение', 'Дата обновления'],
+      ['Всего клиентов', stats.totalClients.toString(), stats.lastUpdated || new Date().toISOString()],
+      ['Активных тренеров', stats.activeTrainers.toString(), stats.lastUpdated || new Date().toISOString()],
+      ['События сегодня', stats.todayEvents.toString(), stats.lastUpdated || new Date().toISOString()],
+      ['Месячная выручка', stats.monthlyRevenue.toString(), stats.lastUpdated || new Date().toISOString()],
+      ['Недельный рост (%)', stats.weeklyGrowth.toString(), stats.lastUpdated || new Date().toISOString()],
+      ['Удержание клиентов (%)', stats.clientRetention.toString(), stats.lastUpdated || new Date().toISOString()],
+      ['Средний рейтинг', stats.averageRating.toString(), stats.lastUpdated || new Date().toISOString()],
+      ['Использование оборудования (%)', stats.equipmentUtilization.toString(), stats.lastUpdated || new Date().toISOString()]
+    ];
+    
+    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dashboard-stats-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+    console.log('📊 Dashboard статистика экспортирована в CSV');
+  }, [stats]);
+  
+  const generateReport = React.useCallback(() => {
+    const report = {
+      title: 'Dashboard Report',
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalClients: stats.totalClients,
+        activeTrainers: stats.activeTrainers,
+        todayEvents: stats.todayEvents,
+        monthlyRevenue: stats.monthlyRevenue,
+        weeklyGrowth: stats.weeklyGrowth,
+        clientRetention: stats.clientRetention
+      },
+      notifications: {
+        total: notifications.length,
+        unread: notifications.filter(n => !n.read).length,
+        byPriority: {
+          high: notifications.filter(n => n.priority === 'high').length,
+          medium: notifications.filter(n => n.priority === 'medium').length,
+          low: notifications.filter(n => n.priority === 'low').length
+        }
+      },
+      insights: [
+        stats.weeklyGrowth > 10 ? 'Отличный рост клиентской базы' : null,
+        stats.clientRetention > 85 ? 'Высокое удержание клиентов' : null,
+        stats.averageRating > 4.5 ? 'Отличные оценки сервиса' : null,
+        notifications.filter(n => n.priority === 'high' && !n.read).length > 0 ? 
+          'Есть критические уведомления' : null
+      ].filter(Boolean)
+    };
+    
+    return report;
+  }, [stats, notifications]);
+  
+  return {
+    exportToJSON,
+    exportToCSV,
+    generateReport
+  };
+}
+
+// ✅ ХУК ДЛЯ НАСТРОЕК DASHBOARD
+export function useDashboardSettings() {
+  const [settings, setSettings] = useState({
+    autoRefresh: true,
+    refreshInterval: 5, // минуты
+    showNotifications: true,
+    compactMode: false,
+    theme: 'light' as 'light' | 'dark',
+    language: 'ru' as 'ru' | 'en'
+  });
+  
+  // Загружаем настройки из localStorage
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('dashboard-settings');
+    if (savedSettings) {
+      try {
+        const parsed = JSON.parse(savedSettings);
+        setSettings(prev => ({ ...prev, ...parsed }));
+      } catch (error) {
+        console.warn('⚠️ Ошибка загрузки настроек Dashboard:', error);
+      }
+    }
+  }, []);
+  
+  // Сохраняем настройки в localStorage
+  useEffect(() => {
+    localStorage.setItem('dashboard-settings', JSON.stringify(settings));
+  }, [settings]);
+  
+  const updateSetting = React.useCallback((key: keyof typeof settings, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  }, []);
+  
+  const resetSettings = React.useCallback(() => {
+    setSettings({
+      autoRefresh: true,
+      refreshInterval: 5,
+      showNotifications: true,
+      compactMode: false,
+      theme: 'light',
+      language: 'ru'
+    });
+    localStorage.removeItem('dashboard-settings');
+  }, []);
+  
+  return {
+    settings,
+    updateSetting,
+    resetSettings
   };
 }
 

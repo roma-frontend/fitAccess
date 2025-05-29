@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
     const payload = await verifyToken(token);
     
-    if (!['super_admin', 'admin'].includes(payload.role)) {
+    if (!['super-admin', 'admin'].includes(payload.role)) {
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 });
     }
 
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Нельзя деактивировать супер-админа
-    if (user.role === 'super_admin') {
+    if (user.role === 'super-admin') {
       return NextResponse.json({ error: 'Нельзя деактивировать супер-админа' }, { status: 403 });
     }
 

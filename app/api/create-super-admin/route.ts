@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         email,
         password: hashedPassword,
         name,
-        role: 'super_admin',
+        role: 'super-admin',
         isActive: true,
         createdAt: Date.now()
       });

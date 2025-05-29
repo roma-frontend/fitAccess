@@ -207,7 +207,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       events: eventLogs,
       notifications: messages,
       syncStatus: {
-        super_admin: true,
+        super-admin: true,
         admin: true,
         manager: true,
         trainer: true,

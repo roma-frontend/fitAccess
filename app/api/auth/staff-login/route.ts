@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем роль (только персонал)
-    const allowedRoles = ['super_admin', 'admin', 'manager', 'trainer', 'staff'];
+    const allowedRoles = ['super-admin', 'admin', 'manager', 'trainer', 'staff'];
     if (!allowedRoles.includes(user.role)) {
       return NextResponse.json(
         { error: 'Недостаточно прав доступа' },
