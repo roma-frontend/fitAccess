@@ -281,7 +281,7 @@ export function PersonalizedNotifications() {
       </Button>
 
       {showAll && (
-        <Card className="absolute top-12 right-0 w-96 z-50 shadow-lg border">
+        <Card className="absolute top-12 -right-5 w-96 z-50 shadow-lg border">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">

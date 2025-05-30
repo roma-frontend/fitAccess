@@ -6,13 +6,15 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log("🔄 API: Восстановление продукта:", params.id);
+    // Ожидаем разрешения Promise для получения параметров
+    const { id } = await params;
+    console.log("🔄 API: Восстановление продукта:", id);
 
     const result = await convex.mutation("products:restore", {
-      id: params.id
+      id: id
     });
 
     console.log("✅ API: Продукт восстановлен:", result);

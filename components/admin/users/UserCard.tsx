@@ -29,6 +29,9 @@ import {
 import { User, UserRole } from "@/types/user";
 import { canManageUser, canDeleteUser } from "@/lib/permissions";
 
+// Экспортируем типы для использования в других компонентах
+export type { User, UserRole } from "@/types/user";
+
 interface UserCardProps {
   user: User;
   currentUserRole: UserRole;

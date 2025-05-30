@@ -1,8 +1,6 @@
 // app/api/analytics/export/route.ts (исправленная версия)
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
-import { useQuery } from 'convex/react';
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -72,7 +70,7 @@ export async function POST(request: NextRequest) {
     const { type, startDate, endDate, format = "json" } = await request.json();
 
     // Получаем данные через Convex (используем convex.query вместо useQuery)
-    const exportData = await useQuery(api.analytics.getExportData, {
+    const exportData = await convex.query("analytics:getExportData", {
       type,
       startDate,
       endDate,

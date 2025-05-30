@@ -29,7 +29,6 @@ export const create = mutation({
     try {
       const orderId = await ctx.db.insert("orders", {
         memberId: args.memberId,
-        items: args.items,
         totalAmount: args.totalAmount,
         status: args.status,
         pickupType: args.pickupType,

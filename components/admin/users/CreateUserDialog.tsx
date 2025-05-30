@@ -202,7 +202,7 @@ const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log('📤 Загружаем фото...');
     
     // Используем hook для загрузки
-    const cloudinaryUrl = await upload(file);
+    const cloudinaryUrl = await upload(file, { folder: 'user-avatars', uploadPreset: 'ml_default' });
 
     if (cloudinaryUrl) {
       console.log('✅ Фото загружено:', cloudinaryUrl);

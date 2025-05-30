@@ -7,7 +7,7 @@ export function useCloudinaryUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const upload = async (file: File) => {
+  const upload = async (file: File, p0: { folder: string; uploadPreset: string; }) => {
     setIsUploading(true);
     setError(null);
 

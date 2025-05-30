@@ -1,4 +1,4 @@
-// app/api/admin/users/[id]/route.ts (исправленная версия)
+// app/api/admin/users/[id]/route.ts (исправленная версия для Next.js 15)
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from "convex/browser";
 import { getSession } from '@/lib/simple-auth';
@@ -7,12 +7,15 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   console.log('🎯 PUT /api/admin/users/[id] - НАЧАЛО обработки');
-  console.log('📍 ID пользователя для обновления:', params.id);
   
   try {
+    // Ожидаем разрешения Promise для получения параметров
+    const { id } = await params;
+    console.log('📍 ID пользователя для обновления:', id);
+    
     // Проверяем все куки
     const allCookies = request.cookies.getAll();
     console.log('🍪 Все куки в PUT запросе:', allCookies);
@@ -63,7 +66,7 @@ export async function PUT(
     // Получаем текущего пользователя из Convex (используем строковые названия)
     console.log('🔍 PUT: Получаем данные пользователя из Convex...');
     const currentUser = await convex.query("users:getUserById", { 
-      userId: params.id as any 
+      userId: id as any 
     });
 
     if (!currentUser) {
@@ -111,7 +114,7 @@ export async function PUT(
     }
 
     // Нельзя деактивировать самого себя
-    if (params.id === sessionData.user.id && isActive === false) {
+    if (id === sessionData.user.id && isActive === false) {
       console.log('❌ PUT: Попытка деактивировать самого себя');
       return NextResponse.json({ 
         success: false,
@@ -133,7 +136,7 @@ export async function PUT(
     // Обновляем пользователя через Convex (используем строковые названия)
     console.log('💾 PUT: Обновляем пользователя через Convex...');
     const updatedUser = await convex.mutation("users:updateUser", {
-      userId: params.id as any,
+      userId: id as any,
       updates
     });
 
@@ -160,10 +163,12 @@ export async function PUT(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🔍 GET /api/admin/users/[id] - получение пользователя:', params.id);
+    // Ожидаем разрешения Promise для получения параметров
+    const { id } = await params;
+    console.log('🔍 GET /api/admin/users/[id] - получение пользователя:', id);
     
     const sessionId = request.cookies.get('session_id')?.value;
     if (!sessionId) {
@@ -180,7 +185,7 @@ export async function GET(
     }
 
     const user = await convex.query("users:getUserById", { 
-      userId: params.id as any 
+      userId: id as any 
     });
 
     if (!user) {
@@ -208,10 +213,12 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🗑️ DELETE /api/admin/users/[id] - удаление пользователя:', params.id);
+    // Ожидаем разрешения Promise для получения параметров
+    const { id } = await params;
+    console.log('🗑️ DELETE /api/admin/users/[id] - удаление пользователя:', id);
     
     const sessionId = request.cookies.get('session_id')?.value;
     if (!sessionId) {
@@ -228,7 +235,7 @@ export async function DELETE(
     }
 
     const user = await convex.query("users:getUserById", { 
-      userId: params.id as any 
+      userId: id as any 
     });
 
     if (!user) {
@@ -241,14 +248,14 @@ export async function DELETE(
       }, { status: 403 });
     }
 
-    if (params.id === sessionData.user.id) {
+    if (id === sessionData.user.id) {
       return NextResponse.json({ 
         error: 'Нельзя удалить самого себя' 
       }, { status: 403 });
     }
 
     await convex.mutation("users:deleteUser", {
-      id: params.id as any
+      id: id as any
     });
 
     console.log('✅ DELETE: Пользователь удален:', user.name);

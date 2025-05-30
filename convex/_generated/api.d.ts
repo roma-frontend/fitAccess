@@ -18,6 +18,7 @@ import type * as admin from "../admin.js";
 import type * as analytics from "../analytics.js";
 import type * as bookings from "../bookings.js";
 import type * as classes from "../classes.js";
+import type * as clients from "../clients.js";
 import type * as debug from "../debug.js";
 import type * as events from "../events.js";
 import type * as logs from "../logs.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
   bookings: typeof bookings;
   classes: typeof classes;
+  clients: typeof clients;
   debug: typeof debug;
   events: typeof events;
   logs: typeof logs;
