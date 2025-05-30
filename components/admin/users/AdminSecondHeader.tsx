@@ -23,7 +23,7 @@ export function AdminSecondHeader({
   description,
   icon: Icon,
   actions,
-  backUrl = "/AdminSecond",
+  backUrl = "/admin",
   onBack,
   className
 }: AdminSecondHeaderProps) {
