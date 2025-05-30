@@ -9,26 +9,18 @@ interface ChartsProps {
 }
 
 export function Charts({ data }: ChartsProps) {
-  // Простая реализация графика без внешних библиотек
-  const LineChart = ({ data, title, color = "blue" }: { 
-    data: Array<{ date: string; value: number }>, 
-    title: string,
-    color?: string 
-  }) => {
-    const maxValue = Math.max(...data.map(d => d.value));
-    const minValue = Math.min(...data.map(d => d.value));
-    const range = maxValue - minValue || 1;
-
-    return (
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Users Registration Trend */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">{title}</CardTitle>
+          <CardTitle>Регистрации пользователей</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-64 relative">
             <svg className="w-full h-full" viewBox="0 0 400 200">
               {/* Grid lines */}
-              {[0, 1, 2, 3, 4].map(i => (
+              {[0, 1, 2, 3, 4].map((i) => (
                 <line
                   key={i}
                   x1="0"
@@ -39,138 +31,263 @@ export function Charts({ data }: ChartsProps) {
                   strokeWidth="1"
                 />
               ))}
-              
+
               {/* Data line */}
               <polyline
                 fill="none"
-                stroke={color === "blue" ? "#3b82f6" : color === "green" ? "#10b981" : "#8b5cf6"}
-                strokeWidth="2"
-                points={data.map((point, index) => {
-                  const x = (index / (data.length - 1)) * 400;
-                  const y = 200 - ((point.value - minValue) / range) * 180;
-                  return `${x},${y}`;
-                }).join(' ')}
+                stroke="#3b82f6"
+                strokeWidth="3"
+                points={data.users.registrationTrend
+                  .map((point, index) => {
+                    const x = (index / (data.users.registrationTrend.length - 1)) * 400;
+                    const maxValue = Math.max(...data.users.registrationTrend.map((d) => d.count));
+                    const y = 200 - (point.count / (maxValue || 1)) * 180;
+                    return `${x},${y}`;
+                  })
+                  .join(" ")}
               />
-              
+
               {/* Data points */}
-              {data.map((point, index) => {
-                const x = (index / (data.length - 1)) * 400;
-                const y = 200 - ((point.value - minValue) / range) * 180;
+              {data.users.registrationTrend.map((point, index) => {
+                const x = (index / (data.users.registrationTrend.length - 1)) * 400;
+                const maxValue = Math.max(...data.users.registrationTrend.map((d) => d.count));
+                const y = 200 - (point.count / (maxValue || 1)) * 180;
                 return (
-                  <circle
-                    key={index}
-                    cx={x}
-                    cy={y}
-                    r="4"
-                    fill={color === "blue" ? "#3b82f6" : color === "green" ? "#10b981" : "#8b5cf6"}
-                  />
+                  <g key={index}>
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      fill="#3b82f6"
+                      className="hover:r-6 transition-all cursor-pointer"
+                    />
+                    <title>{`${point.date}: ${point.count} регистраций`}</title>
+                  </g>
                 );
               })}
             </svg>
-            
-            {/* Y-axis labels */}
-            <div className="absolute left-5 top-0 h-full flex flex-col justify-between text-xs text-gray-500 -ml-8">
-              <span>{maxValue}</span>
-              <span>{Math.round(maxValue * 0.75)}</span>
-              <span>{Math.round(maxValue * 0.5)}</span>
-              <span>{Math.round(maxValue * 0.25)}</span>
-              <span>{minValue}</span>
-            </div>
-            
-            {/* X-axis labels */}
-            <div className="absolute bottom-0 left-0 w-full flex justify-between text-xs text-gray-500 -mb-6">
-              {data.map((point, index) => (
-                index % Math.ceil(data.length / 5) === 0 && (
-                  <span key={index}>{new Date(point.date).toLocaleDateString('ru', { month: 'short', day: 'numeric' })}</span>
-                )
-              ))}
-            </div>
           </div>
         </CardContent>
       </Card>
-    );
-  };
 
-  const BarChart = ({ data, title }: { 
-    data: Array<{ name: string; value: number }>, 
-    title: string 
-  }) => {
-    const maxValue = Math.max(...data.map(d => d.value));
-
-    return (
+      {/* Revenue Trend */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">{title}</CardTitle>
+          <CardTitle>Динамика выручки</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {data.map((item, index) => (
-              <div key={index} className="flex items-center space-x-3">
-                <div className="w-20 text-sm text-gray-600 truncate">{item.name}</div>
-                <div className="flex-1 bg-gray-200 rounded-full h-4 relative">
-                  <div 
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-4 rounded-full transition-all duration-500"
-                    style={{ width: `${(item.value / maxValue) * 100}%` }}
-                  />
-                </div>
-                <div className="w-16 text-sm font-medium text-gray-900 text-right">
-                  {item.value.toLocaleString()}
-                </div>
-              </div>
-            ))}
+          <div className="h-64 relative">
+            <svg className="w-full h-full" viewBox="0 0 400 200">
+              {/* Grid lines */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line
+                  key={i}
+                  x1="0"
+                  y1={i * 40}
+                  x2="400"
+                  y2={i * 40}
+                  stroke="#f3f4f6"
+                  strokeWidth="1"
+                />
+              ))}
+
+              {/* Area gradient */}
+              <defs>
+                <linearGradient id="revenueAreaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+
+              {/* Area fill */}
+              <polygon
+                fill="url(#revenueAreaGradient)"
+                points={`0,200 ${data.revenue.trend
+                  .map((point, index) => {
+                    const x = (index / (data.revenue.trend.length - 1)) * 400;
+                    const maxValue = Math.max(...data.revenue.trend.map((d) => d.amount));
+                    const y = 200 - (point.amount / (maxValue || 1)) * 180;
+                    return `${x},${y}`;
+                  })
+                  .join(" ")} 400,200`}
+              />
+
+              {/* Data line */}
+              <polyline
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="3"
+                points={data.revenue.trend
+                  .map((point, index) => {
+                    const x = (index / (data.revenue.trend.length - 1)) * 400;
+                    const maxValue = Math.max(...data.revenue.trend.map((d) => d.amount));
+                    const y = 200 - (point.amount / (maxValue || 1)) * 180;
+                    return `${x},${y}`;
+                  })
+                  .join(" ")}
+              />
+
+              {/* Data points */}
+              {data.revenue.trend.map((point, index) => {
+                const x = (index / (data.revenue.trend.length - 1)) * 400;
+                const maxValue = Math.max(...data.revenue.trend.map((d) => d.amount));
+                const y = 200 - (point.amount / (maxValue || 1)) * 180;
+                return (
+                  <g key={index}>
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      fill="#10b981"
+                      className="hover:r-6 transition-all cursor-pointer"
+                    />
+                    <title>{`${point.date}: ${point.amount.toLocaleString()} ₽`}</title>
+                  </g>
+                );
+              })}
+            </svg>
           </div>
         </CardContent>
       </Card>
-    );
-  };
 
-  // Подготовка данных для графиков
-  const userTrendData = data.users.registrationTrend.map(item => ({
-    date: item.date,
-    value: item.count
-  }));
+      {/* Product Sales Trend */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Продажи продуктов</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 relative">
+            <svg className="w-full h-full" viewBox="0 0 400 200">
+              {/* Grid lines */}
+              {[0, 1, 2, 3, 4].map((i) => (
+                <line
+                  key={i}
+                  x1="0"
+                  y1={i * 40}
+                  x2="400"
+                  y2={i * 40}
+                  stroke="#f3f4f6"
+                  strokeWidth="1"
+                />
+              ))}
 
-  const revenueTrendData = data.revenue.trend.map(item => ({
-    date: item.date,
-    value: item.amount
-  }));
+              {/* Sales line */}
+              <polyline
+                fill="none"
+                stroke="#8b5cf6"
+                strokeWidth="3"
+                points={data.products.salesTrend
+                  .map((point, index) => {
+                    const x = (index / (data.products.salesTrend.length - 1)) * 400;
+                    const maxValue = Math.max(...data.products.salesTrend.map((d) => d.sales));
+                    const y = 200 - (point.sales / (maxValue || 1)) * 180;
+                    return `${x},${y}`;
+                  })
+                  .join(" ")}
+              />
 
-  const categoryData = Object.entries(data.products.byCategory).map(([name, value]) => ({
-    name: name === 'supplements' ? 'Добавки' : 
-          name === 'drinks' ? 'Напитки' :
-          name === 'snacks' ? 'Снеки' : 'Мерч',
-    value
-  }));
+              {/* Data points */}
+              {data.products.salesTrend.map((point, index) => {
+                const x = (index / (data.products.salesTrend.length - 1)) * 400;
+                const maxValue = Math.max(...data.products.salesTrend.map((d) => d.sales));
+                const y = 200 - (point.sales / (maxValue || 1)) * 180;
+                return (
+                  <g key={index}>
+                    <circle
+                      cx={x}
+                      cy={y}
+                      r="4"
+                      fill="#8b5cf6"
+                      className="hover:r-6 transition-all cursor-pointer"
+                    />
+                    <title>{`${point.date}: ${point.sales} продаж, ${point.revenue.toLocaleString()} ₽`}</title>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </CardContent>
+      </Card>
 
-  // Исправление: преобразуем revenue в value
-  const topProductsData = data.revenue.byProduct.slice(0, 5).map(product => ({
-    name: product.name,
-    value: product.revenue // Преобразуем revenue в value
-  }));
-
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-      <LineChart 
-        data={userTrendData} 
-        title="Регистрации пользователей" 
-        color="blue"
-      />
-      
-      <LineChart 
-        data={revenueTrendData} 
-        title="Динамика выручки" 
-        color="green"
-      />
-      
-      <BarChart 
-        data={categoryData} 
-        title="Продукты по категориям"
-      />
-      
-      <BarChart 
-        data={topProductsData} 
-        title="Топ продукты по выручке"
-      />
+      {/* User Roles Pie Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Распределение пользователей</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center">
+            <svg width="200" height="200" viewBox="0 0 200 200">
+              {(() => {
+                const total = Object.values(data.users.byRole).reduce((sum, count) => sum + count, 0);
+                const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+                let currentAngle = 0;
+                
+                return Object.entries(data.users.byRole).map(([role, count], index) => {
+                  const percentage = count / total;
+                  const angle = percentage * 360;
+                  const startAngle = currentAngle;
+                  const endAngle = currentAngle + angle;
+                  
+                  // Convert to radians
+                  const startRad = (startAngle * Math.PI) / 180;
+                  const endRad = (endAngle * Math.PI) / 180;
+                  
+                  // Calculate path
+                  const largeArcFlag = angle > 180 ? 1 : 0;
+                  const x1 = 100 + 80 * Math.cos(startRad);
+                  const y1 = 100 + 80 * Math.sin(startRad);
+                  const x2 = 100 + 80 * Math.cos(endRad);
+                  const y2 = 100 + 80 * Math.sin(endRad);
+                  
+                  const pathData = [
+                    `M 100 100`,
+                    `L ${x1} ${y1}`,
+                    `A 80 80 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+                    `Z`
+                  ].join(' ');
+                  
+                  currentAngle += angle;
+                  
+                  return (
+                    <g key={role}>
+                      <path
+                        d={pathData}
+                        fill={colors[index % colors.length]}
+                        className="hover:opacity-80 transition-opacity cursor-pointer"
+                      />
+                      <title>{`${role}: ${count} (${(percentage * 100).toFixed(1)}%)`}</title>
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+          </div>
+          
+          {/* Legend */}
+          <div className="mt-4 space-y-2">
+            {Object.entries(data.users.byRole).map(([role, count], index) => {
+              const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+              const roleNames = {
+                "super-admin": "Супер Админы",
+                admin: "Админы",
+                manager: "Менеджеры",
+                trainer: "Тренеры",
+                member: "Участники",
+              };
+              
+              return (
+                <div key={role} className="flex items-center space-x-2 text-sm">
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: colors[index % colors.length] }}
+                  />
+                  <span>{roleNames[role as keyof typeof roleNames] || role}: {count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -193,7 +193,7 @@ export function QuickActions({
               <Star className="h-4 w-4 text-yellow-500" />
               <h3 className="font-medium text-gray-900">Рекомендуемые</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
               {recommendedActions.map((action) => {
                 const Icon = getIcon(action.icon);
                 return (

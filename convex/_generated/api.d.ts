@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as accessLogs from "../accessLogs.js";
 import type * as admin from "../admin.js";
+import type * as analytics from "../analytics.js";
 import type * as bookings from "../bookings.js";
 import type * as classes from "../classes.js";
 import type * as debug from "../debug.js";
@@ -42,6 +43,7 @@ import type * as visits from "../visits.js";
 declare const fullApi: ApiFromModules<{
   accessLogs: typeof accessLogs;
   admin: typeof admin;
+  analytics: typeof analytics;
   bookings: typeof bookings;
   classes: typeof classes;
   debug: typeof debug;

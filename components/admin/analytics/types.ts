@@ -1,4 +1,4 @@
-// components/admin/analytics/types.ts
+// components/admin/analytics/types.ts (обновленные типы)
 export interface AnalyticsData {
   users: {
     total: number;
@@ -30,6 +30,49 @@ export interface AnalyticsData {
     growth: number;
     byProduct: Array<{ name: string; revenue: number }>;
     trend: Array<{ date: string; amount: number }>;
+  };
+}
+
+export interface UserStats {
+  total: number;
+  active: number;
+  newInPeriod: number;
+  byRole: Record<string, { count: number; active: number }>;
+  activityRate: number;
+}
+
+export interface ProductStats {
+  total: number;
+  active: number;
+  inStock: number;
+  lowStock: number;
+  outOfStock: number;
+  totalValue: number;
+  byCategory: Record<string, {
+    count: number;
+    inStock: number;
+    totalValue: number;
+    averagePrice: number;
+  }>;
+  lowStockProducts: Array<{
+    id: string;
+    name: string;
+    currentStock: number;
+    minStock: number;
+    category: string;
+  }>;
+}
+
+export interface RevenueStats {
+  total: number;
+  growth: number;
+  ordersCount: number;
+  averageOrderValue: number;
+  topProducts: Array<{ name: string; revenue: number }>;
+  dailyTrend: Array<{ date: string; amount: number; orders: number }>;
+  previousPeriod: {
+    revenue: number;
+    ordersCount: number;
   };
 }
 

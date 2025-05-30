@@ -12,19 +12,42 @@ import {
   Eye,
   Clock
 } from "lucide-react";
-import { AnalyticsData } from "./types";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 interface MetricsGridProps {
-  data: AnalyticsData;
+  period?: string;
 }
 
-export function MetricsGrid({ data }: MetricsGridProps) {
+export function MetricsGrid({ period = "month" }: MetricsGridProps) {
+  const analyticsData = useAnalytics(period);
+
+  if (!analyticsData) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-8 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-24"></div>
+                </div>
+                <div className="h-8 w-8 bg-gray-200 rounded"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   const metrics = [
     {
       title: "Всего пользователей",
-      value: data.users.total.toLocaleString(),
-      change: data.users.growth,
-      trend: data.users.growth > 0 ? 'up' : data.users.growth < 0 ? 'down' : 'neutral',
+      value: analyticsData.users.total.toLocaleString(),
+      change: analyticsData.users.growth,
+      trend: analyticsData.users.growth > 0 ? 'up' : analyticsData.users.growth < 0 ? 'down' : 'neutral',
       icon: Users,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
@@ -32,8 +55,8 @@ export function MetricsGrid({ data }: MetricsGridProps) {
     },
     {
       title: "Активные пользователи",
-      value: data.users.active.toLocaleString(),
-      change: 12.5,
+      value: analyticsData.users.active.toLocaleString(),
+      change: 12.5, // можно добавить в аналитику
       trend: 'up' as const,
       icon: Activity,
       color: "text-green-600",
@@ -42,8 +65,8 @@ export function MetricsGrid({ data }: MetricsGridProps) {
     },
     {
       title: "Продуктов в каталоге",
-      value: data.products.total,
-      change: 8.3,
+      value: analyticsData.products.total,
+      change: 8.3, // можно добавить в аналитику
       trend: 'up' as const,
       icon: Package,
       color: "text-purple-600",
@@ -52,9 +75,9 @@ export function MetricsGrid({ data }: MetricsGridProps) {
     },
     {
       title: "Общая выручка",
-      value: `${data.revenue.total.toLocaleString()} ₽`,
-      change: data.revenue.growth,
-      trend: data.revenue.growth > 0 ? 'up' : 'down',
+      value: `${analyticsData.revenue.total.toLocaleString()} ₽`,
+      change: analyticsData.revenue.growth,
+      trend: analyticsData.revenue.growth > 0 ? 'up' : 'down',
       icon: DollarSign,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
@@ -62,8 +85,8 @@ export function MetricsGrid({ data }: MetricsGridProps) {
     },
     {
       title: "Просмотры страниц",
-      value: data.activity.pageViews.toLocaleString(),
-      change: 15.2,
+      value: analyticsData.activity.pageViews.toLocaleString(),
+      change: 15.2, // можно добавить в аналитику
       trend: 'up' as const,
       icon: Eye,
       color: "text-orange-600",
@@ -72,8 +95,8 @@ export function MetricsGrid({ data }: MetricsGridProps) {
     },
     {
       title: "Среднее время сессии",
-      value: `${Math.round(data.activity.averageSessionTime / 60)}м`,
-      change: -2.1,
+      value: `${Math.round(analyticsData.activity.averageSessionTime / 60)}м`,
+      change: -2.1, // можно добавить в аналитику
       trend: 'down' as const,
       icon: Clock,
       color: "text-indigo-600",
@@ -106,7 +129,7 @@ export function MetricsGrid({ data }: MetricsGridProps) {
                     }`}>
                       {metric.change > 0 ? '+' : ''}{metric.change}%
                     </span>
-                    <span className="text-sm text-gray-500">за месяц</span>
+                    <span className="text-sm text-gray-500">за {period === 'day' ? 'день' : period === 'week' ? 'неделю' : period === 'year' ? 'год' : 'месяц'}</span>
                   </div>
                 </div>
                 <Icon className={`h-8 w-8 ${metric.color}`} />
@@ -118,3 +141,4 @@ export function MetricsGrid({ data }: MetricsGridProps) {
     </div>
   );
 }
+
