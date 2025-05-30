@@ -27,16 +27,21 @@ export default defineSchema({
 
   // Продукты - полная совместимость
   products: defineTable({
-    name: v.optional(v.string()),
-    title: v.optional(v.string()), // Основное поле для названия
-    description: v.optional(v.string()),
-    category: v.optional(v.string()),
-    inStock: v.optional(v.number()),
-    stock: v.optional(v.number()),
-    price: v.optional(v.number()),
-    cost: v.optional(v.number()),
+    name: v.string(),
+    description: v.string(),
+    category: v.union(
+      v.literal("supplements"),
+      v.literal("drinks"), 
+      v.literal("snacks"),
+      v.literal("merchandise")
+    ),
+    price: v.number(),
     imageUrl: v.optional(v.string()),
+    inStock: v.number(),
     minStock: v.number(),
+    isActive: v.optional(v.boolean()),
+    isPopular: v.boolean(),
+    isDeleted: v.optional(v.boolean()),
     nutrition: v.optional(v.object({
       calories: v.optional(v.number()),
       protein: v.optional(v.number()),
@@ -44,9 +49,8 @@ export default defineSchema({
       fat: v.optional(v.number()),
       sugar: v.optional(v.number()),
     })),
-    isActive: v.boolean(),
-    isPopular: v.optional(v.boolean()),
     createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
   })
     .index("by_category", ["category"])
     .index("by_popularity", ["isPopular"])

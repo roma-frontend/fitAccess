@@ -4,19 +4,23 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  Edit, 
-  Trash2, 
-  MoreVertical, 
+import {
+  Edit,
+  Trash2,
+  MoreVertical,
   Star,
   Package,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  MoreHorizontal,
+  Archive
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Product } from "./types";
@@ -24,7 +28,7 @@ import { Product } from "./types";
 interface ProductCardProps {
   product: Product;
   onEdit: (product: Product) => void;
-  onDelete: (id: string, name: string) => void;
+  onDelete: (id: string, name: string, type?: 'soft' | 'hard') => void;
 }
 
 export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
@@ -56,6 +60,11 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
 
   const stockStatus = getStockStatus(product.inStock);
 
+
+  const handleDelete = (type: 'soft' | 'hard') => {
+    onDelete(product._id, product.name, type);
+  };
+
   return (
     <Card className="group hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
       <CardContent className="p-6">
@@ -67,9 +76,9 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
                 <Star className="h-4 w-4 text-yellow-500 fill-current" />
               )}
             </div>
-            
+
             <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
-            
+
             <div className="flex items-center gap-2 mb-3">
               <Badge className={getCategoryColor(product.category)}>
                 {getCategoryName(product.category)}
@@ -84,21 +93,40 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreVertical className="h-4 w-4" />
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Действия</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => onEdit(product)}>
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit className="mr-2 h-4 w-4" />
                 Редактировать
               </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => onDelete(product._id, product.name)}
-                className="text-red-600 focus:text-red-600"
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("🔄 Клик на мягкое удаление:", product._id, product.name);
+                  onDelete(product._id, product.name, 'soft');
+                }}
+                className="text-yellow-600"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Удалить
+                <Archive className="mr-2 h-4 w-4" />
+                Деактивировать
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("🔄 Клик на жесткое удаление:", product._id, product.name);
+                  onDelete(product._id, product.name, 'hard');
+                }}
+                className="text-red-600"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Удалить навсегда
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -113,7 +141,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
               <p className="font-semibold text-green-600">{product.price} ₽</p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-blue-600" />
             <div>

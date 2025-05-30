@@ -1,16 +1,42 @@
-// components/admin/products/ProductGrid.tsx
+// components/admin/products/ProductGrid.tsx (очищенная версия)
 "use client";
 
 import { ProductCard } from "./ProductCard";
 import { Product } from "./types";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProductGridProps {
   products: Product[];
   onEdit: (product: Product) => void;
-  onDelete: (id: string, name: string) => void;
+  onDelete: (id: string, name: string, type?: 'soft' | 'hard') => void;
+  isLoading?: boolean;
 }
 
-export function ProductGrid({ products, onEdit, onDelete }: ProductGridProps) {
+export function ProductGrid({ products, onEdit, onDelete, isLoading = false }: ProductGridProps) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div key={index} className="border rounded-lg p-6 space-y-4">
+            <div className="flex justify-between items-start">
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+              <Skeleton className="h-8 w-8" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+            <Skeleton className="h-16 w-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (products.length === 0) {
     return (
       <div className="text-center py-12">
@@ -32,7 +58,7 @@ export function ProductGrid({ products, onEdit, onDelete }: ProductGridProps) {
           key={product._id}
           product={product}
           onEdit={onEdit}
-        onDelete={onDelete}
+          onDelete={onDelete}
         />
       ))}
     </div>

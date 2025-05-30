@@ -58,27 +58,7 @@ export default function RootLayout({
                           </div>
                           <Toaster />
                           
-                          {/* ✅ Debug система - только в development режиме */}
-                          {process.env.NODE_ENV === 'development' && (
-                            <>
-                              {/* Регистрация и тестирование контекстов */}
-                              <ContextRegistrar />
-                              <ContextTester />
-                              
-                              {/* Отложенная инициализация */}
-                              <DelayedDebugInitializer />
-                              
-                              {/* Мониторинг данных */}
-                              <LiveDataMonitor />
-                              <DataDebugger />
-                              <DataMonitorDisplay />
-                              
-                              {/* Тестирование и производительность */}
-                              <TestButtons />
-                              <PerformanceMonitor />
-                              
-                            </>
-                          )}
+                          
                         </TrainerProvider>
                       </ManagerProvider>
                     </AdminProvider>

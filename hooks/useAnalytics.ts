@@ -728,9 +728,6 @@ export function useUserStatsWithFallback(period: string = "month") {
   return isAvailable && realData ? realData : fallbackUserStats;
 }
 
-
-
-
 export function useProductStatsWithFallback() {
   const testData = useTestAnalytics();
   const realData = useProductStats();

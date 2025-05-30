@@ -1,4 +1,3 @@
-// components/admin/products/types.ts (обновленный)
 export interface Product {
   _id: string;
   name: string;
@@ -7,7 +6,7 @@ export interface Product {
   price: number;
   inStock: number;
   isPopular?: boolean;
-  image?: string;
+  isActive?: boolean;
   nutrition?: {
     calories?: number;
     protein?: number;
@@ -17,20 +16,4 @@ export interface Product {
   };
   createdAt?: number;
   updatedAt?: number;
-}
-
-export interface ProductFormData {
-  name: string;
-  description: string;
-  category: Product['category'];
-  price: number;
-  inStock: number;
-  isPopular: boolean;
-  nutrition: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    sugar: number;
-  };
 }

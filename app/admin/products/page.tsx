@@ -1,238 +1,346 @@
-// app/admin/products/page.tsx (обновленная версия с табами)
+// app/admin/products/page.tsx
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Package, Plus, BarChart3, Zap } from "lucide-react";
-
-// Импорт компонентов
-import { ProductStats } from "@/components/admin/products/ProductStats";
-import { ProductFilters } from "@/components/admin/products/ProductFilters";
+import { ArrowLeft, Package, Plus, BarChart3, Zap, Activity, Archive, Trash2 } from "lucide-react";
 import { ProductGrid } from "@/components/admin/products/ProductGrid";
 import { ProductForm } from "@/components/admin/products/ProductForm";
+import { ProductFilters } from "@/components/admin/products/ProductFilters";
+import { DeletedProductsTab } from "@/components/admin/products/DeletedProductsTab";
+import { ProductAnalytics } from "@/components/admin/products/ProductAnalytics";
 import { ProductQuickActions } from "@/components/admin/products/ProductQuickActions";
-import { Product, ProductFormData } from "@/components/admin/products/types";
-import { useRouter } from 'next/navigation';
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useProducts, useProductManagement, Product, ProductFormData } from "@/hooks/useProducts";
+import { useToast } from "@/hooks/use-toast";
 
-export default function ProductsManagementPage() {
-  // State
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+export default function ProductsPage() {
+  const router = useRouter();
+  const { products, isLoading, error, refetch } = useProducts();
+  const { createProduct, updateProduct, deleteProduct } = useProductManagement();
+  const { toast } = useToast();
+
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"supplements" | "drinks" | "snacks" | "merchandise" | "all">("all");
+  const [stockFilter, setStockFilter] = useState<"all" | "in-stock" | "low-stock" | "out-of-stock">("all");
+  const [popularFilter, setPopularFilter] = useState<"popular" | "all" | "regular">("all");
+  const [formLoading, setFormLoading] = useState(false);
 
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<Product['category'] | 'all'>('all');
-  const [stockFilter, setStockFilter] = useState<'all' | 'in-stock' | 'low-stock' | 'out-of-stock'>('all');
-  const [popularFilter, setPopularFilter] = useState<'all' | 'popular' | 'regular'>('all');
+  // Состояние для диалога подтверждения удаления
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    productId: string;
+    productName: string;
+    deleteType: 'soft' | 'hard';
+  }>({
+    open: false,
+    productId: '',
+    productName: '',
+    deleteType: 'soft'
+  });
 
-  const router = useRouter()
+  // Фильтрация продуктов
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter;
+    const matchesStock = stockFilter === "all" ||
+      (stockFilter === "in-stock" && product.inStock > 10) ||
+      (stockFilter === "low-stock" && product.inStock > 0 && product.inStock <= 10) ||
+      (stockFilter === "out-of-stock" && product.inStock === 0);
+    const matchesPopular = popularFilter === "all" ||
+      (popularFilter === "popular" && product.isPopular) ||
+      (popularFilter === "regular" && !product.isPopular);
 
-  // Load products
-  useEffect(() => {
-    loadProducts();
-  }, []);
+    return matchesSearch && matchesCategory && matchesStock && matchesPopular;
+  });
 
-  const loadProducts = async () => {
-    try {
-      const response = await fetch('/api/products');
-      const data = await response.json();
-      
-      if (data.success) {
-        setProducts(data.products);
-      } else {
-        alert('Ошибка загрузки продуктов: ' + data.error);
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки продуктов:', error);
-      alert('Ошибка загрузки продуктов');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const productsCount = products.length;
 
-  // Filter products
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      const matchesSearch = !searchTerm || 
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.description.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-      
-      const matchesStock = stockFilter === 'all' || 
-        (stockFilter === 'in-stock' && product.inStock > 10) ||
-        (stockFilter === 'low-stock' && product.inStock > 0 && product.inStock <= 10) ||
-        (stockFilter === 'out-of-stock' && product.inStock === 0);
+  // Обработчики
+  const handleCreateProduct = async (data: ProductFormData) => {
+    console.log("🔄 Создание продукта:", data);
 
-      const matchesPopular = popularFilter === 'all' ||
-        (popularFilter === 'popular' && product.isPopular) ||
-        (popularFilter === 'regular' && !product.isPopular);
-
-      return matchesSearch && matchesCategory && matchesStock && matchesPopular;
+    setFormLoading(true);
+    
+    toast({
+      title: "Создание продукта...",
+      description: "Пожалуйста, подождите",
     });
-  }, [products, searchTerm, categoryFilter, stockFilter, popularFilter]);
 
-  // Handlers
-  const handleCreateProduct = async (formData: ProductFormData) => {
     try {
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('Продукт создан успешно!');
-        loadProducts();
+      const success = await createProduct(data);
+
+      if (success) {
+        toast({
+          title: "Продукт успешно создан!",
+          description: `${data.name} добавлен в каталог`,
+          variant: "default",
+        });
         setShowCreateForm(false);
+        if (refetch) {
+          await refetch();
+        }
       } else {
-        alert('Ошибка создания продукта: ' + data.error);
+        toast({
+          title: "Ошибка создания продукта",
+          description: "Попробуйте еще раз или обратитесь к администратору",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error('Ошибка создания продукта:', error);
-      alert('Ошибка создания продукта');
+      toast({
+        title: "Ошибка создания продукта",
+        description: "Произошла неожиданная ошибка",
+        variant: "destructive",
+      });
+    } finally {
+      setFormLoading(false);
     }
   };
 
-  const handleUpdateProduct = async (formData: ProductFormData) => {
+  const handleUpdateProduct = async (data: ProductFormData) => {
     if (!editingProduct) return;
 
+    console.log("🔄 Обновление продукта:", editingProduct._id, data);
+
+    setFormLoading(true);
+    
+    toast({
+      title: "Обновление продукта...",
+      description: "Пожалуйста, подождите",
+    });
+
     try {
-      const response = await fetch('/api/products', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _id: editingProduct._id, ...formData })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('Продукт обновлен успешно!');
-        loadProducts();
+      const success = await updateProduct(editingProduct._id, data);
+
+      if (success) {
+        toast({
+          title: "Продукт успешно обновлен!",
+          description: `${data.name} был изменен`,
+          variant: "default",
+        });
         setEditingProduct(null);
+        if (refetch) {
+          await refetch();
+        }
       } else {
-        alert('Ошибка обновления продукта: ' + data.error);
+        toast({
+          title: "Ошибка обновления продукта",
+          description: "Попробуйте еще раз или обратитесь к администратору",
+          variant: "destructive",
+        });
       }
     } catch (error) {
-      console.error('Ошибка обновления продукта:', error);
-      alert('Ошибка обновления продукта');
+      toast({
+        title: "Ошибка обновления продукта",
+        description: "Произошла неожиданная ошибка",
+        variant: "destructive",
+      });
+    } finally {
+      setFormLoading(false);
     }
   };
 
-  const handleDeleteProduct = async (id: string, name: string) => {
-    if (!confirm(`Вы уверены, что хотите удалить продукт "${name}"?`)) {
-      return;
-    }
+  // Открываем диалог подтверждения удаления
+  const handleDeleteProduct = async (id: string, name: string, deleteType: 'soft' | 'hard' = 'soft') => {
+    console.log(`🔄 handleDeleteProduct вызвана:`, { id, name, deleteType });
+
+    setDeleteDialog({
+      open: true,
+      productId: id,
+      productName: name,
+      deleteType
+    });
+  };
+
+  // Подтверждение удаления
+  const confirmDelete = async () => {
+    const { productId: id, productName: name, deleteType } = deleteDialog;
+    
+    console.log(`🗑️ ${deleteType === 'hard' ? 'Физическое' : 'Мягкое'} удаление продукта:`, id, name);
+
+    // Закрываем диалог
+    setDeleteDialog({ open: false, productId: '', productName: '', deleteType: 'soft' });
+
+    toast({
+      title: deleteType === 'hard' ? "Удаление продукта..." : "Деактивация продукта...",
+      description: "Пожалуйста, подождите",
+    });
 
     try {
-      const response = await fetch('/api/products', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ _id: id })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('Продукт удален успешно!');
-        loadProducts();
-      } else {
-        alert('Ошибка удаления продукта: ' + data.error);
-      }
-    } catch (error) {
-      console.error('Ошибка удаления продукта:', error);
-            alert('Ошибка удаления продукта');
-    }
-  };
+      const success = await deleteProduct(id, deleteType);
+      console.log(`🔄 Результат удаления:`, success);
 
-  const handleBulkAction = async (action: string, productIds: string[]) => {
-    switch (action) {
-      case 'restock':
-        // Пополнение склада - можно открыть модальное окно для ввода количества
-        alert(`Пополнение склада для ${productIds.length} товаров`);
-        break;
-      case 'mark-popular':
-        // Массовое обновление популярности
-        for (const id of productIds) {
-          await fetch('/api/products', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ _id: id, isPopular: true })
+      if (success) {
+        if (deleteType === 'hard') {
+          toast({
+            title: "Продукт удален навсегда",
+            description: `${name} полностью удален из базы данных`,
+            variant: "default",
+          });
+        } else {
+          toast({
+            title: "Продукт деактивирован",
+            description: `${name} скрыт из каталога`,
+            variant: "default",
           });
         }
-        alert(`${productIds.length} товаров отмечено как популярные`);
-        loadProducts();
-        break;
-      case 'export':
-        // Экспорт в CSV
-        const csvData = products.map(product => ({
-          name: product.name,
-          category: product.category,
-          price: product.price,
-          stock: product.inStock,
-          popular: product.isPopular ? 'Да' : 'Нет'
-        }));
-        
-        const csv = [
-          ['Название', 'Категория', 'Цена', 'Остаток', 'Популярный'],
-          ...csvData.map(row => Object.values(row))
-        ].map(row => row.join(',')).join('\n');
-        
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'products.csv';
-        a.click();
-        break;
+
+        if (refetch) {
+          console.log("🔄 Обновляем список продуктов");
+          await refetch();
+        }
+      } else {
+        toast({
+          title: "Ошибка удаления продукта",
+          description: "Попробуйте еще раз или обратитесь к администратору",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Ошибка в handleDeleteProduct:", error);
+      toast({
+        title: "Ошибка удаления продукта",
+        description: "Произошла неожиданная ошибка",
+        variant: "destructive",
+      });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка продуктов...</p>
-        </div>
-      </div>
-    );
-  }
+  // Отмена удаления
+  const cancelDelete = () => {
+    console.log("❌ Пользователь отменил удаление");
+  };
+
+  // Показать ошибку загрузки как toast
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Ошибка загрузки продуктов",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-4">
-              <Button 
-                variant="ghost" 
-                onClick={() => router.back()}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Назад
-              </Button>
-              <div className="h-6 w-px bg-gray-300" />
-              <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
-                  <Package className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-bold text-gray-900">Управление продуктами</h1>
-                  <p className="text-sm text-gray-600">Создание и управление товарами</p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/admin")}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Назад
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Управление продуктами</h1>
+              <p className="text-gray-600">Создавайте, редактируйте и управляйте продуктами</p>
             </div>
-            
-            <Button 
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              onClick={async () => {
+                toast({
+                  title: "Проверка базы данных...",
+                  description: "Получение статистики",
+                });
+                
+                try {
+                  const response = await fetch('/api/products/debug');
+                  const result = await response.json();
+                  
+                  toast({
+                    title: "Статистика базы данных",
+                    description: `Всего: ${result.totalProducts}, Активных: ${result.activeProducts}, Удаленных: ${result.inactiveProducts}`,
+                    variant: "default",
+                  });
+                } catch (error) {
+                  toast({
+                    title: "Ошибка получения статистики",
+                    description: "Не удалось получить данные",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              variant="outline"
+              size="sm"
+            >
+              🔍 Debug БД
+            </Button>
+
+            {/* Тестовая кнопка */}
+            <Button
+              onClick={async () => {
+                console.log("🧪 Тестируем деактивацию первого продукта");
+                
+                if (products.length === 0) {
+                  toast({
+                    title: "Нет продуктов",
+                    description: "Создайте продукт для тестирования",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+
+                const firstProduct = products[0];
+                console.log("🧪 Тестируем продукт:", firstProduct);
+
+                // Используем обычный API вызов вместо хука
+                try {
+                  const response = await fetch(`/api/products/${firstProduct._id}?type=soft`, {
+                    method: 'DELETE'
+                  });
+                  
+                  const result = await response.json();
+                  console.log("🧪 Результат теста:", result);
+                  
+                  if (result.success) {
+                    toast({
+                      title: "Тест успешен!",
+                      description: `Продукт ${firstProduct.name} деактивирован`,
+                      variant: "default",
+                    });
+                    
+                    // Обновляем список
+                    if (refetch) await refetch();
+                  } else {
+                    toast({
+                      title: "Тест провален",
+                      description: result.error || "Неизвестная ошибка",
+                      variant: "destructive",
+                    });
+                  }
+                } catch (error) {
+                  console.error("🧪 Ошибка теста:", error);
+                  toast({
+                    title: "Ошибка теста",
+                    description: "Проверьте консоль",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              variant="outline"
+              size="sm"
+            >
+              🧪 Тест деактивации
+            </Button>
+
+            <Button
               onClick={() => setShowCreateForm(true)}
+              disabled={isLoading}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             >
               <Plus className="h-4 w-4 mr-2" />
@@ -240,21 +348,72 @@ export default function ProductsManagementPage() {
             </Button>
           </div>
         </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats */}
-        <div className="mb-8">
-          <ProductStats products={products} />
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Всего продуктов</p>
+                  <p className="text-2xl font-bold text-gray-900">{productsCount}</p>
+                </div>
+                <Package className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Отфильтровано</p>
+                  <p className="text-2xl font-bold text-gray-900">{filteredProducts.length}</p>
+                </div>
+                <Activity className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Популярные</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {products.filter(p => p.isPopular).length}
+                  </p>
+                </div>
+                <BarChart3 className="h-8 w-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Заканчиваются</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {products.filter(p => p.inStock > 0 && p.inStock <= 10).length}
+                  </p>
+                </div>
+                <Zap className="h-8 w-8 text-orange-600" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Tabs */}
+        {/* Main Content */}
         <Tabs defaultValue="products" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
-              Продукты
+              Активные ({filteredProducts.length})
+            </TabsTrigger>
+            <TabsTrigger value="deleted" className="flex items-center gap-2">
+              <Archive className="h-4 w-4" />
+              Удаленные
             </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
@@ -277,7 +436,7 @@ export default function ProductsManagementPage() {
               onStockFilterChange={setStockFilter}
               popularFilter={popularFilter}
               onPopularFilterChange={setPopularFilter}
-              totalProducts={products.length}
+              totalProducts={productsCount}
               filteredProducts={filteredProducts.length}
             />
 
@@ -285,155 +444,73 @@ export default function ProductsManagementPage() {
               products={filteredProducts}
               onEdit={setEditingProduct}
               onDelete={handleDeleteProduct}
+              isLoading={isLoading}
             />
+          </TabsContent>
+
+          {/* Deleted Products Tab */}
+          <TabsContent value="deleted" className="space-y-6">
+            <DeletedProductsTab />
           </TabsContent>
 
           {/* Analytics Tab */}
           <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Category Distribution */}
-              <div className="bg-white p-6 rounded-lg border">
-                <h3 className="text-lg font-semibold mb-4">Распределение по категориям</h3>
-                <div className="space-y-3">
-                  {['supplements', 'drinks', 'snacks', 'merchandise'].map(category => {
-                    const count = products.filter(p => p.category === category).length;
-                    const percentage = products.length > 0 ? (count / products.length) * 100 : 0;
-                    const categoryNames = {
-                      supplements: 'Добавки',
-                      drinks: 'Напитки', 
-                      snacks: 'Снеки',
-                      merchandise: 'Мерч'
-                    };
-                    
-                    return (
-                      <div key={category} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
-                          {categoryNames[category as keyof typeof categoryNames]}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-blue-600 h-2 rounded-full" 
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-600 w-12">{count}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Stock Status */}
-              <div className="bg-white p-6 rounded-lg border">
-                <h3 className="text-lg font-semibold mb-4">Статус остатков</h3>
-                <div className="space-y-3">
-                  {[
-                    { label: 'В наличии', filter: (p: Product) => p.inStock > 10, color: 'bg-green-600' },
-                    { label: 'Заканчивается', filter: (p: Product) => p.inStock > 0 && p.inStock <= 10, color: 'bg-yellow-600' },
-                    { label: 'Нет в наличии', filter: (p: Product) => p.inStock === 0, color: 'bg-red-600' }
-                  ].map(status => {
-                    const count = products.filter(status.filter).length;
-                    const percentage = products.length > 0 ? (count / products.length) * 100 : 0;
-                    
-                    return (
-                      <div key={status.label} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{status.label}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`${status.color} h-2 rounded-full`} 
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-600 w-12">{count}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Price Range */}
-              <div className="bg-white p-6 rounded-lg border">
-                <h3 className="text-lg font-semibold mb-4">Ценовые диапазоны</h3>
-                <div className="space-y-3">
-                  {[
-                    { label: 'До 100₽', filter: (p: Product) => p.price < 100 },
-                    { label: '100-500₽', filter: (p: Product) => p.price >= 100 && p.price < 500 },
-                    { label: '500-1000₽', filter: (p: Product) => p.price >= 500 && p.price < 1000 },
-                    { label: 'Свыше 1000₽', filter: (p: Product) => p.price >= 1000 }
-                  ].map(range => {
-                    const count = products.filter(range.filter).length;
-                    const percentage = products.length > 0 ? (count / products.length) * 100 : 0;
-                    
-                    return (
-                      <div key={range.label} className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{range.label}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className="bg-purple-600 h-2 rounded-full" 
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
-                          <span className="text-sm text-gray-600 w-12">{count}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Top Products */}
-              <div className="bg-white p-6 rounded-lg border">
-                <h3 className="text-lg font-semibold mb-4">Топ продукты по стоимости</h3>
-                <div className="space-y-3">
-                  {products
-                    .sort((a, b) => (b.price * b.inStock) - (a.price * a.inStock))
-                    .slice(0, 5)
-                    .map((product, index) => (
-                      <div key={product._id} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-gray-400">#{index + 1}</span>
-                          <span className="text-sm font-medium truncate">{product.name}</span>
-                        </div>
-                        <span className="text-sm text-gray-600">
-                          {(product.price * product.inStock).toLocaleString()}₽
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            </div>
+            <ProductAnalytics products={products} />
           </TabsContent>
 
-          {/* Quick Actions Tab */}
+          {/* Actions Tab */}
           <TabsContent value="actions" className="space-y-6">
-            <ProductQuickActions
-              products={products}
-              onBulkAction={handleBulkAction}
-            />
+            <ProductQuickActions products={products} onRefresh={refetch} />
           </TabsContent>
         </Tabs>
-      </main>
 
-      {/* Create Product Form */}
-      <ProductForm
-        product={null}
-        isOpen={showCreateForm}
-        onClose={() => setShowCreateForm(false)}
-        onSubmit={handleCreateProduct}
-      />
+        {/* Модальные окна */}
+        {showCreateForm && (
+          <ProductForm
+            isOpen={showCreateForm}
+            onClose={() => setShowCreateForm(false)}
+            onSubmit={handleCreateProduct}
+            isLoading={formLoading}
+          />
+        )}
 
-      {/* Edit Product Form */}
-      <ProductForm
-        product={editingProduct}
-        isOpen={!!editingProduct}
-        onClose={() => setEditingProduct(null)}
-        onSubmit={handleUpdateProduct}
-      />
+        {editingProduct && (
+          <ProductForm
+            product={editingProduct}
+            isOpen={!!editingProduct}
+            onClose={() => setEditingProduct(null)}
+            onSubmit={handleUpdateProduct}
+            isLoading={formLoading}
+          />
+        )}
+
+        {/* Диалог подтверждения удаления */}
+        <ConfirmDialog
+          open={deleteDialog.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteDialog({ open: false, productId: '', productName: '', deleteType: 'soft' });
+            }
+          }}
+          title={deleteDialog.deleteType === 'hard' ? 'Удалить навсегда?' : 'Деактивировать продукт?'}
+          description={
+            deleteDialog.deleteType === 'hard'
+              ? `Вы уверены, что хотите навсегда удалить продукт "${deleteDialog.productName}"?`
+              : `Деактивировать продукт "${deleteDialog.productName}"?`
+          }
+          confirmText={
+            deleteDialog.deleteType === 'hard' ? 'Удалить навсегда' : 'Деактивировать'
+          }
+          onConfirm={confirmDelete}
+          onCancel={cancelDelete}
+          variant={deleteDialog.deleteType === 'hard' ? 'destructive' : 'warning'}
+          icon={
+            deleteDialog.deleteType === 'hard' 
+              ? <Trash2 className="h-5 w-5 text-red-600" />
+              : <Archive className="h-5 w-5 text-yellow-600" />
+          }
+        />
+      </div>
     </div>
   );
 }
