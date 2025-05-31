@@ -16,6 +16,9 @@ import {
 
 // Получить всех пользователей
 export async function GET(request: NextRequest) {
+  // ПЕРЕМЕЩАЕМ: Объявляем переменную вне try блока
+  let roleFilter: string | null = null;
+  
   try {
     // Проверяем авторизацию
     const sessionId = request.cookies.get('session_id')?.value || 
@@ -35,14 +38,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 });
     }
 
+    // ИСПРАВЛЯЕМ: Получаем параметр фильтрации
+    const { searchParams } = new URL(request.url);
+    roleFilter = searchParams.get('role'); // Убираем const, так как переменная уже объявлена
+    
+    console.log('API: Получение пользователей, фильтр по роли:', roleFilter);
+
     const users: User[] = await getAllUsers();
     
-    // Фильтруем пользователей в зависимости от роли
+    console.log('API: Всего пользователей в базе:', users.length);
+    console.log('API: Роли пользователей:', users.map(u => ({ name: u.name, role: u.role })));
+    
+    // Фильтруем пользователей в зависимости от роли запрашивающего
     let filteredUsers = users;
     if (session.user.role === 'admin') {
       filteredUsers = users.filter(user => !['super-admin'].includes(user.role));
     } else if (session.user.role === 'manager') {
       filteredUsers = users.filter(user => !['super-admin', 'admin'].includes(user.role));
+    }
+
+    // Дополнительная фильтрация по параметру role
+    if (roleFilter === 'trainers') {
+      filteredUsers = filteredUsers.filter(user => 
+        user.role === 'trainer' || 
+        user.role === 'admin' || 
+        user.role === 'super-admin'
+      );
+      console.log('API: Отфильтровано тренеров:', filteredUsers.length);
     }
 
     // Убираем пароли из ответа и добавляем photoUrl
@@ -54,21 +76,31 @@ export async function GET(request: NextRequest) {
       createdAt: user.createdAt,
       createdBy: user.createdBy,
       isActive: user.isActive,
-      photoUrl: user.photoUrl || null, // ✅ Добавляем поддержку фото
+      photoUrl: user.photoUrl || null,
       lastLogin: user.lastLogin || null
     }));
+
+    console.log('API: Возвращаем пользователей:', safeUsers.length);
+    if (roleFilter === 'trainers') {
+      console.log('API: Тренеры:', safeUsers.map(u => ({ id: u.id, name: u.name, role: u.role })));
+    }
 
     return NextResponse.json({
       success: true,
       users: safeUsers,
       canCreate: canCreateRole(session.user.role, 'member'),
-      userRole: session.user.role
+      userRole: session.user.role,
+      // Для обратной совместимости с компонентом расписания
+      trainers: roleFilter === 'trainers' ? safeUsers : undefined
     });
 
   } catch (error) {
     console.error('Ошибка получения пользователей:', error);
     return NextResponse.json({ 
-      error: 'Ошибка сервера' 
+      error: 'Ошибка сервера',
+      users: [],
+      // ИСПРАВЛЯЕМ: Теперь roleFilter доступен и здесь
+      trainers: roleFilter === 'trainers' ? [] : undefined
     }, { status: 500 });
   }
 }

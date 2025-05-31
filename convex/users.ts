@@ -69,16 +69,65 @@ export const getAllFaceDescriptors = query({
   },
 });
 
-export const getUserById = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    console.log('Convex users: получаем пользователя по ID:', args.userId);
-    const user = await ctx.db.get(args.userId);
-    console.log('Convex users: пользователь найден:', user ? 'да' : 'нет');
-    return user;
+export const getTrainers = query({
+  args: {},
+  handler: async (ctx) => {
+    console.log("Запрос тренеров из базы данных...");
+    
+    const trainers = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "trainer"))
+      .collect();
+
+    console.log("Найдено тренеров:", trainers.length);
+    console.log("Тренеры:", trainers.map(t => ({ name: t.name, role: t.role })));
+
+    return trainers.map((trainer) => ({
+      id: trainer._id,
+      name: trainer.name,
+      role: trainer.role,
+      email: trainer.email || "",
+      photoUri: trainer.photoUrl,
+    }));
   },
 });
 
+export const getClients = query({
+  args: {},
+  handler: async (ctx) => {
+    console.log("Запрос клиентов из базы данных...");
+    
+    const clients = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("role"), "member"))
+      .collect();
+
+    console.log("Найдено клиентов:", clients.length);
+
+    return clients.map((client) => ({
+      id: client._id,
+      name: client.name,
+      email: client.email || "",
+      photoUri: client.photoUrl,
+    }));
+  },
+});
+
+export const getUserById = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+
+    return {
+      id: user._id,
+      name: user.name,
+      role: user.role,
+      email: user.email || "",
+      photoUri: user.photoUrl,
+    };
+  },
+});
 
 // Исправляем функцию удаления пользователя
 export const deleteUser = mutation({
@@ -180,7 +229,6 @@ export const getById = query({
 });
 
 
-// convex/users.ts (исправленная версия updateUser)
 export const updateUser = mutation({
   args: { 
     userId: v.id("users"),

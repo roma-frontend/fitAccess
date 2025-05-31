@@ -7,7 +7,16 @@ import { Doc, Id } from "./_generated/dataModel";
 export const getAll = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("events").collect();
+    console.log("=== getAll events called ===");
+    const events = await ctx.db.query("events").collect();
+    console.log(`Found ${events.length} events in database`);
+    
+    // Отладка первых событий
+    if (events.length > 0) {
+      console.log("First event:", events[0]);
+    }
+    
+    return events;
   },
 });
 

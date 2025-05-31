@@ -20,18 +20,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Calendar, Clock, User, MapPin, FileText } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  User,
+  MapPin,
+  FileText,
+  AlertTriangle,
+} from "lucide-react";
 import { ScheduleEvent, CreateEventData } from "./types";
 
 interface EventFormProps {
   event: ScheduleEvent | null;
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateEventData) => Promise<void>;
+  onSubmit: (data: CreateEventData) => Promise<{ success: boolean; id?: string }>; // Изменили тип возврата
   trainers: Array<{ id: string; name: string; role: string }>;
   clients: Array<{ id: string; name: string }>;
   initialDate?: Date;
   initialHour?: number;
+  isApiAvailable?: boolean;
 }
 
 export function EventForm({
@@ -43,6 +51,7 @@ export function EventForm({
   clients,
   initialDate,
   initialHour,
+  isApiAvailable = true, // По умолчанию считаем, что API доступен
 }: EventFormProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateEventData>({
@@ -52,127 +61,175 @@ export function EventForm({
     startTime: "",
     endTime: "",
     trainerId: "",
-    clientId: "", // Изменим логику для этого поля
+    clientId: "",
     location: "",
     notes: "",
     recurring: undefined,
   });
   const [isRecurring, setIsRecurring] = useState(false);
 
-  useEffect(() => {
-    if (event) {
-      // Редактирование существующего события
-      setFormData({
-        title: event.title,
-        description: event.description || "",
-        type: event.type,
-        startTime: event.startTime.slice(0, 16),
-        endTime: event.endTime.slice(0, 16),
-        trainerId: event.trainerId,
-        clientId: event.clientId || "no-client",
-        location: event.location || "",
-        notes: event.notes || "",
-        recurring: event.recurring
-          ? {
-              pattern: event.recurring.pattern,
-              interval: event.recurring.interval,
-              endDate: event.recurring.endDate,
-              daysOfWeek: event.recurring.daysOfWeek,
-            }
-          : undefined,
-      });
-      setIsRecurring(!!event.recurring);
-    } else if (initialDate && initialHour !== undefined) {
-      // Создание нового события с предустановленным временем
-      const startDate = new Date(initialDate);
-      startDate.setHours(initialHour, 0, 0, 0);
-      const endDate = new Date(startDate);
-      endDate.setHours(initialHour + 1, 0, 0, 0);
+  // Фильтруем тренеров и клиентов
+  const realTrainers = trainers.filter(
+    (trainer) => !trainer.id.startsWith("mock-")
+  );
+  const realClients = clients.filter(
+    (client) => !client.id.startsWith("mock-")
+  );
 
-      setFormData({
-        title: "",
-        description: "",
-        type: "training",
-        startTime: startDate.toISOString().slice(0, 16),
-        endTime: endDate.toISOString().slice(0, 16),
-        trainerId: "",
-        clientId: "no-client", // Используем специальное значение
-        location: "",
-        notes: "",
-        recurring: undefined,
-      });
-      setIsRecurring(false);
-    } else {
-      // Создание нового события
-      const now = new Date();
-      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+  // Используем соответствующие списки в зависимости от доступности API
+  const availableTrainers = isApiAvailable ? realTrainers : trainers;
+  const availableClients = isApiAvailable ? realClients : clients;
 
-      setFormData({
-        title: "",
-        description: "",
-        type: "training",
-        startTime: now.toISOString().slice(0, 16),
-        endTime: oneHourLater.toISOString().slice(0, 16),
-        trainerId: "",
-        clientId: "no-client", // Используем специальное значение
-        location: "",
-        notes: "",
-        recurring: undefined,
-      });
-      setIsRecurring(false);
-    }
-  }, [event, initialDate, initialHour]);
+  console.log("EventForm render:", {
+    isApiAvailable,
+    totalTrainers: trainers.length,
+    realTrainers: realTrainers.length,
+    availableTrainers: availableTrainers.length,
+    trainers: trainers.map((t) => ({
+      id: t.id,
+      name: t.name,
+      isMock: t.id.startsWith("mock-"),
+    })),
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+useEffect(() => {
+  if (event) {
+    // Редактирование существующего события
+    setFormData({
+      title: event.title,
+      description: event.description || "",
+      type: event.type,
+      startTime: event.startTime.slice(0, 16),
+      endTime: event.endTime.slice(0, 16),
+      trainerId: event.trainerId || "no-trainer", // Изменено: добавлен fallback
+      clientId: event.clientId || "no-client",
+      location: event.location || "",
+      notes: event.notes || "",
+      recurring: event.recurring
+        ? {
+            pattern: event.recurring.pattern,
+            interval: event.recurring.interval,
+            endDate: event.recurring.endDate,
+            daysOfWeek: event.recurring.daysOfWeek,
+          }
+        : undefined,
+    });
+    setIsRecurring(!!event.recurring);
+  } else if (initialDate && initialHour !== undefined) {
+    // Создание нового события с предустановленным временем
+    const startDate = new Date(initialDate);
+    startDate.setHours(initialHour, 0, 0, 0);
+    const endDate = new Date(startDate);
+    endDate.setHours(initialHour + 1, 0, 0, 0);
 
-    if (
-      !formData.title ||
-      !formData.startTime ||
-      !formData.endTime ||
-      !formData.trainerId
-    ) {
-      alert("Пожалуйста, заполните все обязательные поля");
-      return;
-    }
+    setFormData({
+      title: "",
+      description: "",
+      type: "training",
+      startTime: startDate.toISOString().slice(0, 16),
+      endTime: endDate.toISOString().slice(0, 16),
+      trainerId: "no-trainer", // Изменено: используем специальное значение вместо пустой строки
+      clientId: "no-client",
+      location: "",
+      notes: "",
+      recurring: undefined,
+    });
+    setIsRecurring(false);
+  } else {
+    // Создание нового события
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
 
-    const startTime = new Date(formData.startTime);
-    const endTime = new Date(formData.endTime);
+    setFormData({
+      title: "",
+      description: "",
+      type: "training",
+      startTime: now.toISOString().slice(0, 16),
+      endTime: oneHourLater.toISOString().slice(0, 16),
+      trainerId: "no-trainer", // Изменено: используем специальное значение вместо пустой строки
+      clientId: "no-client",
+      location: "",
+      notes: "",
+      recurring: undefined,
+    });
+    setIsRecurring(false);
+  }
+}, [event, initialDate, initialHour]);
 
-    console.log("Отправка формы:", {
-      formData,
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  console.log("=== ОТПРАВКА ФОРМЫ ===");
+  console.log("Данные формы:", formData);
+  console.log("Выбранный тренер ID:", formData.trainerId);
+  console.log("Доступные тренеры:", availableTrainers);
+
+  if (
+    !formData.title ||
+    !formData.startTime ||
+    !formData.endTime ||
+    !formData.trainerId ||
+    formData.trainerId === "no-trainer"
+  ) {
+    alert("Пожалуйста, заполните все обязательные поля и выберите тренера");
+    return;
+  }
+
+  // Дополнительная проверка тренера
+  const selectedTrainer = availableTrainers.find(t => t.id === formData.trainerId);
+  if (!selectedTrainer) {
+    console.error("=== ОШИБКА ТРЕНЕРА ===");
+    console.error("Выбранный ID:", formData.trainerId);
+    console.error("Доступные тренеры:", availableTrainers.map(t => ({ id: t.id, name: t.name })));
+    alert("Выбранный тренер не найден в списке доступных тренеров");
+    return;
+  }
+
+  console.log("✅ Тренер найден:", selectedTrainer);
+
+  const startTime = new Date(formData.startTime);
+  const endTime = new Date(formData.endTime);
+
+  if (endTime <= startTime) {
+    alert("Время окончания должно быть позже времени начала");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const submitData = {
+      ...formData,
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
-      startTimeLocal: startTime.toString(),
-      endTimeLocal: endTime.toString(),
-    });
+      clientId: formData.clientId === "no-client" ? undefined : formData.clientId,
+      recurring: isRecurring ? formData.recurring : undefined,
+    };
 
-    if (endTime <= startTime) {
-      alert("Время окончания должно быть позже времени начала");
-      return;
-    }
+    console.log("=== ФИНАЛЬНЫЕ ДАННЫЕ ДЛЯ ОТПРАВКИ ===");
+    console.log(JSON.stringify(submitData, null, 2));
 
-    setLoading(true);
-    try {
-      const submitData = {
-        ...formData,
-        startTime: startTime.toISOString(),
-        endTime: endTime.toISOString(),
-        clientId:
-          formData.clientId === "no-client" ? undefined : formData.clientId,
-        recurring: isRecurring ? formData.recurring : undefined,
-      };
-
-      console.log("Данные для отправки:", submitData);
-
-      await onSubmit(submitData);
+    const result = await onSubmit(submitData);
+    console.log("=== РЕЗУЛЬТАТ СОЗДАНИЯ ===");
+    console.log(result);
+    
+    // Исправленная проверка результата
+    if (result && result.success) {
+      console.log("✅ Событие успешно создано");
       onClose();
-    } catch (error) {
-      console.error("Ошибка сохранения события:", error);
-    } finally {
-      setLoading(false);
+    } else {
+      throw new Error("Не удалось создать событие");
     }
-  };
+  } catch (error) {
+    console.error("=== ОШИБКА СОХРАНЕНИЯ СОБЫТИЯ ===", error);
+    alert(
+      `Ошибка сохранения события: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+
   const eventTypes = [
     { value: "training", label: "Тренировка" },
     { value: "consultation", label: "Консультация" },
@@ -191,6 +248,26 @@ export function EventForm({
             {event ? "Редактировать событие" : "Создать новое событие"}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Предупреждение о тестовом режиме */}
+        {!isApiAvailable && (
+          <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 rounded-lg flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <p className="text-yellow-800 text-sm">
+              Работа в тестовом режиме. События будут созданы локально.
+            </p>
+          </div>
+        )}
+
+        {/* Предупреждение об отсутствии тренеров */}
+        {isApiAvailable && availableTrainers.length === 0 && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 rounded-lg flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+            <p className="text-red-800 text-sm">
+              В системе нет тренеров. Добавьте тренеров для создания событий.
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Основная информация */}
@@ -257,7 +334,6 @@ export function EventForm({
             <h3 className="text-lg font-medium text-gray-900">
               Время и участники
             </h3>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startTime" className="flex items-center gap-2">
@@ -291,56 +367,71 @@ export function EventForm({
                 />
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="trainer" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Тренер *
-                </Label>
-                <Select
-                  value={formData.trainerId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, trainerId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите тренера" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {trainers.map((trainer) => (
+            <div className="space-y-2">
+              <Label htmlFor="trainer" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Тренер *
+              </Label>
+              <Select
+                value={formData.trainerId}
+                onValueChange={(value) => {
+                  console.log("Выбран тренер:", value);
+                  console.log("Тип выбранного ID:", typeof value);
+                  setFormData({ ...formData, trainerId: value });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите тренера" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTrainers.length === 0 ? (
+                    <SelectItem value="no-trainer" disabled>
+                      Нет доступных тренеров
+                    </SelectItem>
+                  ) : (
+                    availableTrainers.map((trainer) => (
                       <SelectItem key={trainer.id} value={trainer.id}>
                         {trainer.name} ({trainer.role})
+                        {trainer.id.startsWith("mock-") && (
+                          <span className="text-gray-500 text-xs ml-1">
+                            (тестовый)
+                          </span>
+                        )}
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="client" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Клиент
-                </Label>
-                <Select
-                  value={formData.clientId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, clientId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите клиента" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="no-client">Без клиента</SelectItem>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            И также исправьте секцию с выбором клиента: typescript Copy
+            <div className="space-y-2">
+              <Label htmlFor="client" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Клиент
+              </Label>
+              <Select
+                value={formData.clientId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, clientId: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Выберите клиента" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no-client">Без клиента</SelectItem>
+                  {availableClients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                      {client.id.startsWith("mock-") && (
+                        <span className="text-gray-500 text-xs ml-1">
+                          (тестовый)
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -436,10 +527,8 @@ export function EventForm({
                         ...formData,
                         recurring: {
                           pattern: formData.recurring?.pattern || "weekly",
-                          interval: formData.recurring?.interval || 1,
-                          endDate: e.target.value
-                            ? new Date(e.target.value).toISOString()
-                            : undefined,
+                          interval: parseInt(e.target.value) || 1,
+                          endDate: formData.recurring?.endDate,
                         },
                       })
                     }
@@ -474,8 +563,10 @@ export function EventForm({
           <div className="flex space-x-3 pt-4 border-t">
             <Button
               type="submit"
-              disabled={loading}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              disabled={
+                loading || (isApiAvailable && availableTrainers.length === 0)
+              }
+              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
             >
               {loading
                 ? "Сохранение..."

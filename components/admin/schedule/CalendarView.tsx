@@ -94,24 +94,19 @@ export function CalendarView({
   }, [events, weekDays]);
 
   // Получить события для конкретного дня и часа
-  const getEventsForSlot = (date: Date, hour: number) => {
-    const slotEvents = weekEvents.filter(event => {
-      const eventStart = new Date(event.startTime);
-      const eventHour = eventStart.getHours();
-      const eventDate = eventStart.toDateString();
-      const slotDate = date.toDateString();
-      
-      const matches = eventDate === slotDate && eventHour === hour;
-      
-      if (matches) {
-        console.log(`Найдено событие для слота ${slotDate} ${hour}:00:`, event);
-      }
-      
-      return matches;
-    });
-
-    return slotEvents;
-  };
+const getEventsForSlot = (date: Date, hour: number) => {
+  const slotEvents = weekEvents.filter(event => {
+    const eventStart = new Date(event.startTime);
+    const eventHour = eventStart.getHours();
+    const eventDate = eventStart.toDateString();
+    const slotDate = date.toDateString();
+    
+    const matches = eventDate === slotDate && eventHour === hour;
+    
+    return matches;
+  });
+  return slotEvents;
+};
 
   const getEventTypeColor = (type: ScheduleEvent['type']) => {
     const colors = {
@@ -147,6 +142,8 @@ export function CalendarView({
   };
 
   const canCreateEvent = userRole === 'super-admin' || userRole === 'admin';
+
+  
   const canEditEvent = (event: ScheduleEvent) => {
     return userRole === 'super-admin' || userRole === 'admin' || 
            (userRole === 'manager' && !['super-admin', 'admin'].includes(event.createdBy));

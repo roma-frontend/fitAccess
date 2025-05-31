@@ -1,12 +1,16 @@
-// components/admin/schedule/types.ts
+// components/admin/schedule/types.ts (обновленная версия)
+import { Id } from "@/convex/_generated/dataModel";
+
 export interface ScheduleEvent {
   _id: string;
   title: string;
   description?: string;
-  type: 'training' | 'consultation' | 'group' | 'break' | 'other'  | 'meeting';
+  type: 'training' | 'consultation' | 'group' | 'break' | 'other' | 'meeting';
   startTime: string;
   endTime: string;
   trainerId: string;
+  clientPhone?: string;
+  clientEmail?: string;
   trainerName: string;
   clientId?: string;
   clientName?: string;
@@ -22,6 +26,12 @@ export interface ScheduleEvent {
   createdAt: string;
   createdBy: string;
   updatedAt?: string;
+  price?: number;
+  duration?: number;
+  goals?: string[];
+  clientRating?: number;
+  clientReview?: string;
+  trainerNotes?: string;
 }
 
 export interface TrainerSchedule {
@@ -65,13 +75,12 @@ export interface ScheduleStats {
     'no-show': number;
   };
   utilizationRate: number;
-  averageDuration: number; // в минутах
+  averageDuration: number;
   busyHours: Array<{
     hour: number;
     eventCount: number;
   }>;
 }
-
 
 export interface CreateEventData {
   title: string;
@@ -114,4 +123,111 @@ export interface WorkingHours {
   start: string;
   end: string;
   days: number[];
+}
+
+// Дополнительные типы для расширенной функциональности
+export interface EventTemplate {
+  id: string;
+  name: string;
+  description: string;
+  template: Omit<CreateEventData, 'startTime' | 'endTime' | 'trainerId'>;
+  category: string;
+}
+
+export interface ScheduleNotification {
+  id: string;
+  eventId: string;
+  type: 'upcoming' | 'overdue' | 'reminder';
+  message: string;
+  timestamp: Date;
+  read: boolean;
+}
+
+export interface TrainerAvailability {
+  trainerId: string;
+  date: Date;
+  slots: TimeSlot[];
+  workingHours: WorkingHours;
+}
+
+export interface ScheduleConflict {
+  event1: ScheduleEvent;
+  event2: ScheduleEvent;
+  type: 'overlap' | 'back-to-back';
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface BulkActionResult {
+  eventId: string;
+  success: boolean;
+  error?: any;
+}
+
+export interface ScheduleExportData {
+  events: ScheduleEvent[];
+  trainers: TrainerSchedule[];
+  exportDate: string;
+  format: 'csv' | 'json' | 'ics';
+}
+
+export interface AutoScheduleOptions {
+  duration: number;
+  trainerId?: string;
+  preferredDate?: Date;
+  timePreferences?: {
+    earliestHour: number;
+    latestHour: number;
+  };
+}
+
+export interface OptimalSlot {
+  trainerId: string;
+  trainerName: string;
+  startTime: Date;
+  endTime: Date;
+  confidence: number;
+}
+
+export interface ScheduleAnalytics {
+  period: 'day' | 'week' | 'month' | 'year';
+  totalEvents: number;
+  statusAnalytics: Record<ScheduleEvent['status'], number>;
+  typeAnalytics: Record<ScheduleEvent['type'], number>;
+  trainerAnalytics: Array<{
+    trainerId: string;
+    trainerName: string;
+    totalEvents: number;
+    completedEvents: number;
+    cancelledEvents: number;
+    completionRate: number;
+    cancellationRate: number;
+  }>;
+  hourlyAnalytics: Array<{
+    hour: number;
+    eventCount: number;
+    types: Record<string, number>;
+  }>;
+  dailyAnalytics: Array<{
+    date: string;
+    eventCount: number;
+    completedCount: number;
+    cancelledCount: number;
+  }>;
+  averageEventsPerDay: number;
+  peakHour: { hour: number; eventCount: number };
+}
+
+// Типы для интеграции с календарями
+export interface CalendarIntegration {
+  provider: 'google' | 'outlook' | 'ics';
+  url: string;
+  event: ScheduleEvent;
+}
+
+// Типы для уведомлений
+export interface NotificationSettings {
+  enabled: boolean;
+  reminderMinutes: number;
+  types: Array<'upcoming' | 'overdue' | 'status_change'>;
+  channels: Array<'browser' | 'email' | 'sms'>;
 }

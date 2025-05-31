@@ -1,4 +1,4 @@
-// app/admin/schedule/page.tsx (полная исправленная версия)
+// app/admin/schedule/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -37,15 +37,38 @@ import {
   MobileActionGroup,
   ResponsiveButton,
 } from "@/components/admin/users/AdminSecondHeader";
+import {
+  useClientsWithFallback,
+  useScheduleAnalytics,
+  useScheduleApiAvailability,
+  useScheduleMutations,
+  useScheduleStatsWithFallback,
+  useScheduleWithFallback,
+  useTrainersWithFallback,
+} from "@/hooks/useSchedule";
 
 export default function SchedulePage() {
-  const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [stats, setStats] = useState<ScheduleStatsType | null>(null);
-  const [trainers, setTrainers] = useState<TrainerSchedule[]>([]);
-  const [clients, setClients] = useState<Array<{ id: string; name: string }>>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
+  // Хуки для получения данных
+  const events = useScheduleWithFallback();
+  const stats = useScheduleStatsWithFallback("month");
+  const trainersData = useTrainersWithFallback();
+  const clients = useClientsWithFallback();
+  const analytics = useScheduleAnalytics("month");
+  const { isAvailable: isApiAvailable, isLoading: isApiLoading } =
+    useScheduleApiAvailability();
+
+  // Хуки для мутаций
+  const {
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    updateEventStatus,
+    isLoading: isMutationLoading,
+    error: mutationError,
+    clearError,
+  } = useScheduleMutations();
+
+  // Локальное состояние
   const [showEventForm, setShowEventForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(
@@ -60,204 +83,33 @@ export default function SchedulePage() {
   const [messageRelatedTo, setMessageRelatedTo] = useState<any>(null);
   const router = useRouter();
 
+  // Преобразуем данные тренеров в нужный формат
+  const trainers: TrainerSchedule[] = trainersData.map((trainer) => ({
+    trainerId: trainer.id,
+    trainerName: trainer.name,
+    trainerRole: trainer.role,
+    events: events.filter((e) => e.trainerId === trainer.id),
+    workingHours: {
+      start: "09:00",
+      end: "18:00",
+      days: [1, 2, 3, 4, 5],
+    },
+  }));
+
+  // Обработка ошибок мутаций
   useEffect(() => {
-    loadScheduleData();
-  }, []);
+    if (mutationError) {
+      console.error("Ошибка операции:", mutationError);
+      // Можно показать toast или другое уведомление
+      setTimeout(() => clearError(), 5000);
+    }
+  }, [mutationError, clearError]);
 
   // Отладка изменений событий
   useEffect(() => {
-    console.log("События обновились на главной странице:", events);
-  }, [events]);
-
-  const loadScheduleData = async () => {
-    setLoading(true);
-    try {
-      // Имитация API запросов - замените на реальные
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Моковые данные
-      const mockEvents: ScheduleEvent[] = [
-        {
-          _id: "1",
-          title: "Персональная тренировка",
-          description:
-            "Силовая тренировка для начинающих. Работа с базовыми упражнениями, изучение техники выполнения.",
-          type: "training",
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Завтра
-          endTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(),
-          trainerId: "trainer1",
-          trainerName: "Иван Петров",
-          clientId: "client1",
-          clientName: "Анна Смирнова",
-          status: "confirmed",
-          location: "Зал 1",
-          notes:
-            "Первая тренировка, нужно провести инструктаж по технике безопасности",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-        {
-          _id: "2",
-          title: "Групповая кардио тренировка",
-          description: "Интенсивная кардио тренировка для группы",
-          type: "training",
-          startTime: new Date(
-            Date.now() + 2 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          endTime: new Date(
-            Date.now() + 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000
-          ).toISOString(),
-          trainerId: "trainer2",
-          trainerName: "Мария Иванова",
-          status: "scheduled",
-          location: "Зал 2",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-        {
-          _id: "3",
-          title: "Консультация по питанию",
-          description: "Составление индивидуального плана питания",
-          type: "consultation",
-          startTime: new Date(
-            Date.now() + 3 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          endTime: new Date(
-            Date.now() + 3 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000
-          ).toISOString(),
-          trainerId: "trainer3",
-          trainerName: "Алексей Сидоров",
-          clientId: "client2",
-          clientName: "Петр Козлов",
-          status: "scheduled",
-          location: "Кабинет консультаций",
-          notes: "Клиент хочет набрать мышечную массу",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-        {
-          _id: "4",
-          title: "Планерка тренеров",
-          description: "Еженедельная встреча команды тренеров",
-          type: "meeting",
-          startTime: new Date(
-            Date.now() + 4 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          endTime: new Date(
-            Date.now() + 4 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000
-          ).toISOString(),
-          trainerId: "trainer1",
-          trainerName: "Иван Петров",
-          status: "confirmed",
-          location: "Конференц-зал",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-      ];
-
-      const mockStats: ScheduleStatsType = {
-        totalEvents: 156,
-        todayEvents: 12,
-        upcomingEvents: 45,
-        completedEvents: 89,
-        cancelledEvents: 10,
-        pendingConfirmation: 8,
-        overdueEvents: 3,
-        byTrainer: [
-          { trainerId: "trainer1", trainerName: "Иван Петров", eventCount: 45 },
-          {
-            trainerId: "trainer2",
-            trainerName: "Мария Иванова",
-            eventCount: 38,
-          },
-          {
-            trainerId: "trainer3",
-            trainerName: "Алексей Сидоров",
-            eventCount: 32,
-          },
-        ],
-        byType: {
-          training: 89,
-          consultation: 34,
-          group: 15,
-          meeting: 23,
-          break: 10,
-          other: 5,
-        },
-        byStatus: {
-          scheduled: 45,
-          confirmed: 67,
-          completed: 89,
-          cancelled: 10,
-          "no-show": 5,
-        },
-        utilizationRate: 78,
-        averageDuration: 60, // 60 минут
-        busyHours: [
-          { hour: 9, eventCount: 12 },
-          { hour: 10, eventCount: 18 },
-          { hour: 11, eventCount: 15 },
-          { hour: 14, eventCount: 20 },
-          { hour: 15, eventCount: 16 },
-          { hour: 16, eventCount: 14 },
-          { hour: 17, eventCount: 10 },
-          { hour: 18, eventCount: 8 },
-        ],
-      };
-
-      const mockTrainers: TrainerSchedule[] = [
-        {
-          trainerId: "trainer1",
-          trainerName: "Иван Петров",
-          trainerRole: "Персональный тренер",
-          events: mockEvents.filter((e) => e.trainerId === "trainer1"),
-          workingHours: {
-            start: "09:00",
-            end: "18:00",
-            days: [1, 2, 3, 4, 5], // Пн-Пт
-          },
-        },
-        {
-          trainerId: "trainer2",
-          trainerName: "Мария Иванова",
-          trainerRole: "Групповой тренер",
-          events: mockEvents.filter((e) => e.trainerId === "trainer2"),
-          workingHours: {
-            start: "10:00",
-            end: "19:00",
-            days: [1, 2, 3, 4, 5, 6], // Пн-Сб
-          },
-        },
-        {
-          trainerId: "trainer3",
-          trainerName: "Алексей Сидоров",
-          trainerRole: "Консультант по питанию",
-          events: mockEvents.filter((e) => e.trainerId === "trainer3"),
-          workingHours: {
-            start: "11:00",
-            end: "17:00",
-            days: [1, 2, 3, 4, 5], // Пн-Пт
-          },
-        },
-      ];
-
-      const mockClients = [
-        { id: "client1", name: "Анна Смирнова" },
-        { id: "client2", name: "Петр Козлов" },
-        { id: "client3", name: "Елена Васильева" },
-        { id: "client4", name: "Дмитрий Морозов" },
-      ];
-
-      setEvents(mockEvents);
-      setStats(mockStats);
-      setTrainers(mockTrainers);
-      setClients(mockClients);
-    } catch (error) {
-      console.error("Ошибка загрузки расписания:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    console.log("События обновились:", events);
+    console.log("API доступен:", isApiAvailable);
+  }, [events, isApiAvailable]);
 
   const handleSendQuickMessage = (event: ScheduleEvent) => {
     const recipients = [];
@@ -289,123 +141,124 @@ export default function SchedulePage() {
     setShowQuickMessage(true);
   };
 
-  const handleCreateEvent = async (data: CreateEventData) => {
-    try {
-      console.log("Создание события с данными:", data);
+const handleCreateEvent = async (data: CreateEventData): Promise<{ success: boolean; id?: string }> => {
+  try {
+    console.log("=== НАЧАЛО СОЗДАНИЯ СОБЫТИЯ ===");
+    console.log("1. Исходные данные из формы:", JSON.stringify(data, null, 2));
+    console.log("2. trainerId из формы:", data.trainerId);
+    console.log("3. Тип trainerId:", typeof data.trainerId);
+    console.log("4. clientId из формы:", data.clientId);
 
-      // Очищаем clientId если это специальное значение
-      const cleanedData = {
-        ...data,
-        clientId: data.clientId === "no-client" ? undefined : data.clientId,
-      };
+    // Очищаем clientId если это специальное значение
+    const cleanedData = {
+      ...data,
+      clientId: data.clientId === "no-client" ? undefined : data.clientId,
+    };
 
-      const newEvent: ScheduleEvent = {
-        _id: Date.now().toString(),
-        ...cleanedData,
-        trainerName:
-          trainers.find((t) => t.trainerId === cleanedData.trainerId)
-            ?.trainerName || "",
-        clientName: cleanedData.clientId
-          ? clients.find((c) => c.id === cleanedData.clientId)?.name
-          : undefined,
-        status: "scheduled",
-        createdAt: new Date().toISOString(),
-        createdBy: "current-user",
-      };
+    console.log("5. Очищенные данные:", JSON.stringify(cleanedData, null, 2));
+    console.log("6. trainerId после очистки:", cleanedData.trainerId);
+    console.log("7. clientId после очистки:", cleanedData.clientId);
 
-      console.log("Новое событие:", newEvent);
-
-      setEvents((prev) => {
-        const updated = [...prev, newEvent];
-        console.log("Обновленный список событий:", updated);
-        return updated;
-      });
-
-      // Обновляем статистику
-      if (stats) {
-        setStats((prev) =>
-          prev
-            ? {
-                ...prev,
-                totalEvents: prev.totalEvents + 1,
-                upcomingEvents: prev.upcomingEvents + 1,
-                byType: {
-                  ...prev.byType,
-                  [newEvent.type]:
-                    (prev.byType[newEvent.type as keyof typeof prev.byType] ||
-                      0) + 1,
-                },
-                byTrainer: prev.byTrainer.map((trainer) =>
-                  trainer.trainerId === newEvent.trainerId
-                    ? { ...trainer, eventCount: trainer.eventCount + 1 }
-                    : trainer
-                ),
-              }
-            : null
-        );
-      }
-
-      alert("Событие создано успешно!");
-    } catch (error) {
-      console.error("Ошибка создания события:", error);
-      alert("Ошибка создания события");
+    // Дополнительная валидация перед отправкой
+    if (!cleanedData.trainerId) {
+      throw new Error("trainerId обязателен");
     }
-  };
 
-  const handleUpdateEvent = async (data: CreateEventData) => {
-    if (!editingEvent) return;
+    if (typeof cleanedData.trainerId !== 'string') {
+      console.warn("trainerId не является строкой, приводим к строке");
+      cleanedData.trainerId = String(cleanedData.trainerId);
+    }
 
-    try {
-      console.log("Обновление события:", editingEvent._id, "с данными:", data);
+    console.log("8. Финальные данные для createEvent:", JSON.stringify(cleanedData, null, 2));
 
-      // Очищаем clientId если это специальное значение
-      const cleanedData = {
-        ...data,
-        clientId: data.clientId === "no-client" ? undefined : data.clientId,
-      };
-
-      const updatedEvent: ScheduleEvent = {
-        ...editingEvent,
-        ...cleanedData,
-        trainerName:
-          trainers.find((t) => t.trainerId === cleanedData.trainerId)
-            ?.trainerName || "",
-        clientName: cleanedData.clientId
-          ? clients.find((c) => c.id === cleanedData.clientId)?.name
-          : undefined,
-        updatedAt: new Date().toISOString(),
-      };
-
-      console.log("Обновленное событие:", updatedEvent);
-
-      setEvents((prev) => {
-        const updated = prev.map((e) =>
-          e._id === editingEvent._id ? updatedEvent : e
-        );
-        console.log(
-          "Обновленный список событий после редактирования:",
-          updated
-        );
-        return updated;
-      });
-
+    // Используем хук для создания события
+    const result = await createEvent(cleanedData);
+    
+    if (result.success) {
+      console.log("=== СОБЫТИЕ СОЗДАНО УСПЕШНО ===");
+      console.log("ID созданного события:", result.id);
+      
+      // Закрываем форму
+      setShowEventForm(false);
       setEditingEvent(null);
-      alert("Событие обновлено успешно!");
-    } catch (error) {
-      console.error("Ошибка обновления события:", error);
-      alert("Ошибка обновления события");
+      setFormInitialDate(undefined);
+      setFormInitialHour(undefined);
+      
+      return result; // ДОБАВЛЕНО: возвращаем результат
+    } else {
+      console.error("Создание события вернуло success: false");
+      throw new Error("Не удалось создать событие");
     }
-  };
+  } catch (error) {
+    console.error("=== ОШИБКА СОЗДАНИЯ СОБЫТИЯ ===");
+    console.error("Тип ошибки:", typeof error);
+    console.error("Ошибка:", error);
+    
+    if (error instanceof Error) {
+      console.error("Сообщение ошибки:", error.message);
+      console.error("Стек ошибки:", error.stack);
+    }
+    
+    // Показать ошибку пользователю
+    alert(`Ошибка создания события: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+    
+    // Пробрасываем ошибку дальше
+    throw error;
+  }
+};
+
+const handleUpdateEvent = async (data: CreateEventData): Promise<{ success: boolean; id?: string }> => {
+  if (!editingEvent) {
+    throw new Error("Нет события для редактирования");
+  }
+
+  try {
+    console.log("Обновление события:", editingEvent._id, "с данными:", data);
+
+    // Очищаем clientId если это специальное значение
+    const cleanedData = {
+      ...data,
+      clientId: data.clientId === "no-client" ? undefined : data.clientId,
+    };
+
+    // Используем хук для обновления события
+    const result = await updateEvent(editingEvent._id, cleanedData);
+    
+    if (result.success) {
+      console.log("Событие обновлено успешно");
+      setEditingEvent(null);
+      setShowEventForm(false);
+      setFormInitialDate(undefined);
+      setFormInitialHour(undefined);
+      
+      return result; // ДОБАВЛЕНО: возвращаем результат
+    } else {
+      throw new Error("Не удалось обновить событие");
+    }
+  } catch (error) {
+    console.error("Ошибка обновления события:", error);
+    alert(`Ошибка обновления события: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`);
+    throw error;
+  }
+};
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm("Вы уверены, что хотите удалить это событие?")) return;
 
     try {
-      setEvents((prev) => prev.filter((e) => e._id !== eventId));
-      alert("Событие удалено успешно!");
+      const result = await deleteEvent(eventId);
+
+      if (result.success) {
+        console.log("Событие удалено успешно");
+        // Закрываем модальные окна если они открыты
+        setShowEventDetails(false);
+        setSelectedEvent(null);
+      }
     } catch (error) {
       console.error("Ошибка удаления события:", error);
-      alert("Ошибка удаления события");
+      alert(
+        `Ошибка удаления события: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`
+      );
     }
   };
 
@@ -414,17 +267,16 @@ export default function SchedulePage() {
     status: ScheduleEvent["status"]
   ) => {
     try {
-      setEvents((prev) =>
-        prev.map((e) =>
-          e._id === eventId
-            ? { ...e, status, updatedAt: new Date().toISOString() }
-            : e
-        )
-      );
-      alert("Статус события обновлен!");
+      const result = await updateEventStatus(eventId, status);
+
+      if (result.success) {
+        console.log("Статус события обновлен");
+      }
     } catch (error) {
       console.error("Ошибка обновления статуса:", error);
-      alert("Ошибка обновления статуса");
+      alert(
+        `Ошибка обновления статуса: ${error instanceof Error ? error.message : "Неизвестная ошибка"}`
+      );
     }
   };
 
@@ -455,33 +307,25 @@ export default function SchedulePage() {
   const handleBulkAction = async (action: string, eventIds: string[]) => {
     switch (action) {
       case "confirm":
-        setEvents((prev) =>
-          prev.map((event) =>
-            eventIds.includes(event._id)
-              ? {
-                  ...event,
-                  status: "confirmed" as const,
-                  updatedAt: new Date().toISOString(),
-                }
-              : event
-          )
-        );
-        alert(`${eventIds.length} событий подтверждено`);
+        try {
+          await Promise.all(
+            eventIds.map((id) => updateEventStatus(id, "confirmed"))
+          );
+          console.log(`${eventIds.length} событий подтверждено`);
+        } catch (error) {
+          console.error("Ошибка массового подтверждения:", error);
+        }
         break;
 
       case "complete":
-        setEvents((prev) =>
-          prev.map((event) =>
-            eventIds.includes(event._id)
-              ? {
-                  ...event,
-                  status: "completed" as const,
-                  updatedAt: new Date().toISOString(),
-                }
-              : event
-          )
-        );
-        alert(`${eventIds.length} событий завершено`);
+        try {
+          await Promise.all(
+            eventIds.map((id) => updateEventStatus(id, "completed"))
+          );
+          console.log(`${eventIds.length} событий завершено`);
+        } catch (error) {
+          console.error("Ошибка массового завершения:", error);
+        }
         break;
 
       case "export":
@@ -526,13 +370,14 @@ export default function SchedulePage() {
     link.click();
   };
 
-  if (loading) {
+  // Показываем загрузку только если API загружается
+  if (isApiLoading) {
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Загрузка расписания...</p>
+            <p className="text-gray-600">Проверка API расписания...</p>
           </div>
         </div>
       </div>
@@ -544,18 +389,18 @@ export default function SchedulePage() {
       {/* Header */}
       <AdminSecondHeader
         title="Расписание"
-        description="Планирование событий"
+        description={`Планирование событий${!isApiAvailable ? " (тестовые данные)" : ""}`}
         icon={Calendar}
         actions={
           <MobileActionGroup>
             <ResponsiveButton
               variant="outline"
-              onClick={loadScheduleData}
-              disabled={loading}
+              onClick={() => window.location.reload()}
+              disabled={isMutationLoading}
               hideTextOnMobile
             >
               <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                className={`h-4 w-4 ${isMutationLoading ? "animate-spin" : ""}`}
               />
               <span className="sm:ml-2">Обновить</span>
             </ResponsiveButton>
@@ -577,6 +422,7 @@ export default function SchedulePage() {
                 setShowEventForm(true);
               }}
               className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              disabled={isMutationLoading}
             >
               <Plus className="h-4 w-4" />
               <span className="sm:ml-2">Создать</span>
@@ -585,6 +431,42 @@ export default function SchedulePage() {
         }
       />
 
+      {/* API Status Banner */}
+      {!isApiAvailable && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+            <span className="text-amber-800 font-medium">
+              Режим разработки: используются тестовые данные
+            </span>
+          </div>
+          <p className="text-amber-700 text-sm mt-1">
+            API расписания недоступен. Все изменения временные и не сохраняются.
+          </p>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {mutationError && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+              <span className="text-red-800 font-medium">Ошибка операции</span>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={clearError}
+              className="text-red-600 hover:text-red-800"
+            >
+              ×
+            </Button>
+          </div>
+          <p className="text-red-700 text-sm mt-1">{mutationError}</p>
+        </div>
+      )}
+
       {/* Отладочная панель - только для разработки */}
       {process.env.NODE_ENV === "development" && (
         <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -592,7 +474,11 @@ export default function SchedulePage() {
             Отладочная информация:
           </h3>
           <div className="text-sm text-yellow-700 space-y-1">
+            <div>API доступен: {isApiAvailable ? "Да" : "Нет"}</div>
             <div>Всего событий в состоянии: {events.length}</div>
+            <div>Всего тренеров: {trainersData.length}</div>
+            <div>Всего клиентов: {clients.length}</div>
+            <div>Загрузка мутаций: {isMutationLoading ? "Да" : "Нет"}</div>
             <div>Последнее обновление: {new Date().toLocaleTimeString()}</div>
             {events.length > 0 && (
               <div>
@@ -602,14 +488,29 @@ export default function SchedulePage() {
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => console.log("Текущие события:", events)}
-            className="mt-2"
-          >
-            Вывести события в консоль
-          </Button>
+          <div className="flex space-x-2 mt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => console.log("Текущие события:", events)}
+            >
+              События в консоль
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => console.log("Статистика:", stats)}
+            >
+              Статистика в консоль
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => console.log("Аналитика:", analytics)}
+            >
+              Аналитика в консоль
+            </Button>
+          </div>
         </div>
       )}
 
@@ -691,6 +592,107 @@ export default function SchedulePage() {
         {/* Analytics */}
         <TabsContent value="analytics">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Enhanced Analytics with Real Data */}
+            {analytics && (
+              <>
+                {/* Overview Cards */}
+                <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {analytics.overview.totalEvents}
+                    </div>
+                    <div className="text-sm text-gray-600">Всего событий</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="text-2xl font-bold text-green-600">
+                      {analytics.overview.activeTrainers}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Активных тренеров
+                    </div>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {analytics.overview.utilizationRate}%
+                    </div>
+                    <div className="text-sm text-gray-600">Загрузка</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border">
+                    <div className="text-2xl font-bold text-emerald-600">
+                      {analytics.overview.completionRate}%
+                    </div>
+                    <div className="text-sm text-gray-600">Завершено</div>
+                  </div>
+                </div>
+
+                {/* Trends */}
+                <div className="bg-white p-6 rounded-lg border">
+                  <h3 className="text-lg font-semibold mb-4">Тренды</h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">
+                        События на этой неделе
+                      </span>
+                      <span className="font-semibold">
+                        {analytics.trends.eventsThisWeek}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">
+                        События на прошлой неделе
+                      </span>
+                      <span className="font-semibold">
+                        {analytics.trends.eventsLastWeek}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Рост</span>
+                      <span
+                        className={`font-semibold ${
+                          analytics.trends.growthRate >= 0
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {analytics.trends.growthRate >= 0 ? "+" : ""}
+                        {analytics.trends.growthRate}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top Trainers */}
+                <div className="bg-white p-6 rounded-lg border">
+                  <h3 className="text-lg font-semibold mb-4">Топ тренеров</h3>
+                  <div className="space-y-3">
+                    {analytics.performance.topTrainers.map((trainer, index) => (
+                      <div
+                        key={trainer.name}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center text-xs font-semibold text-blue-600">
+                            {index + 1}
+                          </div>
+                          <span className="text-sm font-medium">
+                            {trainer.name}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold">
+                            {trainer.eventCount} событий
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {trainer.completionRate}% завершено
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
             {/* Events by Type */}
             <div className="bg-white p-6 rounded-lg border">
               <h3 className="text-lg font-semibold mb-4">События по типам</h3>
@@ -784,6 +786,80 @@ export default function SchedulePage() {
               </div>
             </div>
 
+            {/* Busy Hours Chart */}
+            {analytics && (
+              <div className="bg-white p-6 rounded-lg border">
+                <h3 className="text-lg font-semibold mb-4">Загруженные часы</h3>
+                <div className="space-y-2">
+                  {analytics.performance.busyHours.map((hour) => {
+                    const maxEvents = Math.max(
+                      ...analytics.performance.busyHours.map(
+                        (h) => h.eventCount
+                      )
+                    );
+                    const percentage =
+                      maxEvents > 0 ? (hour.eventCount / maxEvents) * 100 : 0;
+
+                    return (
+                      <div
+                        key={hour.hour}
+                        className="flex items-center space-x-3"
+                      >
+                        <span className="text-sm font-medium w-12">
+                          {hour.hour}:00
+                        </span>
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-purple-600 h-2 rounded-full"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-sm text-gray-600 w-8">
+                          {hour.eventCount}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Popular Event Types */}
+            {analytics && (
+              <div className="bg-white p-6 rounded-lg border">
+                <h3 className="text-lg font-semibold mb-4">
+                  Популярные типы событий
+                </h3>
+                <div className="space-y-3">
+                  {analytics.performance.popularEventTypes.map(
+                    (eventType, index) => (
+                      <div
+                        key={eventType.type}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-6 h-6 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-semibold text-indigo-600">
+                            {index + 1}
+                          </div>
+                          <span className="text-sm font-medium">
+                            {eventType.type}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-semibold">
+                            {eventType.count}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {eventType.percentage}%
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Weekly Schedule Overview */}
             <div className="bg-white p-6 rounded-lg border lg:col-span-2">
               <h3 className="text-lg font-semibold mb-4">Обзор недели</h3>
@@ -869,14 +945,11 @@ export default function SchedulePage() {
         isOpen={showEventForm}
         onClose={handleCloseForm}
         onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}
-        trainers={trainers.map((t) => ({
-          id: t.trainerId,
-          name: t.trainerName,
-          role: t.trainerRole,
-        }))}
+        trainers={trainersData}
         clients={clients}
         initialDate={formInitialDate}
         initialHour={formInitialHour}
+        isApiAvailable={isApiAvailable}
       />
 
       {/* Event Details Modal */}
@@ -908,6 +981,18 @@ export default function SchedulePage() {
           messageRelatedTo ? `По поводу: ${messageRelatedTo.title}` : ""
         }
       />
+
+      {/* Loading Overlay */}
+      {isMutationLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <div className="flex items-center space-x-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="text-gray-700">Обработка запроса...</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
