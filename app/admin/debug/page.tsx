@@ -11,6 +11,7 @@ import { DebugSystemTest } from "@/components/debug/DebugSystemTest";
 import { ArrowLeft, Bug, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AdminSecondHeader, MobileActionGroup, ResponsiveButton } from "@/components/admin/users/AdminSecondHeader";
+import { useQuery } from "convex/react";
 
 export default function DebugPage() {
   const [systemInfo, setSystemInfo] = useState({
@@ -19,7 +20,6 @@ export default function DebugPage() {
     notifications: 0,
     lastUpdate: null as Date | null
   });
-  const router = useRouter()
 
   const updateSystemInfo = () => {
     if (typeof window !== 'undefined' && window.fitAccessDebug) {

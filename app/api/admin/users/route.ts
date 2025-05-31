@@ -298,7 +298,7 @@ export async function PUT(request: NextRequest) {
         role: updatedUser.role,
         name: updatedUser.name,
         isActive: updatedUser.isActive,
-        photoUrl: updatedUser.photoUrl || null, // ✅ Возвращаем обновленное фото
+        photoUrl: updatedUser.photoUrl || null,
         lastLogin: updatedUser.lastLogin || null
       }
     });

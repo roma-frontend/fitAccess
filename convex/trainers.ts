@@ -1,4 +1,4 @@
-// convex/trainers.ts (исправленная версия с типами)
+// convex/trainers.ts
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -166,20 +166,26 @@ export const getAllTrainers = query({
 
 // ✅ АЛИАС ДЛЯ СОВМЕСТИМОСТИ
 export const getAll = query({
+  args: {},
   handler: async (ctx) => {
-    console.log('🔍 Convex trainers: getAll (алиас для getAllTrainers)');
+    const trainers = await ctx.db.query("trainers").collect();
     
-    // ✅ ПРЯМОЙ ВЫЗОВ ВМЕСТО ctx.runQuery
-    try {
-      const trainers = await ctx.db.query("trainers").collect();
-      console.log('✅ Convex trainers: найдено тренеров:', trainers.length);
-      return trainers;
-    } catch (error) {
-      console.error('❌ Convex trainers: ошибка getAll:', error);
-      return [];
-    }
+    // ✅ ДОБАВЛЯЕМ ОТЛАДКУ В CONVEX
+    console.log("📊 Convex trainers.getAll:", {
+      count: trainers.length,
+      trainers: trainers.map(t => ({
+        _id: t._id,
+        name: t.name,
+        email: t.email,
+        role: t.role
+      }))
+    });
+    
+    return trainers;
   },
 });
+
+
 // ✅ ПОЛУЧЕНИЕ ТРЕНЕРА ПО ID
 export const getById = query({
   args: { id: v.string() },

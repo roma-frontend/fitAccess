@@ -2,7 +2,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Существующие функции...
 
 export const getAll = query({
   handler: async (ctx) => {
@@ -12,6 +11,56 @@ export const getAll = query({
     return users;
   },
 });
+
+
+export const getByRole = query({
+  args: { role: v.string() },
+  handler: async (ctx, args) => {
+    console.log('Convex users: получаем пользователей по роли:', args.role);
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", args.role))
+      .collect();
+    console.log('Convex users: найдено пользователей с ролью', args.role, ':', users.length);
+    return users;
+  },
+});
+
+export const getActiveTrainers = query({
+  handler: async (ctx) => {
+    console.log('🔍 Convex users: получаем активных тренеров');
+    
+    // Простой способ - получаем всех пользователей и фильтруем
+    const allUsers = await ctx.db.query("users").collect();
+    console.log('📊 Всего пользователей в БД:', allUsers.length);
+    
+    // Фильтруем только тренеров с активным статусом
+    const trainers = allUsers.filter(user => {
+      const isTrainer = user.role === "trainer";
+      const isActive = user.isActive === true;
+      
+      console.log(`Проверяем пользователя ${user.name}:`, {
+        role: user.role,
+        isTrainer,
+        isActive: user.isActive,
+        подходит: isTrainer && isActive
+      });
+      
+      return isTrainer && isActive;
+    });
+    
+    console.log('✅ Найдено активных тренеров:', trainers.length);
+    console.log('📋 Список тренеров:', trainers.map(t => ({ 
+      name: t.name, 
+      email: t.email, 
+      role: t.role, 
+      isActive: t.isActive 
+    })));
+    
+    return trainers;
+  },
+});
+
 
 export const create = mutation({
   args: {

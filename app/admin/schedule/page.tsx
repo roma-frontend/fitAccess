@@ -1,354 +1,177 @@
-// app/admin/schedule/page.tsx (полная исправленная версия)
+// app/admin/schedule/page.tsx - исправленная версия
+
 "use client";
 
-import { useEffect, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect, useCallback } from "react";
 import {
   Calendar,
-  List,
+  Clock,
   Users,
+  TrendingUp,
   Plus,
   RefreshCw,
-  Download,
+  Settings,
   Filter,
-  TrendingUp,
-  ArrowLeft,
+  AlertCircle,
 } from "lucide-react";
-
-// Импорт компонентов
-import { ScheduleStats } from "@/components/admin/schedule/ScheduleStats";
-import { CalendarView } from "@/components/admin/schedule/CalendarView";
-import { EventsList } from "@/components/admin/schedule/EventsList";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { EventForm } from "@/components/admin/schedule/EventForm";
-import { TrainerWorkload } from "@/components/admin/schedule/TrainerWorkload";
-import { EventDetailsModal } from "@/components/admin/schedule/EventDetailsModal";
-import { QuickActions } from "@/components/admin/schedule/QuickActions";
+import { EventDetails } from "@/components/admin/schedule/EventDetails";
+import { CalendarView } from "@/components/admin/schedule/CalendarView";
 import {
-  ScheduleEvent,
-  ScheduleStats as ScheduleStatsType,
-  TrainerSchedule,
+  useScheduleDataClean,
   CreateEventData,
-} from "@/components/admin/schedule/types";
-import { QuickMessageModal } from "@/components/admin/messaging/QuickMessageModal";
-import { useRouter } from "next/navigation";
-import {
-  AdminSecondHeader,
-  MobileActionGroup,
-  ResponsiveButton,
-} from "@/components/admin/users/AdminSecondHeader";
+  ScheduleEvent,
+  useEvents,
+  useTrainers,
+  useClients,
+} from "@/hooks/useScheduleData";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
 export default function SchedulePage() {
-  const [events, setEvents] = useState<ScheduleEvent[]>([]);
-  const [stats, setStats] = useState<ScheduleStatsType | null>(null);
-  const [trainers, setTrainers] = useState<TrainerSchedule[]>([]);
-  const [clients, setClients] = useState<Array<{ id: string; name: string }>>(
-    []
-  );
-  const [loading, setLoading] = useState(true);
+  // ✅ СОСТОЯНИЕ КОМПОНЕНТА
   const [showEventForm, setShowEventForm] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null);
+  const [showEventDetails, setShowEventDetails] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(
     null
   );
-  const [showEventDetails, setShowEventDetails] = useState(false);
-  const [formInitialDate, setFormInitialDate] = useState<Date | undefined>();
+  const [editingEvent, setEditingEvent] = useState<ScheduleEvent | null>(null);
+  const [formInitialDate, setFormInitialDate] = useState<string | undefined>();
   const [formInitialHour, setFormInitialHour] = useState<number | undefined>();
-  const [userRole] = useState("super-admin");
-  const [showQuickMessage, setShowQuickMessage] = useState(false);
-  const [messageRecipients, setMessageRecipients] = useState<any[]>([]);
-  const [messageRelatedTo, setMessageRelatedTo] = useState<any>(null);
-  const router = useRouter();
+  const [currentView, setCurrentView] = useState<"month" | "week" | "day">(
+    "month"
+  );
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterTrainer, setFilterTrainer] = useState<string>("all");
+  const [forceRefresh, setForceRefresh] = useState(0);
 
-  useEffect(() => {
-    loadScheduleData();
+  // ✅ ПОЛУЧАЕМ СЫРЫЕ ДАННЫЕ ДЛЯ ОТЛАДКИ
+  const convexEvents = useEvents();
+  const convexTrainers = useTrainers();
+  const convexClients = useClients();
+
+  // ✅ ИСПОЛЬЗУЕМ ОЧИЩЕННЫЙ ХУК
+  const {
+    events,
+    trainers,
+    clients,
+    loading,
+    error,
+    dataSource,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+    updateEventStatus,
+    refreshApiData,
+    retryConnection,
+  } = useScheduleDataClean();
+
+  // ✅ МУТАЦИЯ ДЛЯ СОЗДАНИЯ ТЕСТОВОГО ТРЕНЕРА
+  const createUserMutation = useMutation(api.users.create);
+
+  // ✅ СТАТИСТИКА
+  const stats = {
+    totalEvents: events.length,
+    todayEvents: events.filter((e) => {
+      const today = new Date().toISOString().split("T")[0];
+      return e.startTime.startsWith(today);
+    }).length,
+    confirmedEvents: events.filter((e) => e.status === "confirmed").length,
+    completedEvents: events.filter((e) => e.status === "completed").length,
+  };
+
+  // ✅ ФИЛЬТРАЦИЯ СОБЫТИЙ
+  const filteredEvents = events.filter((event) => {
+    if (filterStatus !== "all" && event.status !== filterStatus) return false;
+    if (filterTrainer !== "all" && event.trainerId !== filterTrainer)
+      return false;
+    return true;
+  });
+
+  // ✅ ФУНКЦИЯ ПРИНУДИТЕЛЬНОГО ОБНОВЛЕНИЯ
+  const forceComponentRefresh = useCallback(() => {
+    console.log("🔄 Принудительное обновление компонента");
+    setForceRefresh((prev) => prev + 1);
   }, []);
 
-  // Отладка изменений событий
-  useEffect(() => {
-    console.log("События обновились на главной странице:", events);
-  }, [events]);
-
-  const loadScheduleData = async () => {
-    setLoading(true);
+  // ✅ ФУНКЦИЯ ДЛЯ СОЗДАНИЯ ТЕСТОВОГО ТРЕНЕРА
+  const handleCreateTestTrainer = async () => {
     try {
-      // Имитация API запросов - замените на реальные
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      console.log("🧪 Создание тестового тренера...");
 
-      // Моковые данные
-      const mockEvents: ScheduleEvent[] = [
-        {
-          _id: "1",
-          title: "Персональная тренировка",
-          description:
-            "Силовая тренировка для начинающих. Работа с базовыми упражнениями, изучение техники выполнения.",
-          type: "training",
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Завтра
-          endTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(),
-          trainerId: "trainer1",
-          trainerName: "Иван Петров",
-          clientId: "client1",
-          clientName: "Анна Смирнова",
-          status: "confirmed",
-          location: "Зал 1",
-          notes:
-            "Первая тренировка, нужно провести инструктаж по технике безопасности",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-        {
-          _id: "2",
-          title: "Групповая кардио тренировка",
-          description: "Интенсивная кардио тренировка для группы",
-          type: "training",
-          startTime: new Date(
-            Date.now() + 2 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          endTime: new Date(
-            Date.now() + 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000
-          ).toISOString(),
-          trainerId: "trainer2",
-          trainerName: "Мария Иванова",
-          status: "scheduled",
-          location: "Зал 2",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-        {
-          _id: "3",
-          title: "Консультация по питанию",
-          description: "Составление индивидуального плана питания",
-          type: "consultation",
-          startTime: new Date(
-            Date.now() + 3 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          endTime: new Date(
-            Date.now() + 3 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000
-          ).toISOString(),
-          trainerId: "trainer3",
-          trainerName: "Алексей Сидоров",
-          clientId: "client2",
-          clientName: "Петр Козлов",
-          status: "scheduled",
-          location: "Кабинет консультаций",
-          notes: "Клиент хочет набрать мышечную массу",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-        {
-          _id: "4",
-          title: "Планерка тренеров",
-          description: "Еженедельная встреча команды тренеров",
-          type: "meeting",
-          startTime: new Date(
-            Date.now() + 4 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-          endTime: new Date(
-            Date.now() + 4 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000
-          ).toISOString(),
-          trainerId: "trainer1",
-          trainerName: "Иван Петров",
-          status: "confirmed",
-          location: "Конференц-зал",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin",
-        },
-      ];
-
-      const mockStats: ScheduleStatsType = {
-        totalEvents: 156,
-        todayEvents: 12,
-        upcomingEvents: 45,
-        completedEvents: 89,
-        cancelledEvents: 10,
-        pendingConfirmation: 8,
-        overdueEvents: 3,
-        byTrainer: [
-          { trainerId: "trainer1", trainerName: "Иван Петров", eventCount: 45 },
-          {
-            trainerId: "trainer2",
-            trainerName: "Мария Иванова",
-            eventCount: 38,
-          },
-          {
-            trainerId: "trainer3",
-            trainerName: "Алексей Сидоров",
-            eventCount: 32,
-          },
-        ],
-        byType: {
-          training: 89,
-          consultation: 34,
-          group: 15,
-          meeting: 23,
-          break: 10,
-          other: 5,
-        },
-        byStatus: {
-          scheduled: 45,
-          confirmed: 67,
-          completed: 89,
-          cancelled: 10,
-          "no-show": 5,
-        },
-        utilizationRate: 78,
-        averageDuration: 60, // 60 минут
-        busyHours: [
-          { hour: 9, eventCount: 12 },
-          { hour: 10, eventCount: 18 },
-          { hour: 11, eventCount: 15 },
-          { hour: 14, eventCount: 20 },
-          { hour: 15, eventCount: 16 },
-          { hour: 16, eventCount: 14 },
-          { hour: 17, eventCount: 10 },
-          { hour: 18, eventCount: 8 },
-        ],
+      const testTrainerData = {
+        email: `trainer-test-${Date.now()}@gym.com`,
+        password: "test123456",
+        name: `Тестовый Тренер ${new Date().getHours()}:${new Date().getMinutes()}`,
+        role: "trainer",
+        isActive: true,
+        createdAt: Date.now(),
       };
 
-      const mockTrainers: TrainerSchedule[] = [
-        {
-          trainerId: "trainer1",
-          trainerName: "Иван Петров",
-          trainerRole: "Персональный тренер",
-          events: mockEvents.filter((e) => e.trainerId === "trainer1"),
-          workingHours: {
-            start: "09:00",
-            end: "18:00",
-            days: [1, 2, 3, 4, 5], // Пн-Пт
-          },
-        },
-        {
-          trainerId: "trainer2",
-          trainerName: "Мария Иванова",
-          trainerRole: "Групповой тренер",
-          events: mockEvents.filter((e) => e.trainerId === "trainer2"),
-          workingHours: {
-            start: "10:00",
-            end: "19:00",
-            days: [1, 2, 3, 4, 5, 6], // Пн-Сб
-          },
-        },
-        {
-          trainerId: "trainer3",
-          trainerName: "Алексей Сидоров",
-          trainerRole: "Консультант по питанию",
-          events: mockEvents.filter((e) => e.trainerId === "trainer3"),
-          workingHours: {
-            start: "11:00",
-            end: "17:00",
-            days: [1, 2, 3, 4, 5], // Пн-Пт
-          },
-        },
-      ];
+      console.log("📤 Отправляем данные тренера:", testTrainerData);
 
-      const mockClients = [
-        { id: "client1", name: "Анна Смирнова" },
-        { id: "client2", name: "Петр Козлов" },
-        { id: "client3", name: "Елена Васильева" },
-        { id: "client4", name: "Дмитрий Морозов" },
-      ];
+      const trainerId = await createUserMutation(testTrainerData);
 
-      setEvents(mockEvents);
-      setStats(mockStats);
-      setTrainers(mockTrainers);
-      setClients(mockClients);
+      console.log("✅ Тестовый тренер создан с ID:", trainerId);
+      alert(`✅ Тестовый тренер "${testTrainerData.name}" создан успешно!`);
+
+      // Принудительно обновляем данные
+      setTimeout(() => {
+        forceComponentRefresh();
+        console.log("🔄 Принудительное обновление данных");
+      }, 1000);
     } catch (error) {
-      console.error("Ошибка загрузки расписания:", error);
-    } finally {
-      setLoading(false);
+      console.error("❌ Ошибка создания тестового тренера:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Неизвестная ошибка";
+      alert(`❌ Ошибка создания тестового тренера: ${errorMessage}`);
     }
   };
 
-  const handleSendQuickMessage = (event: ScheduleEvent) => {
-    const recipients = [];
-
-    if (event.clientId && event.clientName) {
-      recipients.push({
-        id: event.clientId,
-        name: event.clientName,
-        role: "member",
-        phone: "+7 (999) 123-45-67",
-        email: "client@example.com",
-      });
-    }
-
-    recipients.push({
-      id: event.trainerId,
-      name: event.trainerName,
-      role: "trainer",
-      phone: "+7 (999) 987-65-43",
-      email: "trainer@fitaccess.ru",
-    });
-
-    setMessageRecipients(recipients);
-    setMessageRelatedTo({
-      type: "event",
-      id: event._id,
-      title: event.title,
-    });
-    setShowQuickMessage(true);
-  };
-
+  // ✅ ОБРАБОТЧИКИ СОБЫТИЙ
   const handleCreateEvent = async (data: CreateEventData) => {
     try {
-      console.log("Создание события с данными:", data);
+      console.log("🆕 Создание события:", data);
 
-      // Очищаем clientId если это специальное значение
-      const cleanedData = {
+      const trainer = trainers.find((t) => t.trainerId === data.trainerId);
+      const client =
+        data.clientId && data.clientId !== "no-client"
+          ? clients.find((c) => c.id === data.clientId)
+          : null;
+
+      const eventData = {
         ...data,
-        clientId: data.clientId === "no-client" ? undefined : data.clientId,
+        trainerName: trainer?.trainerName || "Неизвестный тренер",
+        clientName: client?.name,
       };
 
-      const newEvent: ScheduleEvent = {
-        _id: Date.now().toString(),
-        ...cleanedData,
-        trainerName:
-          trainers.find((t) => t.trainerId === cleanedData.trainerId)
-            ?.trainerName || "",
-        clientName: cleanedData.clientId
-          ? clients.find((c) => c.id === cleanedData.clientId)?.name
-          : undefined,
-        status: "scheduled",
-        createdAt: new Date().toISOString(),
-        createdBy: "current-user",
-      };
+      console.log("📤 Отправляем данные:", eventData);
 
-      console.log("Новое событие:", newEvent);
+      const eventId = await createEvent(eventData);
 
-      setEvents((prev) => {
-        const updated = [...prev, newEvent];
-        console.log("Обновленный список событий:", updated);
-        return updated;
-      });
+      console.log("✅ Событие создано с ID:", eventId);
 
-      // Обновляем статистику
-      if (stats) {
-        setStats((prev) =>
-          prev
-            ? {
-                ...prev,
-                totalEvents: prev.totalEvents + 1,
-                upcomingEvents: prev.upcomingEvents + 1,
-                byType: {
-                  ...prev.byType,
-                  [newEvent.type]:
-                    (prev.byType[newEvent.type as keyof typeof prev.byType] ||
-                      0) + 1,
-                },
-                byTrainer: prev.byTrainer.map((trainer) =>
-                  trainer.trainerId === newEvent.trainerId
-                    ? { ...trainer, eventCount: trainer.eventCount + 1 }
-                    : trainer
-                ),
-              }
-            : null
-        );
+      // ✅ ОБНОВЛЯЕМ ДАННЫЕ В ЗАВИСИМОСТИ ОТ ИСТОЧНИКА
+      if (dataSource === "api") {
+        await refreshApiData();
+      } else if (dataSource === "convex") {
+        setTimeout(() => {
+          forceComponentRefresh();
+          console.log("🔄 Принудительное обновление после Convex");
+        }, 500);
       }
 
-      alert("Событие создано успешно!");
-    } catch (error) {
-      console.error("Ошибка создания события:", error);
-      alert("Ошибка создания события");
+      alert(`✅ Событие "${data.title}" создано успешно! (${dataSource})`);
+      handleCloseForm();
+    } catch (error: unknown) {
+      console.error("❌ Ошибка создания события:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Неизвестная ошибка";
+      alert(`❌ Ошибка создания события: ${errorMessage}`);
     }
   };
 
@@ -356,95 +179,105 @@ export default function SchedulePage() {
     if (!editingEvent) return;
 
     try {
-      console.log("Обновление события:", editingEvent._id, "с данными:", data);
+      console.log("✏️ Обновление события:", editingEvent._id);
 
-      // Очищаем clientId если это специальное значение
-      const cleanedData = {
-        ...data,
-        clientId: data.clientId === "no-client" ? undefined : data.clientId,
+      const trainer = trainers.find((t) => t.trainerId === data.trainerId);
+      const client =
+        data.clientId && data.clientId !== "no-client"
+          ? clients.find((c) => c.id === data.clientId)
+          : null;
+
+      const updateData = {
+        id: editingEvent._id,
+        title: data.title,
+        description: data.description,
+        type: data.type,
+        startTime: data.startTime,
+        endTime: data.endTime,
+        trainerId: data.trainerId,
+        trainerName: trainer?.trainerName || editingEvent.trainerName,
+        clientId: client?.id,
+        clientName: client?.name,
+        location: data.location,
+        notes: data.notes,
+        status: data.status || editingEvent.status,
       };
 
-      const updatedEvent: ScheduleEvent = {
-        ...editingEvent,
-        ...cleanedData,
-        trainerName:
-          trainers.find((t) => t.trainerId === cleanedData.trainerId)
-            ?.trainerName || "",
-        clientName: cleanedData.clientId
-          ? clients.find((c) => c.id === cleanedData.clientId)?.name
-          : undefined,
-        updatedAt: new Date().toISOString(),
-      };
+      await updateEvent(updateData);
+      console.log("✅ Событие обновлено");
 
-      console.log("Обновленное событие:", updatedEvent);
+      alert(`✅ Событие "${data.title}" обновлено успешно! (${dataSource})`);
+      handleCloseForm();
 
-      setEvents((prev) => {
-        const updated = prev.map((e) =>
-          e._id === editingEvent._id ? updatedEvent : e
-        );
-        console.log(
-          "Обновленный список событий после редактирования:",
-          updated
-        );
-        return updated;
-      });
-
-      setEditingEvent(null);
-      alert("Событие обновлено успешно!");
-    } catch (error) {
-      console.error("Ошибка обновления события:", error);
-      alert("Ошибка обновления события");
+      if (dataSource === "api") {
+        await refreshApiData();
+      }
+    } catch (error: unknown) {
+      console.error("❌ Ошибка обновления события:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Неизвестная ошибка";
+      alert(`❌ Ошибка обновления: ${errorMessage}`);
     }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm("Вы уверены, что хотите удалить это событие?")) return;
+    const event = events.find((e) => e._id === eventId);
+    const eventTitle = event?.title || "событие";
+
+    if (!confirm(`Вы уверены, что хотите удалить "${eventTitle}"?`)) return;
 
     try {
-      setEvents((prev) => prev.filter((e) => e._id !== eventId));
-      alert("Событие удалено успешно!");
-    } catch (error) {
-      console.error("Ошибка удаления события:", error);
-      alert("Ошибка удаления события");
+      console.log("🗑️ Удаление события:", eventId);
+
+      await deleteEvent(eventId);
+      console.log("✅ Событие удалено");
+
+      alert(`✅ Событие "${eventTitle}" удалено успешно! (${dataSource})`);
+
+      if (showEventDetails) {
+        setShowEventDetails(false);
+        setSelectedEvent(null);
+      }
+
+      if (dataSource === "api") {
+        await refreshApiData();
+      }
+    } catch (error: unknown) {
+      console.error("❌ Ошибка удаления:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Неизвестная ошибка";
+      alert(`❌ Ошибка удаления: ${errorMessage}`);
     }
   };
 
-  const handleStatusChange = async (
-    eventId: string,
-    status: ScheduleEvent["status"]
-  ) => {
+  const handleStatusChange = async (eventId: string, newStatus: string) => {
     try {
-      setEvents((prev) =>
-        prev.map((e) =>
-          e._id === eventId
-            ? { ...e, status, updatedAt: new Date().toISOString() }
-            : e
-        )
-      );
-      alert("Статус события обновлен!");
-    } catch (error) {
-      console.error("Ошибка обновления статуса:", error);
-      alert("Ошибка обновления статуса");
+      console.log("🔄 Изменение статуса события:", eventId, newStatus);
+
+      await updateEventStatus(eventId, newStatus);
+      console.log("✅ Статус изменен");
+
+      if (dataSource === "api") {
+        await refreshApiData();
+      }
+    } catch (error: unknown) {
+      console.error("❌ Ошибка изменения статуса:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Неизвестная ошибка";
+      alert(`❌ Ошибка изменения статуса: ${errorMessage}`);
     }
   };
 
-  const handleEventClick = (event: ScheduleEvent) => {
-    setEditingEvent(event);
-    setShowEventForm(true);
+  // ✅ ОСНОВНАЯ ФУНКЦИЯ ОБРАБОТКИ ФОРМЫ
+  const handleFormSubmit = async (data: CreateEventData) => {
+    if (editingEvent) {
+      await handleUpdateEvent(data);
+    } else {
+      await handleCreateEvent(data);
+    }
   };
 
-  const handleViewEventDetails = (event: ScheduleEvent) => {
-    setSelectedEvent(event);
-    setShowEventDetails(true);
-  };
-
-  const handleCreateEventFromCalendar = (date: Date, hour: number) => {
-    setFormInitialDate(date);
-    setFormInitialHour(hour);
-    setEditingEvent(null);
-    setShowEventForm(true);
-  };
-
+  // ✅ ФУНКЦИИ УПРАВЛЕНИЯ ФОРМОЙ
   const handleCloseForm = () => {
     setShowEventForm(false);
     setEditingEvent(null);
@@ -452,462 +285,414 @@ export default function SchedulePage() {
     setFormInitialHour(undefined);
   };
 
-  const handleBulkAction = async (action: string, eventIds: string[]) => {
-    switch (action) {
-      case "confirm":
-        setEvents((prev) =>
-          prev.map((event) =>
-            eventIds.includes(event._id)
-              ? {
-                  ...event,
-                  status: "confirmed" as const,
-                  updatedAt: new Date().toISOString(),
-                }
-              : event
-          )
-        );
-        alert(`${eventIds.length} событий подтверждено`);
-        break;
+  const handleEventClick = (event: ScheduleEvent) => {
+    setSelectedEvent(event);
+    setShowEventDetails(true);
+  };
 
-      case "complete":
-        setEvents((prev) =>
-          prev.map((event) =>
-            eventIds.includes(event._id)
-              ? {
-                  ...event,
-                  status: "completed" as const,
-                  updatedAt: new Date().toISOString(),
-                }
-              : event
-          )
-        );
-        alert(`${eventIds.length} событий завершено`);
-        break;
+  const handleEditEvent = (event: ScheduleEvent) => {
+    setEditingEvent(event);
+    setShowEventDetails(false);
+    setShowEventForm(true);
+  };
 
-      case "export":
-        exportSchedule();
-        break;
+  const handleDateClick = (date: Date, hour?: number) => {
+    setFormInitialDate(date.toISOString().split("T")[0]);
+    setFormInitialHour(hour);
+    setEditingEvent(null);
+    setShowEventForm(true);
+  };
+
+  // ✅ ФУНКЦИЯ ОБНОВЛЕНИЯ ДАННЫХ
+  const refreshData = async () => {
+    try {
+      console.log("🔄 Обновление данных...");
+
+      if (dataSource === "api") {
+        await refreshApiData();
+      } else {
+        // Для Convex данные обновляются автоматически
+        console.log("✅ Данные актуальны");
+      }
+    } catch (error: unknown) {
+      console.error("❌ Ошибка обновления данных:", error);
+      alert("❌ Ошибка обновления данных");
     }
   };
 
-  const exportSchedule = () => {
-    const csvData = events.map((event) => ({
-      title: event.title,
-      type: event.type,
-      trainer: event.trainerName,
-      client: event.clientName || "",
-      startTime: new Date(event.startTime).toLocaleString("ru"),
-      endTime: new Date(event.endTime).toLocaleString("ru"),
-      status: event.status,
-      location: event.location || "",
-    }));
+  // ✅ ТЕСТОВАЯ ФУНКЦИЯ
+  const handleTestAPI = async () => {
+    if (trainers.length === 0) {
+      alert("❌ Нет доступных тренеров для создания тестового события");
+      return;
+    }
 
-    const csv = [
-      [
-        "Название",
-        "Тип",
-        "Тренер",
-        "Клиент",
-        "Начало",
-        "Конец",
-        "Статус",
-        "Место",
-      ],
-      ...csvData.map((row) => Object.values(row)),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
+    try {
+      const testEvent = {
+        title: `Тестовое событие ${new Date().getHours()}:${new Date().getMinutes()}`,
+        type: "personal",
+        startTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+        trainerId: trainers[0]?.trainerId || "test-trainer",
+        description: "Тест создания события",
+        location: "Тестовый зал",
+        notes: "Тестовые заметки",
+      };
 
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `schedule-${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
+      console.log("🧪 Тестовое создание события:", testEvent);
+      const eventId = await createEvent(testEvent);
+      console.log("✅ Тестовое событие создано:", eventId);
+      alert(`✅ Тестовое событие создано! (${dataSource})`);
+
+      if (dataSource === "api") {
+        await refreshApiData();
+      }
+    } catch (error: unknown) {
+      console.error("❌ Ошибка тестового создания:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Неизвестная ошибка";
+      alert("❌ Ошибка: " + errorMessage);
+    }
   };
+
+  // ✅ ОТЛАДОЧНАЯ ИНФОРМАЦИЯ О СОБЫТИЯХ
+  useEffect(() => {
+    console.log("📊 События обновились:", {
+      count: events.length,
+      dataSource,
+      forceRefresh,
+      events: events.map((e) => ({
+        id: e._id,
+        title: e.title,
+        startTime: e.startTime,
+        trainer: e.trainerName,
+      })),
+    });
+  }, [events, dataSource, forceRefresh]);
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Загрузка расписания...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Загрузка расписания...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ ПОКАЗЫВАЕМ СООБЩЕНИЕ ЕСЛИ НЕТ ДАННЫХ
+  if (dataSource === "unavailable") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">
+            Нет доступных источников данных
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Не удалось подключиться к Convex или API. Проверьте подключение и
+            настройки.
+          </p>
+          <Button onClick={retryConnection} className="mr-2">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Попробовать снова
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      {/* Header */}
-      <AdminSecondHeader
-        title="Расписание"
-        description="Планирование событий"
-        icon={Calendar}
-        actions={
-          <MobileActionGroup>
-            <ResponsiveButton
-              variant="outline"
-              onClick={loadScheduleData}
-              disabled={loading}
-              hideTextOnMobile
+    <div className="space-y-6">
+      {/* ✅ ЗАГОЛОВОК И СТАТУС */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Расписание тренировок
+          </h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge
+              variant={
+                dataSource === "convex"
+                  ? "default"
+                  : dataSource === "api"
+                    ? "secondary"
+                    : "destructive"
+              }
             >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-              <span className="sm:ml-2">Обновить</span>
-            </ResponsiveButton>
-
-            <ResponsiveButton
-              variant="outline"
-              onClick={exportSchedule}
-              hideTextOnMobile
-            >
-              <Download className="h-4 w-4" />
-              <span className="sm:ml-2">Экспорт</span>
-            </ResponsiveButton>
-
-            <ResponsiveButton
-              onClick={() => {
-                setEditingEvent(null);
-                setFormInitialDate(undefined);
-                setFormInitialHour(undefined);
-                setShowEventForm(true);
-              }}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="sm:ml-2">Создать</span>
-            </ResponsiveButton>
-          </MobileActionGroup>
-        }
-      />
-
-      {/* Отладочная панель - только для разработки */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="font-medium text-yellow-800 mb-2">
-            Отладочная информация:
-          </h3>
-          <div className="text-sm text-yellow-700 space-y-1">
-            <div>Всего событий в состоянии: {events.length}</div>
-            <div>Последнее обновление: {new Date().toLocaleTimeString()}</div>
-            {events.length > 0 && (
-              <div>
-                <div>Последнее событие: {events[events.length - 1]?.title}</div>
-                <div>ID: {events[events.length - 1]?._id}</div>
-                <div>Время: {events[events.length - 1]?.startTime}</div>
-              </div>
+              {dataSource === "convex"
+                ? "🟢 Convex"
+                : dataSource === "api"
+                  ? "🟡 API"
+                  : "🔴 Недоступно"}
+            </Badge>
+            {error && (
+              <Badge variant="destructive" className="text-xs">
+                {error}
+              </Badge>
             )}
           </div>
+        </div>
+
+        {/* ✅ КНОПКИ УПРАВЛЕНИЯ */}
+        <div className="flex gap-2">
           <Button
-            size="sm"
             variant="outline"
-            onClick={() => console.log("Текущие события:", events)}
-            className="mt-2"
+            onClick={refreshData}
+            disabled={loading}
+            size="sm"
           >
-            Вывести события в консоль
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline ml-2">Обновить</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={forceComponentRefresh}
+            size="sm"
+            className="bg-yellow-50 hover:bg-yellow-100"
+          >
+            🔄 <span className="hidden sm:inline ml-1">Перезагрузить</span>
+          </Button>
+
+          {trainers.length > 0 && (
+            <Button
+              onClick={handleTestAPI}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={loading}
+              size="sm"
+            >
+              🧪 <span className="hidden sm:inline ml-1">Тест</span>
+            </Button>
+          )}
+
+          {trainers.length === 0 && (
+            <Button
+              onClick={handleCreateTestTrainer}
+              className="bg-orange-600 hover:bg-orange-700"
+              size="sm"
+            >
+              👨‍🏫 <span className="hidden sm:inline ml-1">Создать тренера</span>
+            </Button>
+          )}
+
+          <Button
+            onClick={() => {
+              if (trainers.length === 0) {
+                alert(
+                  "❌ Нет доступных тренеров. Сначала добавьте тренеров в систему."
+                );
+                return;
+              }
+              setEditingEvent(null);
+              setFormInitialDate(undefined);
+              setFormInitialHour(undefined);
+              setShowEventForm(true);
+            }}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            disabled={trainers.length === 0}
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline ml-2">Создать</span>
           </Button>
         </div>
+      </div>
+
+      {/* ✅ ПРЕДУПРЕЖДЕНИЕ ЕСЛИ НЕТ ТРЕНЕРОВ */}
+      {trainers.length === 0 && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-yellow-800">
+              <AlertCircle className="h-5 w-5" />
+              <p>
+                <strong>Внимание:</strong> В системе нет тренеров. Добавьте
+                тренеров в разделе "Тренеры" для создания событий.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Stats */}
-      {stats && (
-        <div className="mb-8">
-          <ScheduleStats stats={stats} />
-        </div>
+      {/* ✅ СТАТИСТИКА */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Всего событий</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalEvents}</div>
+            <p className="text-xs text-muted-foreground">
+              +{stats.todayEvents} сегодня
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Сегодня</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.todayEvents}</div>
+            <p className="text-xs text-muted-foreground">событий на сегодня</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Подтверждено</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.confirmedEvents}</div>
+            <p className="text-xs text-muted-foreground">
+              из {stats.totalEvents} событий
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Завершено</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.completedEvents}</div>
+            <p className="text-xs text-muted-foreground">
+              выполненных тренировок
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ✅ ФИЛЬТРЫ */}
+      {(events.length > 0 || trainers.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Фильтры
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">Статус</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="px-3 py-2 border rounded-md text-sm"
+                >
+                  <option value="all">Все статусы</option>
+                  <option value="scheduled">Запланировано</option>
+                  <option value="confirmed">Подтверждено</option>
+                  <option value="completed">Завершено</option>
+                  <option value="cancelled">Отменено</option>
+                  <option value="no-show">Не явился</option>
+                </select>
+              </div>
+
+              {trainers.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">Тренер</label>
+                  <select
+                    value={filterTrainer}
+                    onChange={(e) => setFilterTrainer(e.target.value)}
+                    className="px-3 py-2 border rounded-md text-sm"
+                  >
+                    <option value="all">Все тренеры</option>
+                    {trainers.map((trainer) => (
+                      <option key={trainer.trainerId} value={trainer.trainerId}>
+                        {trainer.trainerName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium">Вид</label>
+                <div className="flex gap-2">
+                  {(["month", "week", "day"] as const).map((view) => (
+                    <Button
+                      key={view}
+                      variant={currentView === view ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentView(view)}
+                    >
+                      {view === "month"
+                        ? "Месяц"
+                        : view === "week"
+                          ? "Неделя"
+                          : "День"}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Main Content */}
-      <Tabs defaultValue="calendar" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="calendar" className="flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Календарь
-          </TabsTrigger>
-          <TabsTrigger value="list" className="flex items-center gap-2">
-            <List className="h-4 w-4" />
-            Список событий
-          </TabsTrigger>
-          <TabsTrigger value="trainers" className="flex items-center gap-2">
-            <Users className="h-4 w-4" />
-            Загрузка тренеров
-          </TabsTrigger>
-          <TabsTrigger value="quick" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Быстрые действия
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Аналитика
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Calendar View */}
-        <TabsContent value="calendar">
-          <CalendarView
-            events={events}
-            onEventClick={handleEventClick}
-            onCreateEvent={handleCreateEventFromCalendar}
-            onEditEvent={handleEventClick}
-            onDeleteEvent={handleDeleteEvent}
-            onViewEventDetails={handleViewEventDetails}
-            userRole={userRole}
-          />
-        </TabsContent>
-
-        {/* Events List */}
-        <TabsContent value="list">
-          <EventsList
-            events={events}
-            onEdit={handleEventClick}
-            onDelete={handleDeleteEvent}
-            onStatusChange={handleStatusChange}
-          />
-        </TabsContent>
-
-        {/* Trainer Workload */}
-        <TabsContent value="trainers">
-          <TrainerWorkload
-            trainers={trainers}
-            events={events}
-            onEventClick={handleViewEventDetails}
-          />
-        </TabsContent>
-
-        {/* Quick Actions */}
-        <TabsContent value="quick">
-          {stats && (
-            <QuickActions
-              events={events}
-              stats={stats}
-              onBulkAction={handleBulkAction}
+      {/* ✅ КАЛЕНДАРЬ */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Календарь событий</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 && trainers.length > 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Событий пока нет. Создайте первое событие!</p>
+            </div>
+          ) : (
+            <CalendarView
+              events={filteredEvents}
+              trainers={trainers}
+              clients={clients}
+              currentView={currentView}
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              onEventClick={handleEventClick}
+              onDateClick={handleDateClick}
+              onEventStatusChange={handleStatusChange}
             />
           )}
-        </TabsContent>
+        </CardContent>
+      </Card>
 
-        {/* Analytics */}
-        <TabsContent value="analytics">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Events by Type */}
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-semibold mb-4">События по типам</h3>
-              <div className="space-y-3">
-                {Object.entries(stats?.byType || {}).map(([type, count]) => {
-                  const typeNames = {
-                    training: "Тренировки",
-                    consultation: "Консультации",
-                    group: "Групповые занятия",
-                    meeting: "Встречи",
-                    break: "Перерывы",
-                    other: "Другое",
-                  };
+      {/* ✅ МОДАЛЬНЫЕ ОКНА */}
+      {showEventForm && (
+        <EventForm
+          isOpen={showEventForm}
+          onClose={handleCloseForm}
+          onSubmit={handleFormSubmit}
+          initialData={editingEvent}
+          initialDate={formInitialDate}
+          initialHour={formInitialHour}
+          trainers={trainers}
+          clients={clients}
+          isEditing={!!editingEvent}
+        />
+      )}
 
-                  const total = Object.values(stats?.byType || {}).reduce(
-                    (a, b) => a + b,
-                    0
-                  );
-                  const percentage =
-                    total > 0 ? ((count / total) * 100).toFixed(1) : "0";
-
-                  return (
-                    <div
-                      key={type}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="text-sm font-medium">
-                        {(typeNames as Record<string, string>)[type] || type}
-                      </span>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-600 w-8">
-                          {count}
-                        </span>
-                        <span className="text-sm text-gray-500 w-12">
-                          {percentage}%
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Events by Trainer */}
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-semibold mb-4">
-                События по тренерам
-              </h3>
-              <div className="space-y-3">
-                {trainers.map((trainer) => {
-                  const trainerStats = stats?.byTrainer.find(
-                    (t) => t.trainerId === trainer.trainerId
-                  );
-                  const trainerEvents = trainerStats?.eventCount || 0;
-                  const maxEvents = Math.max(
-                    ...(stats?.byTrainer.map((t) => t.eventCount) || [1])
-                  );
-                  const percentage =
-                    maxEvents > 0
-                      ? ((trainerEvents / maxEvents) * 100).toFixed(1)
-                      : "0";
-
-                  return (
-                    <div
-                      key={trainer.trainerId}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="text-sm font-medium">
-                        {trainer.trainerName}
-                      </span>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-green-600 h-2 rounded-full"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-sm text-gray-600 w-8">
-                          {trainerEvents}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Weekly Schedule Overview */}
-            <div className="bg-white p-6 rounded-lg border lg:col-span-2">
-              <h3 className="text-lg font-semibold mb-4">Обзор недели</h3>
-              <div className="grid grid-cols-7 gap-2">
-                {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map(
-                  (day, index) => {
-                    const dayEvents = events.filter((event) => {
-                      const eventDate = new Date(event.startTime);
-                      const dayOfWeek = eventDate.getDay();
-                      return dayOfWeek === (index + 1) % 7;
-                    }).length;
-
-                    return (
-                      <div
-                        key={day}
-                        className="text-center p-3 bg-gray-50 rounded"
-                      >
-                        <div className="text-sm font-medium text-gray-700">
-                          {day}
-                        </div>
-                        <div className="text-lg font-bold text-blue-600">
-                          {dayEvents}
-                        </div>
-                        <div className="text-xs text-gray-500">событий</div>
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            </div>
-
-            {/* Status Distribution */}
-            <div className="bg-white p-6 rounded-lg border lg:col-span-2">
-              <h3 className="text-lg font-semibold mb-4">
-                Распределение по статусам
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {[
-                  "scheduled",
-                  "confirmed",
-                  "completed",
-                  "cancelled",
-                  "no-show",
-                ].map((status) => {
-                  const statusEvents = events.filter(
-                    (e) => e.status === status
-                  ).length;
-                  const statusNames = {
-                    scheduled: "Запланировано",
-                    confirmed: "Подтверждено",
-                    completed: "Завершено",
-                    cancelled: "Отменено",
-                    "no-show": "Не явился",
-                  };
-                  const statusColors = {
-                    scheduled: "text-blue-600 bg-blue-50",
-                    confirmed: "text-green-600 bg-green-50",
-                    completed: "text-emerald-600 bg-emerald-50",
-                    cancelled: "text-red-600 bg-red-50",
-                    "no-show": "text-gray-600 bg-gray-50",
-                  };
-
-                  return (
-                    <div
-                      key={status}
-                      className={`text-center p-4 rounded-lg ${statusColors[status as keyof typeof statusColors]}`}
-                    >
-                      <div className="text-2xl font-bold">{statusEvents}</div>
-                      <div className="text-xs">
-                        {statusNames[status as keyof typeof statusNames]}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      <EventForm
-        event={editingEvent}
-        isOpen={showEventForm}
-        onClose={handleCloseForm}
-        onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent}
-        trainers={trainers.map((t) => ({
-          id: t.trainerId,
-          name: t.trainerName,
-          role: t.trainerRole,
-        }))}
-        clients={clients}
-        initialDate={formInitialDate}
-        initialHour={formInitialHour}
-      />
-
-      {/* Event Details Modal */}
-      <EventDetailsModal
-        event={selectedEvent}
-        isOpen={showEventDetails}
-        onClose={() => {
-          setShowEventDetails(false);
-          setSelectedEvent(null);
-        }}
-        onEdit={handleEventClick}
-        onDelete={handleDeleteEvent}
-        onStatusChange={handleStatusChange}
-        onSendMessage={handleSendQuickMessage}
-        userRole={userRole}
-      />
-
-      {/* Quick Message Modal */}
-      <QuickMessageModal
-        isOpen={showQuickMessage}
-        onClose={() => {
-          setShowQuickMessage(false);
-          setMessageRecipients([]);
-          setMessageRelatedTo(null);
-        }}
-        recipients={messageRecipients}
-        relatedTo={messageRelatedTo}
-        defaultSubject={
-          messageRelatedTo ? `По поводу: ${messageRelatedTo.title}` : ""
-        }
-      />
+      {showEventDetails && selectedEvent && (
+        <EventDetails
+          isOpen={showEventDetails}
+          onClose={() => {
+            setShowEventDetails(false);
+            setSelectedEvent(null);
+          }}
+          event={selectedEvent}
+          trainers={trainers}
+          clients={clients}
+          onEdit={handleEditEvent}
+          onDelete={handleDeleteEvent}
+          onStatusChange={handleStatusChange}
+        />
+      )}
     </div>
   );
 }
