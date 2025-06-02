@@ -1,4 +1,4 @@
-// components/trainer/TrainerSchedule.tsx (обновленная версия)
+// components/trainer/TrainerSchedule.tsx (исправленная версия)
 "use client";
 
 import { useState } from 'react';
@@ -7,7 +7,7 @@ import { CalendarView } from '@/components/admin/schedule/CalendarView';
 import { EventsList } from '@/components/admin/schedule/EventsList';
 import { EventForm } from '@/components/admin/schedule/EventForm';
 import { EventDetailsModal } from '@/components/admin/schedule/EventDetailsModal';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, Clock, Plus, RefreshCw } from "lucide-react";
@@ -60,26 +60,41 @@ export default function TrainerSchedule({ trainerId, trainerName }: TrainerSched
     await updateEventStatus(eventId, status);
   };
 
-  const handleSubmitEvent = async (data: CreateEventData) => {
-    try {
-      const eventData = {
-        ...data,
-        trainerId,
-        trainerName
-      };
+const handleSubmitEvent = async (data: CreateEventData): Promise<{ success: boolean; id?: string }> => {
+  try {
+    const eventData = {
+      ...data,
+      trainerId,
+      trainerName
+    };
 
-      if (editingEvent) {
-        await updateEvent(editingEvent._id, eventData);
-      } else {
-        await createEvent(eventData);
-      }
-      
+    if (editingEvent) {
+      await updateEvent(editingEvent._id, eventData);
       setShowEventForm(false);
       setEditingEvent(null);
-    } catch (error) {
-      console.error("Ошибка сохранения события:", error);
+      
+      return {
+        success: true,
+        id: editingEvent._id
+      };
+    } else {
+      const newEvent = await createEvent(eventData);
+      setShowEventForm(false);
+      setEditingEvent(null);
+      
+      return {
+        success: true,
+        id: typeof newEvent === 'string' ? newEvent : undefined
+      };
     }
-  };
+  } catch (error) {
+    console.error("Ошибка сохранения события:", error);
+    return {
+      success: false
+    };
+  }
+};
+
 
   if (loading) {
     return (
@@ -145,7 +160,7 @@ export default function TrainerSchedule({ trainerId, trainerName }: TrainerSched
       <Tabs value={activeView} onValueChange={setActiveView}>
         <TabsList>
           <TabsTrigger value="calendar" className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
+            <Calendar className="h-4 w-4" />
             Календарь
           </TabsTrigger>
           <TabsTrigger value="list" className="flex items-center gap-2">
@@ -204,4 +219,3 @@ export default function TrainerSchedule({ trainerId, trainerName }: TrainerSched
     </div>
   );
 }
-

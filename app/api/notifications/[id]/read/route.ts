@@ -3,8 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withPermissions, type AuthenticatedRequest } from '@/lib/api-middleware';
 import { 
   findNotification, 
-  updateNotification,
-  type Notification 
+  updateNotification 
 } from '@/lib/notifications-data';
 
 // PUT /api/notifications/[id]/read - Отметка уведомления как прочитанного

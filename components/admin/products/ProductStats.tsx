@@ -1,91 +1,144 @@
-// components/admin/products/ProductStats.tsx
-"use client";
+// components/admin/products/FilterStats.tsx
+import React, { memo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { BarChart3, Package, TrendingUp, AlertTriangle } from 'lucide-react';
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Package, DollarSign, Star, AlertTriangle, TrendingUp, ShoppingCart } from "lucide-react";
-import { Product } from "./types";
-
-interface ProductStatsProps {
-  products: Product[];
+interface FilterStatsProps {
+  stats: {
+    total: number;
+    filtered: number;
+    categories: Record<string, number>;
+    stockLevels: {
+      inStock: number;
+      lowStock: number;
+      outOfStock: number;
+    };
+    popularity: {
+      popular: number;
+      regular: number;
+    };
+  };
 }
 
-export function ProductStats({ products }: ProductStatsProps) {
-  const totalProducts = products.length;
-  const totalValue = products.reduce((sum, product) => sum + (product.price * product.inStock), 0);
-  const popularProducts = products.filter(p => p.isPopular).length;
-  const lowStockProducts = products.filter(p => p.inStock < 10).length;
-  const outOfStockProducts = products.filter(p => p.inStock === 0).length;
-  const averagePrice = totalProducts > 0 ? products.reduce((sum, p) => sum + p.price, 0) / totalProducts : 0;
-
-  const stats = [
-    {
-      title: "Всего товаров",
-      value: totalProducts,
-      icon: Package,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      borderColor: "border-blue-200"
-    },
-    {
-      title: "Общая стоимость",
-      value: `${totalValue.toLocaleString()} ₽`,
-      icon: DollarSign,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
-      borderColor: "border-green-200"
-    },
-    {
-      title: "Популярные",
-      value: popularProducts,
-      icon: Star,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50",
-      borderColor: "border-yellow-200"
-    },
-    {
-      title: "Заканчиваются",
-      value: lowStockProducts,
-      icon: AlertTriangle,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
-      borderColor: "border-orange-200"
-    },
-    {
-      title: "Нет в наличии",
-      value: outOfStockProducts,
-      icon: ShoppingCart,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
-      borderColor: "border-red-200"
-    },
-    {
-      title: "Средняя цена",
-      value: `${Math.round(averagePrice)} ₽`,
-      icon: TrendingUp,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-      borderColor: "border-purple-200"
-    }
-  ];
+export const FilterStats = memo(function FilterStats({ stats }: FilterStatsProps) {
+  const categoryLabels: Record<string, string> = {
+    supplements: 'Добавки',
+    drinks: 'Напитки',
+    snacks: 'Снеки',
+    merchandise: 'Мерч',
+  };
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      {stats.map((stat) => {
-        const Icon = stat.icon;
-        return (
-          <Card key={stat.title} className={`${stat.bgColor} ${stat.borderColor} border-l-4`}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.title}</p>
-                  <p className={`text-xl font-bold ${stat.color}`}>{stat.value}</p>
-                </div>
-                <Icon className={`h-6 w-6 ${stat.color}`} />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Общая статистика */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Package className="h-4 w-4" />
+            Продукты
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {stats.filtered}
+            <span className="text-sm font-normal text-gray-500 ml-1">
+              из {stats.total}
+            </span>
+          </div>
+          {stats.filtered !== stats.total && (
+            <Badge variant="secondary" className="mt-1">
+              Отфильтровано {Math.round((stats.filtered / stats.total) * 100)}%
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Статистика по категориям */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Категории
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1">
+            {Object.entries(stats.categories).map(([category, count]) => (
+              <div key={category} className="flex justify-between text-sm">
+                <span>{categoryLabels[category] || category}</span>
+                <Badge variant="outline" className="text-xs">
+                  {count}
+                </Badge>
               </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Статистика по складу */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Склад
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span>В наличии</span>
+              <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
+                {stats.stockLevels.inStock}
+              </Badge>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Заканчивается</span>
+              <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+                {stats.stockLevels.lowStock}
+              </Badge>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Нет в наличии</span>
+              <Badge variant="outline" className="text-xs bg-red-50 text-red-700">
+                {stats.stockLevels.outOfStock}
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Статистика по популярности */}
+      <Card>
+        <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4" />
+            Популярность
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span>Популярные</span>
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                {stats.popularity.popular}
+              </Badge>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Обычные</span>
+              <Badge variant="outline" className="text-xs">
+                {stats.popularity.regular}
+              </Badge>
+            </div>
+          </div>
+          {stats.popularity.popular > 0 && (
+            <div className="mt-2 text-xs text-gray-500">
+              {Math.round((stats.popularity.popular / stats.total) * 100)}% популярных
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-}
+});
+

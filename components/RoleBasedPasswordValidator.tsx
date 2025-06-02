@@ -1,6 +1,6 @@
 // components/RoleBasedPasswordValidator.tsx
 import React from 'react';
-import { validatePasswordByRole, PASSWORD_POLICIES } from '@/utils/passwordPolicies';
+import { validatePasswordByRole } from '@/utils/passwordPolicies';
 import { validatePasswordStrength } from '@/utils/validation';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
 import { Shield, AlertTriangle, CheckCircle } from 'lucide-react';

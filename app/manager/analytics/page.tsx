@@ -8,7 +8,6 @@ import ManagerHeader from '@/components/manager/ManagerHeader';
 import { ManagerProvider, useManager } from '@/contexts/ManagerContext';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -25,7 +24,6 @@ import {
   Calendar,
   Star,
   Download,
-  Filter,
   RefreshCw,
   Target,
   Activity,

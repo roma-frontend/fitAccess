@@ -1,16 +1,62 @@
-// hooks/useAuth.ts
 "use client";
 
 import React, { useState, useEffect, ReactNode } from 'react';
 import { User } from '@/lib/simple-auth';
 
+// Обновленный интерфейс для совместимости с главной страницей
+export interface AuthStatus {
+  authenticated: boolean;
+  user?: {
+    id: string;
+    role: string;
+    email: string;
+    name: string;
+  };
+  dashboardUrl?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  authStatus: AuthStatus | null; // Добавляем для совместимости
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  setAuthStatus: (status: AuthStatus | null) => void; // Добавляем для совместимости
 }
+
+// Функция для получения URL дашборда по роли
+const getDashboardUrl = (role: string): string => {
+  const dashboardUrls: Record<string, string> = {
+    'admin': '/admin',
+    'super-admin': '/admin',
+    'manager': '/manager',
+    'trainer': '/trainer',
+    'client': '/member',
+    'member': '/member',
+    'staff': '/staff'
+  };
+  
+  return dashboardUrls[role] || '/dashboard';
+};
+
+// Функция для преобразования User в AuthStatus
+const userToAuthStatus = (user: User | null): AuthStatus | null => {
+  if (!user) {
+    return { authenticated: false };
+  }
+
+  return {
+    authenticated: true,
+    user: {
+      id: user.id,
+      role: user.role,
+      email: user.email,
+      name: user.name
+    },
+    dashboardUrl: getDashboardUrl(user.role)
+  };
+};
 
 // Создаем контекст с дефолтными значениями
 const AuthContext = React.createContext<AuthContextType | null>(null);
@@ -19,6 +65,13 @@ const AuthContext = React.createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+
+  // Синхронизируем authStatus с user
+  useEffect(() => {
+    const newAuthStatus = userToAuthStatus(user);
+    setAuthStatus(newAuthStatus);
+  }, [user]);
 
   // Проверка текущей сессии при загрузке
   useEffect(() => {
@@ -76,14 +129,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async (): Promise<void> => {
     try {
-      await fetch('/api/auth/logout', {
+      setLoading(true);
+      
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setUser(null);
+        setAuthStatus({ authenticated: false });
+        
+        // Очищаем локальное хранилище
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Очищаем куки
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        // Перенаправляем на главную
+        window.location.replace('/');
+      } else {
+        console.error("Ошибка выхода:", data.error);
+      }
     } catch (error) {
       console.error('Ошибка выхода:', error);
-    } finally {
       setUser(null);
+      setAuthStatus({ authenticated: false });
+      window.location.replace('/');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,12 +170,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await checkSession();
   };
 
+  // Функция для ручного обновления authStatus (для совместимости)
+  const updateAuthStatus = (status: AuthStatus | null): void => {
+    setAuthStatus(status);
+  };
+
   const value: AuthContextType = {
     user,
     loading,
+    authStatus,
     login,
     logout,
-    refreshUser
+    refreshUser,
+    setAuthStatus: updateAuthStatus
   };
 
   return React.createElement(
@@ -106,7 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Хук для использования контекста аутентификации
+// Основной хук для использования контекста аутентификации
 export function useAuth(): AuthContextType {
   const context = React.useContext(AuthContext);
   if (!context) {
@@ -115,16 +201,29 @@ export function useAuth(): AuthContextType {
   return context;
 }
 
+// Упрощенный хук для главной страницы (для обратной совместимости)
+export function useAuthStatus() {
+  const { authStatus, loading, logout: contextLogout } = useAuth();
+  
+  return {
+    authStatus,
+    isLoading: loading,
+    logout: contextLogout
+  };
+}
+
 // Хук для проверки роли
 export function useRole() {
   const { user } = useAuth();
   
   return {
-    isAdmin: user?.role === 'admin',
-    isManager: user?.role === 'manager' || user?.role === 'admin',
+    isAdmin: user?.role === 'admin' || user?.role === 'super-admin',
+    isSuperAdmin: user?.role === 'super-admin',
+    isManager: user?.role === 'manager' || user?.role === 'admin' || user?.role === 'super-admin',
     isTrainer: user?.role === 'trainer',
-    isClient: user?.role === 'client',
-    isStaff: ['admin', 'manager', 'trainer'].includes(user?.role || ''),
+    isClient: user?.role === 'client' || user?.role === 'member',
+    isMember: user?.role === 'member' || user?.role === 'client',
+    isStaff: ['admin', 'super-admin', 'manager', 'trainer', 'staff'].includes(user?.role || ''),
     role: user?.role
   };
 }
@@ -180,5 +279,26 @@ export function useUser() {
     userEmail: user?.email,
     userName: user?.name,
     userRole: user?.role
+  };
+}
+
+// Хук для навигации (интегрируем с существующей системой)
+export function useNavigation() {
+  const { authStatus } = useAuth();
+  
+  const handleDashboardRedirect = () => {
+    if (authStatus?.dashboardUrl) {
+      window.location.href = authStatus.dashboardUrl;
+    }
+  };
+
+  const navigateTo = (path: string) => {
+    window.location.href = path;
+  };
+
+  return {
+    handleDashboardRedirect,
+    navigateTo,
+    authStatus
   };
 }

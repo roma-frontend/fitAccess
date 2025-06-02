@@ -1,196 +1,115 @@
 // components/admin/products/ProductCard.tsx
-"use client";
-
+import React, { memo, useCallback } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Edit,
-  Trash2,
-  MoreVertical,
-  Star,
-  Package,
-  DollarSign,
-  TrendingUp,
-  MoreHorizontal,
-  Archive
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Product } from "./types";
+import { Badge } from "@/components/ui/badge";
+import { Edit, Trash2, Star, Package } from "lucide-react";
+import { LazyImage } from "@/components/ui/LazyImage";
+import { Product } from "@/hooks/useProducts";
 
 interface ProductCardProps {
   product: Product;
   onEdit: (product: Product) => void;
-  onDelete: (id: string, name: string, type?: 'soft' | 'hard') => void;
+  onDelete: (id: string, name: string, deleteType: 'soft' | 'hard') => void;
 }
 
-export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
-  const getCategoryColor = (category: Product['category']) => {
-    const colors = {
-      'supplements': 'bg-blue-100 text-blue-800 border-blue-200',
-      'drinks': 'bg-green-100 text-green-800 border-green-200',
-      'snacks': 'bg-orange-100 text-orange-800 border-orange-200',
-      'merchandise': 'bg-purple-100 text-purple-800 border-purple-200',
-    };
-    return colors[category];
-  };
+export const ProductCard = memo(function ProductCard({
+  product,
+  onEdit,
+  onDelete
+}: ProductCardProps) {
+  const handleEdit = useCallback(() => {
+    onEdit(product);
+  }, [product, onEdit]);
 
-  const getCategoryName = (category: Product['category']) => {
-    const names = {
-      'supplements': 'Добавки',
-      'drinks': 'Напитки',
-      'snacks': 'Снеки',
-      'merchandise': 'Мерч',
-    };
-    return names[category];
-  };
+  const handleDelete = useCallback(() => {
+    onDelete(product._id, product.name, 'soft');
+  }, [product._id, product.name, onDelete]);
 
-  const getStockStatus = (stock: number) => {
-    if (stock === 0) return { color: 'text-red-600 bg-red-50', text: 'Нет в наличии' };
-    if (stock < 10) return { color: 'text-yellow-600 bg-yellow-50', text: 'Заканчивается' };
-    return { color: 'text-green-600 bg-green-50', text: 'В наличии' };
-  };
+  const getStockStatus = useCallback(() => {
+    if (product.inStock === 0) return { label: 'Нет в наличии', color: 'destructive' };
+    if (product.inStock <= 10) return { label: 'Заканчивается', color: 'warning' };
+    return { label: 'В наличии', color: 'success' };
+  }, [product.inStock]);
 
-  const stockStatus = getStockStatus(product.inStock);
-
-
-  const handleDelete = (type: 'soft' | 'hard') => {
-    onDelete(product._id, product.name, type);
-  };
+  const stockStatus = getStockStatus();
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 border-l-4 border-l-blue-500">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2">
-              <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
-              {product.isPopular && (
-                <Star className="h-4 w-4 text-yellow-500 fill-current" />
-              )}
-            </div>
+    <Card className="group hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+      <div className="relative">
+        <LazyImage
+          src={product.imageUrl}
+          alt={product.name}
+          className="h-48 w-full rounded-t-lg"
+        />
+        
+        {/* Overlay с действиями */}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-lg flex items-center justify-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={handleEdit}
+            className="transform scale-90 group-hover:scale-100 transition-transform"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={handleDelete}
+            className="transform scale-90 group-hover:scale-100 transition-transform"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
 
-            <p className="text-sm text-gray-600 mb-3 line-clamp-2">{product.description}</p>
+        {/* Бейджи */}
+        <div className="absolute top-2 left-2 flex gap-1">
+          {product.isPopular && (
+            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+              <Star className="h-3 w-3 mr-1" />
+              Популярный
+            </Badge>
+          )}
+        </div>
 
-            <div className="flex items-center gap-2 mb-3">
-              <Badge className={getCategoryColor(product.category)}>
-                {getCategoryName(product.category)}
+        <div className="absolute top-2 right-2">
+          <Badge 
+            variant={stockStatus.color as any}
+            className="text-xs"
+          >
+            <Package className="h-3 w-3 mr-1" />
+            {product.inStock}
+          </Badge>
+        </div>
+      </div>
+
+      <CardContent className="p-4">
+        <div className="space-y-2">
+          <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-blue-600 transition-colors">
+            {product.name}
+          </h3>
+          
+          <p className="text-gray-600 text-sm line-clamp-2">
+            {product.description}
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold text-gray-900">
+                ₽{product.price}
+              </span>
+              <Badge variant="outline" className="w-fit">
+                {product.category}
               </Badge>
-              {product.isPopular && (
-                <Badge variant="secondary" className="text-xs">
-                  Популярное
-                </Badge>
-              )}
             </div>
+            
+            <Badge variant={stockStatus.color as any}>
+              {stockStatus.label}
+            </Badge>
           </div>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="h-8 w-8 p-0">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Действия</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => onEdit(product)}>
-                <Edit className="mr-2 h-4 w-4" />
-                Редактировать
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("🔄 Клик на мягкое удаление:", product._id, product.name);
-                  onDelete(product._id, product.name, 'soft');
-                }}
-                className="text-yellow-600"
-              >
-                <Archive className="mr-2 h-4 w-4" />
-                Деактивировать
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log("🔄 Клик на жесткое удаление:", product._id, product.name);
-                  onDelete(product._id, product.name, 'hard');
-                }}
-                className="text-red-600"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Удалить навсегда
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Price and Stock */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-green-600" />
-            <div>
-              <p className="text-sm text-gray-600">Цена</p>
-              <p className="font-semibold text-green-600">{product.price} ₽</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-blue-600" />
-            <div>
-              <p className="text-sm text-gray-600">Остаток</p>
-              <p className={`font-semibold ${stockStatus.color.split(' ')[0]}`}>
-                {product.inStock} шт
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Nutrition Info */}
-        {product.nutrition && (
-          <div className="bg-gray-50 rounded-lg p-3">
-            <h4 className="text-xs font-medium text-gray-700 mb-2">Пищевая ценность</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {product.nutrition.calories && (
-                <div>
-                  <span className="text-gray-600">Калории:</span>
-                  <span className="ml-1 font-medium">{product.nutrition.calories}</span>
-                </div>
-              )}
-              {product.nutrition.protein && (
-                <div>
-                  <span className="text-gray-600">Белки:</span>
-                  <span className="ml-1 font-medium">{product.nutrition.protein}г</span>
-                </div>
-              )}
-              {product.nutrition.carbs && (
-                <div>
-                  <span className="text-gray-600">Углеводы:</span>
-                  <span className="ml-1 font-medium">{product.nutrition.carbs}г</span>
-                </div>
-              )}
-              {product.nutrition.fat && (
-                <div>
-                  <span className="text-gray-600">Жиры:</span>
-                  <span className="ml-1 font-medium">{product.nutrition.fat}г</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Stock Status */}
-        <div className={`mt-3 px-3 py-1 rounded-full text-xs font-medium ${stockStatus.color}`}>
-          {stockStatus.text}
         </div>
       </CardContent>
     </Card>
   );
-}
+});

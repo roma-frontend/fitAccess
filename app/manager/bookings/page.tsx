@@ -8,7 +8,7 @@ import ManagerHeader from "@/components/manager/ManagerHeader";
 import { ManagerProvider, useManager } from "@/contexts/ManagerContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import {
@@ -52,9 +52,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Users,
   DollarSign,
-  CalendarDays,
   AlertTriangle,
   Download,
   RefreshCw,

@@ -16,7 +16,6 @@ import {
   Clock,
   AlertTriangle,
   Star,
-  MessageSquare,
   TrendingUp,
   UserPlus,
   Settings,

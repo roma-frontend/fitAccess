@@ -17,7 +17,6 @@ import {
   CheckCircle,
   AlertTriangle,
   Play,
-  Pause,
   Settings
 } from "lucide-react";
 

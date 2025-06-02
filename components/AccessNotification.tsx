@@ -3,7 +3,7 @@
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ShoppingCart, Shield, Info } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useRouter } from 'next/navigation';
 
 interface AccessNotificationProps {

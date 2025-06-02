@@ -1,17 +1,19 @@
-// components/ValidationSummary.tsx
-// Компонент для отображения сводки валидации
+"use client";
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 
+interface ValidationState {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  info: string[];
+  isValidating: boolean;
+}
+
 interface ValidationSummaryProps {
-  validationResults: Record<string, {
-    isValid: boolean;
-    errors: string[];
-    warnings?: string[];
-    info?: string[];
-  }>;
+  validationResults: Record<string, ValidationState>;
   showOnlyErrors?: boolean;
 }
 
@@ -19,44 +21,45 @@ export const ValidationSummary: React.FC<ValidationSummaryProps> = ({
   validationResults,
   showOnlyErrors = false
 }) => {
-  const allErrors = Object.values(validationResults).flatMap(result => result.errors);
-  const allWarnings = Object.values(validationResults).flatMap(result => result.warnings || []);
-  const allInfo = Object.values(validationResults).flatMap(result => result.info || []);
+  const allErrors = Object.values(validationResults).flatMap(result => 
+    result.errors || []
+  );
   
-  const isFormValid = allErrors.length === 0;
+  const allWarnings = Object.values(validationResults).flatMap(result => 
+    result.warnings || []
+  );
+  
+  const allInfo = Object.values(validationResults).flatMap(result => 
+    result.info || []
+  );
 
-  if (showOnlyErrors && isFormValid) return null;
+  const hasAnyIssues = allErrors.length > 0 || allWarnings.length > 0 || allInfo.length > 0;
+
+  if (!hasAnyIssues) {
+    return (
+      <Card className="bg-green-50 border-green-200">
+        <CardContent className="p-3">
+          <div className="flex items-center text-green-700">
+            <CheckCircle className="h-4 w-4 mr-2" />
+            <span className="text-sm font-medium">Все поля заполнены корректно</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className={`border-2 transition-colors ${
-      isFormValid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
-    }`}>
-      <CardHeader className="pb-3">
-        <CardTitle className={`text-sm flex items-center ${
-          isFormValid ? 'text-green-900' : 'text-red-900'
-        }`}>
-          {isFormValid ? (
-            <>
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Форма готова к отправке
-            </>
-          ) : (
-            <>
-              <AlertCircle className="h-4 w-4 mr-2" />
-              Исправьте ошибки в форме
-            </>
-          )}
-        </CardTitle>
+    <Card className="bg-gray-50 border-gray-200">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm text-gray-700">Сводка валидации</CardTitle>
       </CardHeader>
-      
-      <CardContent className="pt-0 space-y-3">
+      <CardContent className="pt-0 space-y-2">
         {/* Ошибки */}
         {allErrors.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-red-800">Ошибки:</p>
             {allErrors.map((error, index) => (
-              <div key={index} className="flex items-start text-xs text-red-700">
-                <AlertCircle className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+              <div key={index} className="flex items-center text-red-600 text-xs">
+                <AlertCircle className="h-3 w-3 mr-2 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             ))}
@@ -66,10 +69,9 @@ export const ValidationSummary: React.FC<ValidationSummaryProps> = ({
         {/* Предупреждения */}
         {!showOnlyErrors && allWarnings.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-orange-800">Рекомендации:</p>
             {allWarnings.map((warning, index) => (
-              <div key={index} className="flex items-start text-xs text-orange-700">
-                <AlertTriangle className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+              <div key={index} className="flex items-center text-orange-600 text-xs">
+                <AlertTriangle className="h-3 w-3 mr-2 flex-shrink-0" />
                 <span>{warning}</span>
               </div>
             ))}
@@ -79,37 +81,12 @@ export const ValidationSummary: React.FC<ValidationSummaryProps> = ({
         {/* Информация */}
         {!showOnlyErrors && allInfo.length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-blue-800">Советы:</p>
             {allInfo.map((info, index) => (
-              <div key={index} className="flex items-start text-xs text-blue-700">
-                <Info className="h-3 w-3 mr-1 mt-0.5 flex-shrink-0" />
+              <div key={index} className="flex items-center text-blue-600 text-xs">
+                <Info className="h-3 w-3 mr-2 flex-shrink-0" />
                 <span>{info}</span>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Прогресс заполнения */}
-        {!showOnlyErrors && (
-          <div className="pt-2 border-t border-gray-200">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-600">Готовность формы:</span>
-              <span className={`font-medium ${
-                isFormValid ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {isFormValid ? '100%' : `${Math.max(0, 100 - (allErrors.length * 20))}%`}
-              </span>
-            </div>
-            <div className="mt-1 w-full bg-gray-200 rounded-full h-2">
-              <div
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  isFormValid ? 'bg-green-500' : 'bg-red-500'
-                }`}
-                style={{
-                  width: `${isFormValid ? 100 : Math.max(0, 100 - (allErrors.length * 20))}%`
-                }}
-              />
-            </div>
           </div>
         )}
       </CardContent>

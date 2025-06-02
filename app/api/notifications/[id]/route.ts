@@ -2,12 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withPermissions, type AuthenticatedRequest } from '@/lib/api-middleware';
 import { 
-  getMockNotifications, 
   updateNotification, 
   deleteNotification, 
-  findNotification,
-  setMockNotifications,
-  type Notification 
+  findNotification 
 } from '@/lib/notifications-data';
 
 // GET /api/notifications/[id] - Получение конкретного уведомления

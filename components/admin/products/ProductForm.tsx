@@ -1,469 +1,309 @@
-// components/admin/products/ProductForm.tsx (замените импорт toast)
+// components/admin/products/ProductForm.tsx (исправленная версия)
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { 
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Package, DollarSign, Hash, Star, Utensils, Loader2 } from "lucide-react";
-import { Product, ProductFormData } from "./types";
-import { useToast } from "@/hooks/use-toast"; // Заменили импорт
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useProducts } from '@/hooks/useProducts';
+import type { Product, ProductFormData } from '@/types/product';
+import { Loader2, Upload, X } from 'lucide-react';
+
+// Исправленная схема Zod
+const productSchema = z.object({
+  name: z.string().min(1, 'Название обязательно').max(100, 'Название слишком длинное'),
+  description: z.string().min(1, 'Описание обязательно').max(500, 'Описание слишком длинное'),
+  price: z.number().min(0, 'Цена должна быть положительной'),
+  category: z.enum(['supplements', 'drinks', 'snacks', 'merchandise'], {
+    required_error: 'Выберите категорию'
+  }),
+  inStock: z.number().min(0, 'Количество не может быть отрицательным'),
+  isPopular: z.boolean(),
+  imageUrl: z.string().refine((url) => {
+    if (url === '') return true; // Разрешаем пустую строку
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Введите корректный URL изображения или оставьте поле пустым')
+}) satisfies z.ZodType<ProductFormData>;
 
 interface ProductFormProps {
-  product?: Product | null;
-  isOpen?: boolean;
-  onClose?: () => void;
-  onSubmit: (data: ProductFormData) => Promise<void>;
-  onCancel?: () => void;
-  isLoading?: boolean;
+  product?: Product;
+  onSuccess: () => void;
+  onCancel: () => void;
 }
 
-export function ProductForm({ 
-  product = null, 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  onCancel, 
-  isLoading = false 
-}: ProductFormProps) {
-  const { toast } = useToast(); // Используем useToast
-  
-  const [formData, setFormData] = useState<ProductFormData>({
-    name: '',
-    description: '',
-    category: 'supplements',
-    price: 0,
-    inStock: 0,
-    isPopular: false,
-    nutrition: {
-      calories: 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      sugar: 0
+export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) {
+  const { createProduct, updateProduct, isCreating, isUpdating } = useProducts();
+  const [imagePreview, setImagePreview] = useState<string>('');
+
+  const form = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: product?.name || '',
+      description: product?.description || '',
+      price: product?.price || 0,
+      category: product?.category || 'supplements',
+      inStock: product?.inStock || 0,
+      isPopular: product?.isPopular || false,
+      imageUrl: product?.imageUrl || ''
     }
   });
 
-  // Определяем, используется ли модальный режим
-  const isModal = isOpen !== undefined;
-  const handleClose = onClose || onCancel || (() => {});
+  const watchImageUrl = form.watch('imageUrl');
 
   useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name,
-        description: product.description,
-        category: product.category,
-        price: product.price,
-        inStock: product.inStock,
-        isPopular: product.isPopular || false,
-        nutrition: {
-          calories: product.nutrition?.calories || 0,
-          protein: product.nutrition?.protein || 0,
-          carbs: product.nutrition?.carbs || 0,
-          fat: product.nutrition?.fat || 0,
-          sugar: product.nutrition?.sugar || 0
-        }
-      });
+    if (watchImageUrl && watchImageUrl.startsWith('http')) {
+      setImagePreview(watchImageUrl);
     } else {
-      setFormData({
-        name: '',
-        description: '',
-        category: 'supplements',
-        price: 0,
-        inStock: 0,
-        isPopular: false,
-        nutrition: {
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          sugar: 0
-        }
-      });
+      setImagePreview('');
     }
-  }, [product]);
+  }, [watchImageUrl]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Валидация с toast уведомлениями
-    if (!formData.name.trim()) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Название продукта обязательно для заполнения",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.description.trim()) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Описание продукта обязательно для заполнения",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.price <= 0) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Цена должна быть больше 0",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (formData.inStock < 0) {
-      toast({
-        title: "Ошибка валидации",
-        description: "Количество на складе не может быть отрицательным",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const onSubmit = async (data: ProductFormData) => {
     try {
-      await onSubmit(formData);
-      // Успех обрабатывается в родительском компоненте
+      // Если imageUrl пустая, устанавливаем дефолтное изображение
+      const formDataWithImage = {
+        ...data,
+        imageUrl: data.imageUrl || '/images/default-product.jpg'
+      };
+
+      if (product) {
+        await updateProduct(product._id, formDataWithImage);
+      } else {
+        await createProduct(formDataWithImage);
+      }
+      onSuccess();
     } catch (error) {
-      toast({
-        title: "Ошибка отправки формы",
-        description: "Проверьте введенные данные и попробуйте еще раз",
-        variant: "destructive",
-      });
-      console.error("Ошибка отправки формы:", error);
+      console.error('Form submission error:', error);
     }
   };
 
-  const categories = [
+  const isLoading = isCreating || isUpdating;
+
+  const categoryOptions = [
     { value: 'supplements', label: 'Добавки' },
     { value: 'drinks', label: 'Напитки' },
     { value: 'snacks', label: 'Снеки' },
     { value: 'merchandise', label: 'Мерч' }
-  ];
+  ] as const;
 
-  // Функция для быстрого заполнения тестовыми данными
-  const fillTestData = () => {
-    const testData = {
-      name: 'Тестовый продукт',
-      description: 'Описание тестового продукта для проверки формы',
-      category: 'supplements' as const,
-      price: 1500,
-      inStock: 50,
-      isPopular: true,
-      nutrition: {
-        calories: 120,
-        protein: 25,
-        carbs: 5,
-        fat: 2,
-        sugar: 1
-      }
-    };
-    setFormData(testData);
-    toast({
-      title: "Форма заполнена тестовыми данными",
-      description: "Можете отредактировать и сохранить",
-      variant: "default",
-    });
-  };
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Основная информация */}
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Название продукта</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Введите название продукта" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-  const FormContent = (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Кнопка для быстрого заполнения (только в режиме разработки) */}
-      {process.env.NODE_ENV === 'development' && !product && (
-        <div className="bg-blue-50 p-3 rounded-lg">
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm"
-            onClick={fillTestData}
-            disabled={isLoading}
-          >
-            🧪 Заполнить тестовыми данными
-          </Button>
-        </div>
-      )}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Описание</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Введите описание продукта"
+                      className="min-h-[100px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      {/* Basic Info */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">Основная информация</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="name" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Название продукта *
-            </Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              placeholder="Введите название"
-              required
-              disabled={isLoading}
-              className={!formData.name.trim() ? "border-red-200" : ""}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Цена (₽)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number"
+                        placeholder="0"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="inStock"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Количество</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number"
+                        placeholder="0"
+                        {...field}
+                        onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Категория</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите категорию" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categoryOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isPopular"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Популярный товар</FormLabel>
+                    <div className="text-sm text-muted-foreground">
+                      Отображать в разделе рекомендуемых товаров
+                    </div>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="category" className="flex items-center gap-2">
-              <Hash className="h-4 w-4" />
-              Категория *
-            </Label>
-            <Select 
-              value={formData.category} 
-              onValueChange={(value: Product['category']) => setFormData({...formData, category: value})}
-              disabled={isLoading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Выберите категорию" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.value} value={category.value}>
-                    {category.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Описание *</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
-            placeholder="Введите описание продукта"
-            rows={3}
-            required
-            disabled={isLoading}
-            className={!formData.description.trim() ? "border-red-200" : ""}
-          />
-        </div>
-      </div>
-
-      {/* Price and Stock */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">Цена и остатки</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="price" className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
-              Цена (₽) *
-            </Label>
-            <Input
-              id="price"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.price}
-              onChange={(e) => setFormData({...formData, price: parseFloat(e.target.value) || 0})}
-              placeholder="0.00"
-              required
-              disabled={isLoading}
-              className={formData.price <= 0 ? "border-red-200" : ""}
+          {/* Изображение */}
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL изображения (необязательно)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="https://example.com/image.jpg"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                  <div className="text-xs text-gray-500">
+                    Если не указать изображение, будет использовано изображение по умолчанию
+                  </div>
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="stock" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Количество на складе
-            </Label>
-            <Input
-              id="stock"
-              type="number"
-              min="0"
-              value={formData.inStock}
-              onChange={(e) => setFormData({...formData, inStock: parseInt(e.target.value) || 0})}
-              placeholder="0"
-              disabled={isLoading}
-            />
-          </div>
-        </div>
+            {/* Превью изображения */}
+            {imagePreview && (
+              <div className="space-y-2">
+                <Label>Превью изображения</Label>
+                <div className="relative border rounded-lg overflow-hidden">
+                  <img
+                    src={imagePreview}
+                    alt="Превью"
+                    className="w-full h-48 object-cover"
+                    onError={() => setImagePreview('')}
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-2 right-2"
+                    onClick={() => {
+                      form.setValue('imageUrl', '');
+                      setImagePreview('');
+                    }}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
 
-        <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-yellow-600" />
-            <Label htmlFor="popular" className="text-sm font-medium">
-              Популярный продукт
-            </Label>
-          </div>
-          <Switch
-            id="popular"
-            checked={formData.isPopular}
-            onCheckedChange={(checked) => setFormData({...formData, isPopular: checked})}
-            disabled={isLoading}
-          />
-        </div>
-      </div>
-
-      {/* Nutrition Info */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Utensils className="h-5 w-5" />
-          <h3 className="text-lg font-medium text-gray-900">Пищевая ценность</h3>
-          <span className="text-sm text-gray-500">(опционально)</span>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="calories">Калории</Label>
-            <Input
-              id="calories"
-              type="number"
-              min="0"
-              value={formData.nutrition.calories}
-              onChange={(e) => setFormData({
-                ...formData, 
-                nutrition: {...formData.nutrition, calories: parseInt(e.target.value) || 0}
-              })}
-              placeholder="0"
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="protein">Белки (г)</Label>
-            <Input
-              id="protein"
-              type="number"
-              min="0"
-              step="0.1"
-              value={formData.nutrition.protein}
-              onChange={(e) => setFormData({
-                ...formData, 
-                nutrition: {...formData.nutrition, protein: parseFloat(e.target.value) || 0}
-              })}
-              placeholder="0"
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="carbs">Углеводы (г)</Label>
-            <Input
-              id="carbs"
-              type="number"
-              min="0"
-              step="0.1"
-              value={formData.nutrition.carbs}
-              onChange={(e) => setFormData({
-                ...formData, 
-                nutrition: {...formData.nutrition, carbs: parseFloat(e.target.value) || 0}
-              })}
-              placeholder="0"
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="fat">Жиры (г)</Label>
-            <Input
-              id="fat"
-              type="number"
-              min="0"
-              step="0.1"
-              value={formData.nutrition.fat}
-              onChange={(e) => setFormData({
-                ...formData, 
-                nutrition: {...formData.nutrition, fat: parseFloat(e.target.value) || 0}
-              })}
-              placeholder="0"
-              disabled={isLoading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="sugar">Сахар (г)</Label>
-            <Input
-              id="sugar"
-              type="number"
-              min="0"
-              step="0.1"
-              value={formData.nutrition.sugar}
-              onChange={(e) => setFormData({
-                ...formData, 
-                nutrition: {...formData.nutrition, sugar: parseFloat(e.target.value) || 0}
-              })}
-              placeholder="0"
-              disabled={isLoading}
-            />
+            {!imagePreview && (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <div className="mt-2">
+                  <p className="text-sm text-gray-600">
+                    Введите URL изображения выше для предварительного просмотра
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Или оставьте поле пустым для использования изображения по умолчанию
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="flex space-x-3 pt-4 border-t">
-        <Button 
-          type="submit" 
-          disabled={isLoading}
-          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          >
-            {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isLoading ? 'Сохранение...' : (product ? 'Обновить продукт' : 'Создать продукт')}
-          </Button>
-          <Button 
+        {/* Кнопки действий */}
+        <div className="flex justify-end space-x-4 pt-6 border-t">
+          <Button
             type="button"
-            variant="outline" 
-            onClick={handleClose}
+            variant="outline"
+            onClick={onCancel}
             disabled={isLoading}
-            className="flex-1"
           >
             Отмена
           </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {product ? 'Сохранить изменения' : 'Создать продукт'}
+          </Button>
         </div>
       </form>
-    );
-  
-    // Если это модальный режим, оборачиваем в Dialog
-    if (isModal) {
-      return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                {product ? 'Редактировать продукт' : 'Создать новый продукт'}
-              </DialogTitle>
-            </DialogHeader>
-            {FormContent}
-          </DialogContent>
-        </Dialog>
-      );
-    }
-  
-    // Если это не модальный режим, возвращаем просто форму
-    return (
-      <div className="bg-white p-6 rounded-lg shadow-lg">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Package className="h-6 w-6" />
-            {product ? 'Редактировать продукт' : 'Создать новый продукт'}
-          </h2>
-        </div>
-        {FormContent}
-      </div>
-    );
-  }
-  
+    </Form>
+  );
+}

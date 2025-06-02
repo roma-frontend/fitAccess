@@ -11,8 +11,7 @@ import { useTrainer } from '@/contexts/TrainerContext';
 import { 
   MessageSquare, 
   Send,
-  Search,
-  Clock
+  Search
 } from "lucide-react";
 
 export default function MessagesComponent() {

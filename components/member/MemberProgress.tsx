@@ -7,11 +7,9 @@ import { Button } from "@/components/ui/button";
 import {
   Target,
   TrendingUp,
-  Calendar,
   Clock,
   Award,
   Flame,
-  Zap,
   Heart
 } from "lucide-react";
 

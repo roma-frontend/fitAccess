@@ -10,7 +10,6 @@ import {
   Plus,
   Users,
   Calendar,
-  MessageSquare,
   Clock,
   Target,
   TrendingUp,

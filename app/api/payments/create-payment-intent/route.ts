@@ -1,7 +1,6 @@
 // app/api/payments/create-payment-intent/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { getSession } from '@/lib/simple-auth';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',

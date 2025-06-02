@@ -18,6 +18,8 @@ export interface RoleTexts {
   settingsTitle: string;
   usersTitle?: string;
 
+  productsDescription: string;
+
   // Статистика и прогресс
   statsTitle: string;
   progressTitle: string;
@@ -70,6 +72,8 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     dashboardTitle: 'Панель супер-администратора',
     dashboardSubtitle: 'Полный контроль над системой и безопасностью',
 
+    productsDescription: 'Полное управление каталогом продуктов',
+
     trainersTitle: 'Управление тренерами',
     usersTitle: 'Управление сотрудниками',
     clientsTitle: 'Управление пользователями',
@@ -78,6 +82,7 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     reportsTitle: 'Системная аналитика',
     messagesTitle: 'Сообщение',
     settingsTitle: 'Настройки системы',
+    
 
     statsTitle: 'Системная статистика',
     progressTitle: 'Производительность системы',
@@ -124,6 +129,7 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     roleDisplayName: 'Администратор',
     dashboardTitle: 'Административная панель',
     dashboardSubtitle: 'Управление фитнес-центром и бизнес-процессами',
+    productsDescription: 'Управление продуктами и инвентарем',
 
     trainersTitle: 'Тренерский состав',
     usersTitle: 'Управление сотрудниками',
@@ -180,6 +186,8 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     dashboardTitle: 'Панель менеджера',
     dashboardSubtitle: 'Координация работы команды и операционное управление',
 
+    productsDescription: 'Просмотр и редактирование продуктов',
+
     trainersTitle: 'Команда тренеров',
     clientsTitle: 'Клиентская база',
     scheduleTitle: 'Управление расписанием',
@@ -231,6 +239,8 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     roleDisplayName: 'Тренер',
     dashboardTitle: 'Рабочее место тренера',
     dashboardSubtitle: 'Управление тренировками и работа с клиентами',
+
+    productsDescription: 'Просмотр и редактирование продуктов',
 
     trainersTitle: 'Коллеги-тренеры',
     clientsTitle: 'Мои клиенты',
@@ -284,6 +294,8 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     dashboardTitle: 'Личный кабинет',
     dashboardSubtitle: 'Ваши тренировки, прогресс и достижения',
 
+    productsDescription: 'Просмотр и редактирование продуктов',
+
     trainersTitle: 'Наши тренеры',
     clientsTitle: 'Участники сообщества',
     scheduleTitle: 'Расписание занятий',
@@ -335,6 +347,8 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     roleDisplayName: 'Клиент',
     dashboardTitle: 'Персональный кабинет',
     dashboardSubtitle: 'Ваши персональные тренировки и индивидуальный прогресс',
+
+    productsDescription: 'Просмотр и редактирование продуктов',
 
     trainersTitle: 'Мой тренер',
     clientsTitle: 'Другие клиенты',

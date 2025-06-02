@@ -5,24 +5,44 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Calendar, 
   Clock, 
-  Users, 
   CheckCircle, 
   XCircle,
-  TrendingUp,
   Activity,
   Target
 } from "lucide-react";
-import { ScheduleStats as ScheduleStatsType } from "./types";
 
+// Создаем более гибкий тип
 interface ScheduleStatsProps {
-  stats: ScheduleStatsType;
+  stats: {
+    totalEvents?: number;
+    completedEvents?: number;
+    cancelledEvents?: number;
+    todayEvents?: number;
+    upcomingEvents?: number;
+    pendingConfirmation?: number;
+    overdueEvents?: number;
+    completionRate?: number;
+    cancellationRate?: number;
+    noShowRate?: number;
+    averageSessionDuration?: number;
+    totalRevenue?: number;
+    utilizationRate?: number;
+    eventsByStatus?: {
+      scheduled: number;
+      confirmed: number;
+      completed: number;
+      cancelled: number;
+      "no-show": number;
+    };
+    eventsByTrainer?: Record<string, number>;
+  };
 }
 
 export function ScheduleStats({ stats }: ScheduleStatsProps) {
   const statCards = [
     {
       title: "Всего событий",
-      value: stats.totalEvents,
+      value: stats.totalEvents || 0,
       icon: Calendar,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
@@ -31,7 +51,7 @@ export function ScheduleStats({ stats }: ScheduleStatsProps) {
     },
     {
       title: "Сегодня",
-      value: stats.todayEvents,
+      value: stats.todayEvents || 0,
       icon: Clock,
       color: "text-green-600",
       bgColor: "bg-green-50",
@@ -40,7 +60,7 @@ export function ScheduleStats({ stats }: ScheduleStatsProps) {
     },
     {
       title: "Предстоящие",
-      value: stats.upcomingEvents,
+      value: stats.upcomingEvents || 0,
       icon: Activity,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
@@ -49,7 +69,7 @@ export function ScheduleStats({ stats }: ScheduleStatsProps) {
     },
     {
       title: "Завершенные",
-      value: stats.completedEvents,
+      value: stats.completedEvents || 0,
       icon: CheckCircle,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
@@ -58,7 +78,7 @@ export function ScheduleStats({ stats }: ScheduleStatsProps) {
     },
     {
       title: "Отмененные",
-      value: stats.cancelledEvents,
+      value: stats.cancelledEvents || 0,
       icon: XCircle,
       color: "text-red-600",
       bgColor: "bg-red-50",
@@ -67,7 +87,7 @@ export function ScheduleStats({ stats }: ScheduleStatsProps) {
     },
     {
       title: "Загруженность",
-      value: `${stats.utilizationRate}%`,
+      value: `${stats.utilizationRate || 0}%`,
       icon: Target,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
@@ -98,3 +118,4 @@ export function ScheduleStats({ stats }: ScheduleStatsProps) {
     </div>
   );
 }
+

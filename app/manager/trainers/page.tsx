@@ -8,7 +8,7 @@ import ManagerHeader from "@/components/manager/ManagerHeader";
 import { ManagerProvider, useManager } from "@/contexts/ManagerContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,7 +31,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Users,
@@ -47,12 +46,8 @@ import {
   DollarSign,
   Phone,
   Mail,
-  MapPin,
   Clock,
   Activity,
-  UserCheck,
-  UserX,
-  Coffee,
   Plane,
   AlertCircle,
   CheckCircle,

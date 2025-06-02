@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { DebugSystemTest } from "@/components/debug/DebugSystemTest";
-import { ArrowLeft, Bug, RefreshCw } from "lucide-react";
+import { Bug, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { AdminSecondHeader, MobileActionGroup, ResponsiveButton } from "@/components/admin/users/AdminSecondHeader";
 

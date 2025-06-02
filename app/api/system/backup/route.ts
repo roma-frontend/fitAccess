@@ -95,7 +95,7 @@ export const GET = async (
         const sortOrder = url.searchParams.get('sortOrder') || 'desc';
 
         // Имитация списка резервных копий
-        let backups = [
+        const backups = [
           {
             id: 'backup_1703123456789',
             createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),

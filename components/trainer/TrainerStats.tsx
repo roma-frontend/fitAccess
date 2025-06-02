@@ -1,7 +1,7 @@
 // components/trainer/TrainerStats.tsx (новый компонент для статистики)
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useTrainer } from '@/contexts/TrainerContext';
 import { 
   Users, 

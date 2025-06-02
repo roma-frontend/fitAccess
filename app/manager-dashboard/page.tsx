@@ -1,7 +1,7 @@
 // app/manager/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import ManagerHeader from "@/components/manager/ManagerHeader";
@@ -25,21 +25,16 @@ import {
   TrendingUp,
   DollarSign,
   Star,
-  Clock,
-  Target,
   Activity,
   UserCheck,
   AlertTriangle,
   CheckCircle,
   XCircle,
   Plus,
-  Eye,
-  Edit,
   MoreHorizontal,
   ArrowUpRight,
   ArrowDownRight,
   Loader2,
-  Filter,
   Download,
   RefreshCw,
   Settings,

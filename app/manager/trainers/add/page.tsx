@@ -24,7 +24,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar,
   Clock,
   Star,
   DollarSign,

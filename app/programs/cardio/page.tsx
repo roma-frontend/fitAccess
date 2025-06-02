@@ -1,8 +1,7 @@
 // app/programs/cardio/page.tsx (новый файл)
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Flame, Clock, Users, Star, CheckCircle, ArrowLeft } from "lucide-react";
 
 export default function CardioProgramPage() {

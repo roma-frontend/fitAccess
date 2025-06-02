@@ -1,4 +1,4 @@
-// hooks/useCloudinaryUpload.ts (версия с детальным логированием)
+// hooks/useCloudinaryUpload.ts (исправленная версия)
 'use client';
 
 import { useState } from 'react';
@@ -7,7 +7,10 @@ export function useCloudinaryUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const upload = async (file: File, p0: { folder: string; uploadPreset: string; }) => {
+  const upload = async (
+    file: File, 
+    options: { folder: string; uploadPreset: string; } = { folder: 'user-avatars', uploadPreset: 'fitAccess' }
+  ) => {
     setIsUploading(true);
     setError(null);
 
@@ -15,8 +18,18 @@ export function useCloudinaryUpload() {
       console.log('🔄 useCloudinaryUpload: начинаем загрузку файла', {
         name: file.name,
         size: file.size,
-        type: file.type
+        type: file.type,
+        options
       });
+
+      // Проверяем файл на клиенте
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Можно загружать только изображения');
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Размер файла не должен превышать 10MB');
+      }
 
       const formData = new FormData();
       formData.append('file', file);
@@ -36,6 +49,12 @@ export function useCloudinaryUpload() {
         ok: response.ok
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Ошибка HTTP:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const result = await response.json();
       console.log('📄 Данные ответа:', result);
 
@@ -48,8 +67,9 @@ export function useCloudinaryUpload() {
       }
     } catch (err: any) {
       console.error('❌ useCloudinaryUpload: исключение при загрузке', err);
-      setError(err.message || 'Неизвестная ошибка загрузки');
-      return null;
+      const errorMessage = err.message || 'Неизвестная ошибка загрузки';
+      setError(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -59,5 +79,6 @@ export function useCloudinaryUpload() {
     upload,
     isUploading,
     error,
+    clearError: () => setError(null)
   };
 }

@@ -1,7 +1,6 @@
 // app/trainer/elena-smirnova/page.tsx (новый файл)
 "use client";
 
-import { useParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -14,11 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Star,
   Award,
-  Calendar,
   Clock,
   MapPin,
-  Phone,
-  Mail,
   Flame,
   CheckCircle,
   ArrowLeft,

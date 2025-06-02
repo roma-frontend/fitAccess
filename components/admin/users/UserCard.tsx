@@ -1,4 +1,4 @@
-// components/admin/users/UserCard.tsx
+// components/admin/users/UserCard.tsx (исправленная версия)
 "use client";
 
 import { useState } from 'react';
@@ -97,7 +97,8 @@ export function UserCard({ user, currentUserRole, onEdit, onDelete, onToggleStat
     });
   };
 
-  const formatLastLogin = (timestamp?: number) => {
+  // ✅ Исправленная функция - принимает number | null | undefined
+  const formatLastLogin = (timestamp?: number | null) => {
     if (!timestamp) return 'Никогда';
     
     const now = Date.now();
@@ -265,6 +266,7 @@ export function UserCard({ user, currentUserRole, onEdit, onDelete, onToggleStat
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
+              {/* ✅ Теперь передаем правильный тип */}
               <span>Вход: {formatLastLogin(user.lastLogin)}</span>
             </div>
           </div>

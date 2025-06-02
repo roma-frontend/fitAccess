@@ -13,12 +13,7 @@ import {
   AlertTriangle,
   Info,
   CheckCircle,
-  Calendar,
-  Users,
-  TrendingUp,
-  Clock,
-  X,
-  Settings
+  X
 } from "lucide-react";
 
 interface Notification {

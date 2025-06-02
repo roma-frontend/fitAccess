@@ -11,9 +11,7 @@ import {
   User, 
   Dumbbell, 
   ArrowLeft,
-  Plus,
-  Filter,
-  Search
+  Plus
 } from 'lucide-react';
 
 interface Workout {

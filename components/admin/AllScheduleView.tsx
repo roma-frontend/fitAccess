@@ -1,11 +1,9 @@
-// components/admin/AllScheduleView.tsx (обновленная версия)
+// components/admin/AllScheduleView.tsx (исправленная версия)
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Calendar,
@@ -26,7 +24,6 @@ import { EventForm } from "@/components/admin/schedule/EventForm";
 import {
   ScheduleEvent,
   CreateEventData,
-  TrainerSchedule,
 } from "@/components/admin/schedule/types";
 import { QuickMessageModal } from "./messaging/QuickMessageModal";
 
@@ -103,17 +100,32 @@ export default function AllScheduleView() {
     setShowQuickMessage(true);
   };
 
-  const handleSubmitEvent = async (data: CreateEventData) => {
+  const handleSubmitEvent = async (data: CreateEventData): Promise<{ success: boolean; id?: string }> => {
     try {
       if (editingEvent) {
         await updateEvent(editingEvent._id, data);
+        setShowEventForm(false);
+        setEditingEvent(null);
+        
+        return {
+          success: true,
+          id: editingEvent._id
+        };
       } else {
-        await createEvent(data);
+        const result = await createEvent(data);
+        setShowEventForm(false);
+        setEditingEvent(null);
+        
+        return {
+          success: true,
+          id: typeof result === 'string' ? result : undefined
+        };
       }
-      setShowEventForm(false);
-      setEditingEvent(null);
     } catch (error) {
       console.error("Ошибка сохранения события:", error);
+      return {
+        success: false
+      };
     }
   };
 
@@ -189,7 +201,7 @@ export default function AllScheduleView() {
           <select
             value={selectedTrainerFilter}
             onChange={(e) => setSelectedTrainerFilter(e.target.value)}
-                        className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">Все тренеры</option>
             {adminTrainers.map((trainer) => (
@@ -331,4 +343,3 @@ export default function AllScheduleView() {
     </div>
   );
 }
-

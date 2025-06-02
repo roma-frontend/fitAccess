@@ -1,13 +1,9 @@
 // app/trainers/page.tsx (обновленная версия)
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,11 +12,6 @@ import {
   ArrowLeft,
   Star,
   Award,
-  Heart,
-  Target,
-  Flame,
-  Crown,
-  Filter,
   Search,
 } from "lucide-react";
 import { memo, useState } from "react";

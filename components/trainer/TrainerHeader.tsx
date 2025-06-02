@@ -29,7 +29,6 @@ import {
   X,
   Activity,
   TrendingUp,
-  Clock,
   Target,
 } from "lucide-react";
 

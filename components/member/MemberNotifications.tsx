@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Bell,
   Calendar,
-  User,
   CreditCard,
   CheckCircle,
   X,

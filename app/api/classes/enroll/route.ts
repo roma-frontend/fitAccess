@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let enrolled = [...classItem.enrolled];
-    let waitlist = classItem.waitlist ? [...classItem.waitlist] : [];
+    const enrolled = [...classItem.enrolled];
+    const waitlist = classItem.waitlist ? [...classItem.waitlist] : [];
     let waitlisted = false;
 
     // Проверяем наличие мест

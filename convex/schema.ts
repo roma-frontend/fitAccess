@@ -1,4 +1,4 @@
-// convex/schema.ts (исправленная версия)
+// convex/schema.ts (исправленная версия без дублирующихся индексов)
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -19,11 +19,197 @@ export default defineSchema({
     faceDescriptor: v.optional(v.array(v.number())),
     faceRecognitionEnabled: v.optional(v.boolean()),
     faceDescriptorUpdatedAt: v.optional(v.number()),
+    preferences: v.optional(v.object({
+      notifications: v.optional(v.object({
+        email: v.optional(v.boolean()),
+        push: v.optional(v.boolean()),
+        sms: v.optional(v.boolean()),
+      })),
+      language: v.optional(v.string()),
+      timezone: v.optional(v.string()),
+    })),
+    avatar: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    department: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_role", ["role"])
     .index("by_active", ["isActive"])
-    .index("by_face_recognition", ["faceRecognitionEnabled"]),
+    .index("by_face_recognition", ["faceRecognitionEnabled"])
+    .index("email_active", ["email", "isActive"])
+    .index("role_active", ["role", "isActive"]),
+
+  messages: defineTable({
+    type: v.union(
+      v.literal("direct"),
+      v.literal("group"), 
+      v.literal("announcement"),
+      v.literal("notification")
+    ),
+    subject: v.optional(v.string()),
+    content: v.string(),
+    senderId: v.id("users"),
+    senderName: v.string(),
+    recipientIds: v.array(v.id("users")),
+    recipientNames: v.array(v.string()),
+    groupId: v.optional(v.id("messageGroups")),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("delivered"),
+      v.literal("read")
+    ),
+    readAt: v.optional(v.record(v.string(), v.string())),
+    isArchived: v.boolean(),
+    scheduledAt: v.optional(v.number()),
+    attachments: v.optional(v.array(v.object({
+      name: v.string(),
+      url: v.string(),
+      size: v.number(),
+      type: v.string(),
+    }))),
+    metadata: v.optional(v.object({
+      templateId: v.optional(v.id("notificationTemplates")),
+      campaignId: v.optional(v.string()),
+      tags: v.optional(v.array(v.string())),
+    })),
+  })
+    .index("by_sender", ["senderId"])
+    .index("by_type", ["type"])
+    .index("by_status", ["status"])
+    .index("by_group", ["groupId"])
+    .index("by_archived", ["isArchived"])
+    .index("by_priority", ["priority"])
+    // Составные индексы (убираем дубликаты)
+    .index("sender_type", ["senderId", "type"])
+    .index("type_status", ["type", "status"])
+    .index("archived_status", ["isArchived", "status"])
+    .index("priority_status", ["priority", "status"]),
+
+  messageGroups: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    memberIds: v.array(v.id("users")),
+    memberNames: v.array(v.string()),
+    createdBy: v.id("users"),
+    isActive: v.boolean(),
+    groupType: v.union(
+      v.literal("manual"),
+      v.literal("auto"),
+      v.literal("role-based")
+    ),
+    rules: v.optional(v.object({
+      roles: v.optional(v.array(v.string())),
+      departments: v.optional(v.array(v.string())),
+      conditions: v.optional(v.array(v.string())),
+    })),
+    settings: v.optional(v.object({
+      allowSelfJoin: v.optional(v.boolean()),
+      requireApproval: v.optional(v.boolean()),
+      maxMembers: v.optional(v.number()),
+    })),
+  })
+    .index("by_creator", ["createdBy"])
+    .index("by_type", ["groupType"])
+    .index("by_active", ["isActive"])
+    .index("creator_active", ["createdBy", "isActive"])
+    .index("type_active", ["groupType", "isActive"]),
+
+  notificationTemplates: defineTable({
+    name: v.string(),
+    description: v.optional(v.string()),
+    type: v.union(
+      v.literal("email"),
+      v.literal("sms"),
+      v.literal("push"),
+      v.literal("in-app")
+    ),
+    subject: v.string(),
+    content: v.string(),
+    variables: v.array(v.string()),
+    isActive: v.boolean(),
+    createdBy: v.id("users"),
+    category: v.optional(v.string()),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+    settings: v.optional(v.object({
+      allowScheduling: v.optional(v.boolean()),
+      requireApproval: v.optional(v.boolean()),
+      maxRecipients: v.optional(v.number()),
+    })),
+  })
+    .index("by_creator", ["createdBy"])
+    .index("by_type", ["type"])
+    .index("by_active", ["isActive"])
+    .index("by_category", ["category"])
+    .index("creator_active", ["createdBy", "isActive"])
+    .index("type_active", ["type", "isActive"])
+    .index("category_active", ["category", "isActive"]),
+
+  drafts: defineTable({
+    type: v.union(
+      v.literal("direct"),
+      v.literal("group"),
+      v.literal("announcement")
+    ),
+    subject: v.optional(v.string()),
+    content: v.string(),
+    recipientIds: v.array(v.id("users")),
+    groupId: v.optional(v.id("messageGroups")),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+    createdBy: v.id("users"),
+    scheduledAt: v.optional(v.number()),
+    templateId: v.optional(v.id("notificationTemplates")),
+    lastModified: v.optional(v.number()),
+  })
+    .index("by_creator", ["createdBy"])
+    .index("by_type", ["type"])
+    .index("creator_type", ["createdBy", "type"]),
+
+  notifications: defineTable({
+    userId: v.id("users"),
+    type: v.union(
+      v.literal("system"),
+      v.literal("reminder"),
+      v.literal("alert"),
+      v.literal("info")
+    ),
+    title: v.string(),
+    message: v.string(),
+    isRead: v.boolean(),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+    actionUrl: v.optional(v.string()),
+    metadata: v.optional(v.object({
+      sourceId: v.optional(v.string()),
+      sourceType: v.optional(v.string()),
+      data: v.optional(v.any()),
+    })),
+  })
+    .index("by_user", ["userId"])
+    .index("by_read", ["isRead"])
+    .index("by_type", ["type"])
+    .index("user_read", ["userId", "isRead"])
+    .index("user_type", ["userId", "type"]),
 
   products: defineTable({
     name: v.string(),
@@ -53,7 +239,10 @@ export default defineSchema({
   })
     .index("by_category", ["category"])
     .index("by_popularity", ["isPopular"])
-    .index("by_active", ["isActive"]),
+    .index("by_active", ["isActive"])
+    .index("by_deleted", ["isDeleted"])
+    .index("category_active", ["category", "isActive"])
+    .index("active_popular", ["isActive", "isPopular"]),
 
   orders: defineTable({
     userId: v.optional(v.id("users")),
@@ -85,7 +274,10 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_member", ["memberId"])
     .index("by_status", ["status"])
-    .index("by_order_time", ["orderTime"]),
+    .index("by_order_time", ["orderTime"])
+    .index("by_payment_status", ["paymentStatus"])
+    .index("user_status", ["userId", "status"])
+    .index("member_status", ["memberId", "status"]),
 
   schedule_events: defineTable({
     title: v.string(),
@@ -126,8 +318,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_start_time", ["startTime"])
     .index("by_type", ["type"])
-    .index("by_date_trainer", ["startTime", "trainerId"]),
-
+    .index("trainer_start", ["trainerId", "startTime"])
+    .index("trainer_status", ["trainerId", "status"]),
 
   sessions: defineTable({
     userId: v.optional(v.id("users")),
@@ -183,7 +375,9 @@ export default defineSchema({
     updatedAt: v.optional(v.number()),
   })
     .index("by_email", ["email"])
-    .index("by_active", ["isActive"]),
+    .index("by_active", ["isActive"])
+    .index("by_status", ["status"])
+    .index("email_active", ["email", "isActive"]),
 
   workouts: defineTable({
     trainerId: v.id("trainers"),
@@ -194,7 +388,10 @@ export default defineSchema({
     status: v.optional(v.string()),
   })
     .index("by_trainer", ["trainerId"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("trainer_user", ["trainerId", "userId"])
+    .index("trainer_status", ["trainerId", "status"]),
 
   memberships: defineTable({
     userId: v.id("users"),
@@ -207,7 +404,10 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_trainer", ["trainerId"])
-    .index("by_active", ["isActive"]),
+    .index("by_active", ["isActive"])
+    .index("by_type", ["type"])
+    .index("user_active", ["userId", "isActive"])
+    .index("trainer_active", ["trainerId", "isActive"]),
 
   members: defineTable({
     name: v.string(),
@@ -243,7 +443,9 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_phone", ["phone"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_membership_type", ["membershipType"])
+    .index("status_membership", ["status", "membershipType"]),
 
   accessLogs: defineTable({
     userId: v.optional(v.id("users")),
@@ -254,14 +456,20 @@ export default defineSchema({
     ipAddress: v.optional(v.string()),
   })
     .index("by_timestamp", ["timestamp"])
-    .index("by_success", ["success"]),
+    .index("by_success", ["success"])
+    .index("by_user", ["userId"])
+    .index("user_success", ["userId", "success"]),
 
   logs: defineTable({
     userId: v.string(),
     success: v.boolean(),
     deviceInfo: v.optional(v.string()),
     timestamp: v.number(),
-  }),
+  })
+    .index("by_user", ["userId"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_success", ["success"])
+    .index("user_success", ["userId", "success"]),
 
   events: defineTable({
     title: v.string(),
@@ -290,7 +498,10 @@ export default defineSchema({
     .index("by_client", ["clientId"])
     .index("by_status", ["status"])
     .index("by_start_time", ["startTime"])
-    .index("by_created_by", ["createdBy"]),
+    .index("by_created_by", ["createdBy"])
+    .index("by_type", ["type"])
+    .index("trainer_status", ["trainerId", "status"])
+    .index("trainer_start", ["trainerId", "startTime"]),
 
   clients: defineTable({
     name: v.string(),
@@ -316,7 +527,9 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_trainer", ["trainerId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_phone", ["phone"])
+    .index("trainer_status", ["trainerId", "status"]),
 
   bookings: defineTable({
     memberId: v.id("members"),
@@ -338,7 +551,11 @@ export default defineSchema({
     .index("by_member", ["memberId"])
     .index("by_trainer", ["trainerId"])
     .index("by_start_time", ["startTime"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_workout_type", ["workoutType"])
+    .index("member_status", ["memberId", "status"])
+    .index("trainer_status", ["trainerId", "status"])
+    .index("trainer_start", ["trainerId", "startTime"]),
 
   visits: defineTable({
     memberId: v.id("members"),
@@ -353,29 +570,37 @@ export default defineSchema({
     areas: v.optional(v.array(v.string())),
   })
     .index("by_member", ["memberId"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_success", ["success"])
+    .index("by_visit_type", ["visitType"])
+    .index("member_success", ["memberId", "success"])
+    .index("member_type", ["memberId", "visitType"]),
 
   classes: defineTable({
-  name: v.string(),
-  description: v.optional(v.string()),
-  instructorId: v.id("trainers"),
-  startTime: v.number(),
-  endTime: v.number(),
-  location: v.string(),
-  capacity: v.number(),
-  enrolled: v.array(v.id("members")),
-  waitlist: v.optional(v.array(v.id("members"))),
-  difficulty: v.string(),
-  equipment: v.optional(v.array(v.string())),
-  price: v.number(),
-  isRecurring: v.boolean(),
-  recurringPattern: v.optional(v.string()),
-  status: v.string(),
-  createdAt: v.number(), // Добавлена запятая
-})
-  .index("by_instructor", ["instructorId"])
-  .index("by_start_time", ["startTime"])
-  .index("by_status", ["status"]),
+    name: v.string(),
+    description: v.optional(v.string()),
+    instructorId: v.id("trainers"),
+    startTime: v.number(),
+    endTime: v.number(),
+    location: v.string(),
+    capacity: v.number(),
+    enrolled: v.array(v.id("members")),
+    waitlist: v.optional(v.array(v.id("members"))),
+    difficulty: v.string(),
+    equipment: v.optional(v.array(v.string())),
+    price: v.number(),
+    isRecurring: v.boolean(),
+    recurringPattern: v.optional(v.string()),
+    status: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_instructor", ["instructorId"])
+    .index("by_start_time", ["startTime"])
+    .index("by_status", ["status"])
+    .index("by_difficulty", ["difficulty"])
+    .index("by_recurring", ["isRecurring"])
+    .index("instructor_status", ["instructorId", "status"])
+    .index("instructor_start", ["instructorId", "startTime"]),
 
   programBookings: defineTable({
     memberId: v.id("members"),
@@ -396,7 +621,10 @@ export default defineSchema({
     .index("by_member", ["memberId"])
     .index("by_program", ["programId"])
     .index("by_start_time", ["startTime"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_session_type", ["sessionType"])
+    .index("member_status", ["memberId", "status"])
+    .index("program_status", ["programId", "status"]),
 
   purchases: defineTable({
     memberId: v.id("members"),
@@ -414,7 +642,11 @@ export default defineSchema({
   })
     .index("by_member", ["memberId"])
     .index("by_status", ["status"])
-    .index("by_purchase_date", ["purchaseDate"]),
+    .index("by_purchase_date", ["purchaseDate"])
+    .index("by_type", ["type"])
+    .index("by_payment_method", ["paymentMethod"])
+    .index("member_status", ["memberId", "status"])
+    .index("type_status", ["type", "status"]),
 
   userBookings: defineTable({
     userId: v.id("users"),
@@ -435,24 +667,11 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_trainer", ["trainerId"])
     .index("by_start_time", ["startTime"])
-    .index("by_status", ["status"]),
-
-  notifications: defineTable({
-    recipientId: v.string(),
-    recipientType: v.string(),
-    title: v.string(),
-    message: v.string(),
-    type: v.string(),
-    isRead: v.boolean(),
-    isImportant: v.optional(v.boolean()),
-    relatedId: v.optional(v.string()),
-    actionUrl: v.optional(v.string()),
-    createdAt: v.number(),
-    readAt: v.optional(v.number()),
-  })
-    .index("by_recipient", ["recipientId"])
-    .index("by_type", ["type"])
-    .index("by_created", ["createdAt"]),
+    .index("by_status", ["status"])
+    .index("by_workout_type", ["workoutType"])
+    .index("user_status", ["userId", "status"])
+    .index("trainer_status", ["trainerId", "status"])
+    .index("user_start", ["userId", "startTime"]),
 
   membershipPlans: defineTable({
     name: v.string(),
@@ -465,41 +684,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_type", ["type"])
-    .index("by_active", ["isActive"]),
-
-  messages: defineTable({
-    senderId: v.string(),
-    senderName: v.string(),
-    senderRole: v.string(),
-    recipientId: v.optional(v.string()),
-    recipientName: v.optional(v.string()),
-    recipientRole: v.optional(v.string()),
-    subject: v.string(),
-    content: v.string(),
-    type: v.string(),
-    priority: v.optional(v.string()),
-    relatedTo: v.optional(v.object({
-      type: v.string(),
-      id: v.string(),
-      title: v.optional(v.string())
-    })),
-    status: v.string(),
-    isRead: v.optional(v.boolean()),
-    readAt: v.optional(v.number()),
-    attachments: v.optional(v.array(v.object({
-      name: v.string(),
-      url: v.string(),
-      type: v.string(),
-      size: v.optional(v.number())
-    }))),
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_sender", ["senderId"])
-    .index("by_recipient", ["recipientId"])
-    .index("by_type", ["type"])
-    .index("by_status", ["status"])
-    .index("by_created", ["createdAt"]),
+    .index("by_active", ["isActive"])
+    .index("type_active", ["type", "isActive"]),
 
   systemSettings: defineTable({
     key: v.string(),
@@ -513,7 +699,10 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_key", ["key"])
-    .index("by_category", ["category"]),
+    .index("by_category", ["category"])
+    .index("by_type", ["type"])
+    .index("by_public", ["isPublic"])
+    .index("category_type", ["category", "type"]),
 
   auditLogs: defineTable({
     userId: v.string(),
@@ -534,5 +723,9 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_action", ["action"])
     .index("by_resource", ["resource"])
-    .index("by_timestamp", ["timestamp"]),
+    .index("by_timestamp", ["timestamp"])
+    .index("by_user_role", ["userRole"])
+    .index("user_action", ["userId", "action"])
+    .index("resource_action", ["resource", "action"])
+    .index("user_resource", ["userId", "resource"]),
 });

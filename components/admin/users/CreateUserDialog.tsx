@@ -13,8 +13,7 @@ import { User, UserRole, CreateUserData } from "@/types/user";
 import { 
   getCreatableRoles, 
   canManageUser, 
-  canCreateUserWithRole,
-  getManageableRoles 
+  canCreateUserWithRole 
 } from "@/lib/permissions";
 import { useCloudinaryUpload } from "@/hooks/useCloudinaryUpload";
 

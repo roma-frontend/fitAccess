@@ -4,10 +4,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  BarChart3,
   TrendingUp,
   Users,
   Calendar,
@@ -15,8 +13,6 @@ import {
   Target,
   Activity,
   Download,
-  Filter,
-  Eye,
 } from "lucide-react";
 import { useSuperAdmin, useSuperAdminAnalytics } from "@/contexts/SuperAdminContext";
 import { useSchedule } from "@/contexts/ScheduleContext";

@@ -52,7 +52,6 @@ export interface EventFilters {
     end: string;
   };
 }
-
 export interface ScheduleStats {
   totalEvents: number;
   todayEvents: number;
@@ -61,6 +60,26 @@ export interface ScheduleStats {
   cancelledEvents: number;
   pendingConfirmation: number;
   overdueEvents: number;
+  
+  // Добавляем недостающие поля для совместимости
+  completionRate: number;
+  cancellationRate: number;
+  noShowRate: number;
+  averageSessionDuration: number; // вместо averageDuration
+  totalRevenue: number;
+  utilizationRate: number;
+  
+  // Переименовываем для совместимости
+  eventsByStatus: {
+    scheduled: number;
+    confirmed: number;
+    completed: number;
+    cancelled: number;
+    "no-show": number;
+  };
+  eventsByTrainer: Record<string, number>;
+  
+  // Оставляем старые поля для обратной совместимости
   byTrainer: Array<{
     trainerId: string;
     trainerName: string;
@@ -81,7 +100,6 @@ export interface ScheduleStats {
     cancelled: number;
     'no-show': number;
   };
-  utilizationRate: number;
   averageDuration: number;
   busyHours: Array<{
     hour: number;
@@ -395,6 +413,24 @@ export function useScheduleStats(period?: string, startDate?: string, endDate?: 
         cancelledEvents: 0,
         pendingConfirmation: 0,
         overdueEvents: 0,
+        
+        // Новые поля
+        completionRate: 0,
+        cancellationRate: 0,
+        noShowRate: 0,
+        averageSessionDuration: 60,
+        totalRevenue: 0,
+        utilizationRate: 0,
+        eventsByStatus: {
+          scheduled: 0,
+          confirmed: 0,
+          completed: 0,
+          cancelled: 0,
+          "no-show": 0,
+        },
+        eventsByTrainer: {},
+        
+        // Старые поля
         byTrainer: [],
         byType: {
           training: 0,
@@ -411,12 +447,12 @@ export function useScheduleStats(period?: string, startDate?: string, endDate?: 
           cancelled: 0,
           'no-show': 0,
         },
-        utilizationRate: 0,
         averageDuration: 60,
         busyHours: [],
       };
     }
 
+    // Ваши существующие вычисления...
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today);
@@ -448,6 +484,15 @@ export function useScheduleStats(period?: string, startDate?: string, endDate?: 
       return eventEnd < now && (event.status === 'scheduled' || event.status === 'confirmed');
     }).length;
 
+    // Статистика по статусам
+    const byStatus = {
+      scheduled: filteredEvents.filter(e => e.status === 'scheduled').length,
+      confirmed: filteredEvents.filter(e => e.status === 'confirmed').length,
+      completed: filteredEvents.filter(e => e.status === 'completed').length,
+      cancelled: filteredEvents.filter(e => e.status === 'cancelled').length,
+      'no-show': filteredEvents.filter(e => e.status === 'no-show').length,
+    };
+
     // Статистика по тренерам
     const byTrainer = trainers.map((trainer: Trainer) => ({
       trainerId: trainer.id,
@@ -465,15 +510,6 @@ export function useScheduleStats(period?: string, startDate?: string, endDate?: 
       other: filteredEvents.filter(e => e.type === 'other').length,
     };
 
-    // Статистика по статусам
-    const byStatus = {
-      scheduled: filteredEvents.filter(e => e.status === 'scheduled').length,
-      confirmed: filteredEvents.filter(e => e.status === 'confirmed').length,
-      completed: filteredEvents.filter(e => e.status === 'completed').length,
-      cancelled: filteredEvents.filter(e => e.status === 'cancelled').length,
-      'no-show': filteredEvents.filter(e => e.status === 'no-show').length,
-    };
-
     // Загруженные часы
     const busyHours = Array.from({ length: 24 }, (_, hour) => ({
       hour,
@@ -489,11 +525,33 @@ export function useScheduleStats(period?: string, startDate?: string, endDate?: 
       ? eventsWithDuration.reduce((sum, e) => sum + (e.duration || 60), 0) / eventsWithDuration.length
       : 60;
 
-    // Утилизация (простая формула)
-        const totalPossibleSlots = trainers.length * 12 * 7; // 12 часов в день, 7 дней в неделю
+    // Утилизация
+    const totalPossibleSlots = trainers.length * 12 * 7;
     const utilizationRate = totalPossibleSlots > 0 
       ? Math.min((filteredEvents.length / totalPossibleSlots) * 100, 100)
       : 0;
+
+    // НОВЫЕ ВЫЧИСЛЕНИЯ для совместимости
+    const completionRate = filteredEvents.length > 0 
+      ? (byStatus.completed / filteredEvents.length) * 100 
+      : 0;
+    
+    const cancellationRate = filteredEvents.length > 0 
+      ? (byStatus.cancelled / filteredEvents.length) * 100 
+      : 0;
+    
+    const noShowRate = filteredEvents.length > 0 
+      ? (byStatus['no-show'] / filteredEvents.length) * 100 
+      : 0;
+
+    const totalRevenue = filteredEvents
+      .filter(e => e.status === 'completed')
+      .reduce((sum, e) => sum + (e.price || 0), 0);
+
+    const eventsByTrainer = trainers.reduce((acc: Record<string, number>, trainer: Trainer) => {
+      acc[trainer.name] = filteredEvents.filter(e => e.trainerId === trainer.id).length;
+      return acc;
+    }, {});
 
     return {
       totalEvents: filteredEvents.length,
@@ -503,10 +561,27 @@ export function useScheduleStats(period?: string, startDate?: string, endDate?: 
       cancelledEvents: byStatus.cancelled,
       pendingConfirmation: byStatus.scheduled,
       overdueEvents,
+      
+      // Новые поля
+      completionRate: Math.round(completionRate),
+      cancellationRate: Math.round(cancellationRate),
+      noShowRate: Math.round(noShowRate),
+      averageSessionDuration: Math.round(averageDuration),
+      totalRevenue,
+      utilizationRate: Math.round(utilizationRate),
+      eventsByStatus: {
+        scheduled: byStatus.scheduled,
+        confirmed: byStatus.confirmed,
+        completed: byStatus.completed,
+        cancelled: byStatus.cancelled,
+        "no-show": byStatus['no-show'],
+      },
+      eventsByTrainer,
+      
+      // Старые поля для обратной совместимости
       byTrainer,
       byType,
       byStatus,
-      utilizationRate: Math.round(utilizationRate),
       averageDuration: Math.round(averageDuration),
       busyHours,
     };

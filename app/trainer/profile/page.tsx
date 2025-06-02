@@ -11,22 +11,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   User,
   Mail,
   Phone,
-  MapPin,
   Calendar,
   Award,
   Star,
@@ -38,17 +27,14 @@ import {
   Download,
   Eye,
   Trash2,
-  Upload,
   CheckCircle,
   Clock,
   Users,
   Target,
-  Heart,
   Dumbbell,
   Trophy,
   BookOpen,
   Instagram,
-  Facebook,
   Youtube,
   Globe,
   Loader2

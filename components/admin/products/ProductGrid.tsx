@@ -1,8 +1,8 @@
-// components/admin/products/ProductGrid.tsx (очищенная версия)
+// components/admin/products/ProductGrid.tsx (исправленная версия)
 "use client";
 
 import { ProductCard } from "./ProductCard";
-import { Product } from "./types";
+import { Product } from "@/types/product"; // Используем общий тип
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProductGridProps {
@@ -15,7 +15,7 @@ interface ProductGridProps {
 export function ProductGrid({ products, onEdit, onDelete, isLoading = false }: ProductGridProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {Array.from({ length: 6 }).map((_, index) => (
           <div key={index} className="border rounded-lg p-6 space-y-4">
             <div className="flex justify-between items-start">
@@ -52,7 +52,7 @@ export function ProductGrid({ products, onEdit, onDelete, isLoading = false }: P
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
       {products.map((product) => (
         <ProductCard
           key={product._id}

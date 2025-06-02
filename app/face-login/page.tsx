@@ -16,7 +16,6 @@ import {
   Camera,
   QrCode,
   Mail,
-  User,
   Scan,
   Loader2,
   CheckCircle,

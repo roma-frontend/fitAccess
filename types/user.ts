@@ -3,23 +3,20 @@ export type UserRole = 'super-admin' | 'admin' | 'manager' | 'trainer' | 'member
 
 export interface User {
   id: string;
-  name: string;
   email: string;
   role: UserRole;
-  isActive: boolean;
-  photoUrl?: string;
+  name: string;
   createdAt: number;
-  lastLogin?: number;
-  updatedAt?: number;
   createdBy?: string;
-}
-
-export interface UserStats {
-  total: number;
-  active: number;
-  inactive: number;
-  byRole: Record<string, number>;
-  recent?: User[];
+  isActive: boolean;
+  photoUrl?: string | null;
+  lastLogin?: number | null;
+  // Дополнительные поля для тренеров
+  phone?: string;
+  bio?: string;
+  specializations?: string[];
+  experience?: number;
+  hourlyRate?: number;
 }
 
 export interface CreateUserData {
@@ -27,8 +24,14 @@ export interface CreateUserData {
   password: string;
   role: UserRole;
   name: string;
+  isActive: boolean;
   photoUrl?: string;
-  isActive?: boolean;
+  // Дополнительные поля для тренеров
+  phone?: string;
+  bio?: string;
+  specializations?: string[];
+  experience?: number;
+  hourlyRate?: number;
 }
 
 export interface UpdateUserData {
@@ -38,6 +41,12 @@ export interface UpdateUserData {
   isActive?: boolean;
   photoUrl?: string;
   password?: string;
+  // Дополнительные поля для тренеров
+  phone?: string;
+  bio?: string;
+  specializations?: string[];
+  experience?: number;
+  hourlyRate?: number;
 }
 
 export interface OperationResult {

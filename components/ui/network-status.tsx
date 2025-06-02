@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wifi, WifiOff, RefreshCw, AlertTriangle } from "lucide-react";
+import { Wifi, WifiOff, RefreshCw } from "lucide-react";
 
 interface NetworkStatusProps {
   onRetry?: () => void;

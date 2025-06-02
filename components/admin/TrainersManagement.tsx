@@ -9,16 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { 
-  Users, 
-  Search, 
-  Filter,
+  Search,
   Eye,
   MessageSquare,
   Calendar,
-  TrendingUp,
   Star,
   Clock,
-  Target,
   Phone,
   Mail,
   MoreVertical,

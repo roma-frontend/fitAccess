@@ -2,19 +2,17 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// Получить всех клиентов
 export const getAll = query({
+  args: {},
   handler: async (ctx) => {
-    console.log('🔍 Convex clients: получаем всех клиентов...');
+    console.log("Запрос клиентов из базы данных...");
     
-    try {
-      const clients = await ctx.db.query("clients").collect();
-      console.log(`✅ Convex clients: найдено ${clients.length} клиентов`);
-      return clients;
-    } catch (error) {
-      console.error('❌ Convex clients: ошибка получения клиентов:', error);
-      return [];
-    }
+    // Получаем клиентов из таблицы clients
+    const clients = await ctx.db.query("clients").collect();
+
+    console.log("Найдено клиентов:", clients.length);
+
+    return clients;
   },
 });
 

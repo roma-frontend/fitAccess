@@ -1,16 +1,34 @@
 // components/admin/schedule/types.ts (обновленная версия)
-import { Id } from "@/convex/_generated/dataModel";
+
+export interface CreateEventData {
+  title: string;
+  description?: string;
+  type: 'training' | 'consultation' | 'group' | 'break' | 'other' | 'meeting'; // ✅ Унифицируем
+  startTime: string;
+  endTime: string;
+  trainerId: string;
+  clientId?: string;
+  location?: string;
+  notes?: string;
+  recurring?: {
+    pattern: 'daily' | 'weekly' | 'monthly';
+    interval: number;
+    endDate?: string;
+    daysOfWeek?: number[];
+  };
+  price?: number;
+  duration?: number;
+  goals?: string[];
+}
 
 export interface ScheduleEvent {
   _id: string;
   title: string;
   description?: string;
-  type: 'training' | 'consultation' | 'group' | 'break' | 'other' | 'meeting';
+  type: 'training' | 'consultation' | 'group' | 'break' | 'other' | 'meeting'; // ✅ Унифицируем
   startTime: string;
   endTime: string;
   trainerId: string;
-  clientPhone?: string;
-  clientEmail?: string;
   trainerName: string;
   clientId?: string;
   clientName?: string;
@@ -48,56 +66,40 @@ export interface TrainerSchedule {
 
 export interface ScheduleStats {
   totalEvents: number;
-  todayEvents: number;
-  upcomingEvents: number;
   completedEvents: number;
   cancelledEvents: number;
+  todayEvents: number;
+  upcomingEvents: number;
   pendingConfirmation: number;
   overdueEvents: number;
-  byTrainer: Array<{
-    trainerId: string;
-    trainerName: string;
-    eventCount: number;
-  }>;
-  byType: {
-    training: number;
-    consultation: number;
-    group: number;
-    meeting: number;
-    break: number;
-    other: number;
-  };
-  byStatus: {
+  completionRate: number;
+  cancellationRate: number;
+  noShowRate: number;
+  averageSessionDuration: number;
+  totalRevenue: number;
+  utilizationRate: number;
+  eventsByStatus: {
     scheduled: number;
     confirmed: number;
     completed: number;
     cancelled: number;
-    'no-show': number;
+    "no-show": number;
   };
-  utilizationRate: number;
-  averageDuration: number;
-  busyHours: Array<{
-    hour: number;
-    eventCount: number;
-  }>;
+  eventsByTrainer: Record<string, number>;
 }
+
 
 export interface CreateEventData {
   title: string;
-  description?: string;
-  type: ScheduleEvent['type'];
-  startTime: string;
-  endTime: string;
+  type: "training" | "consultation" | "group" | "meeting" | "break" | "other";
   trainerId: string;
   clientId?: string;
+  startTime: string;
+  endTime: string;
   location?: string;
-  notes?: string;
-  recurring?: {
-    pattern: 'daily' | 'weekly' | 'monthly';
-    interval: number;
-    endDate?: string;
-    daysOfWeek?: number[];
-  };
+  description?: string;
+  status: "scheduled" | "confirmed" | "completed" | "cancelled" | "no-show";
+  price?: number; // Добавляем поле price если его нет
 }
 
 export interface EventFilter {

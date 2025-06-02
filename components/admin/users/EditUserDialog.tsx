@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Upload, User, Mail, Shield, Camera, Loader2 } from "lucide-react";
+import { User, Mail, Shield, Camera, Loader2 } from "lucide-react";
 import { useCloudinaryUpload } from '@/hooks/useCloudinaryUpload';
 
 // Импортируем типы из общего файла

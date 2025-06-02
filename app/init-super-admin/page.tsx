@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Crown, Loader2 } from "lucide-react";
+import { Crown, Loader2 } from "lucide-react";
 
 export default function InitSuperAdminPage() {
   const [loading, setLoading] = useState(false);

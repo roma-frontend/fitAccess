@@ -1,13 +1,9 @@
 // app/programs/page.tsx (обновленная версия)
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { programsData } from "@/lib/programs-data"; // Импортируем общие данные
 import {
@@ -15,7 +11,6 @@ import {
   ArrowLeft,
   Heart,
   Target,
-  Flame,
   Clock,
   Users,
   Star,

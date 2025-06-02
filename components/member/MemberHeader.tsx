@@ -24,7 +24,6 @@ import {
   Plus,
   Menu,
   X,
-  Home,
   UserCheck,
   Settings,
   LogOut,
@@ -34,7 +33,6 @@ import {
   Clock,
   Target,
   TrendingUp,
-  Heart,
   Shield
 } from "lucide-react";
 

@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EnhancedSmartForm } from "@/components/EnhancedSmartForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);

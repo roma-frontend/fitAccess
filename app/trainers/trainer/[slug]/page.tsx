@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Star,
   Award,
-  Calendar,
   Clock,
   MapPin,
   Phone,

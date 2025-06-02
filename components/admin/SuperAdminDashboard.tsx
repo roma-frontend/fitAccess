@@ -1,7 +1,7 @@
 // components/admin/SuperAdminDashboard.tsx (исправленная версия)
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,6 @@ import {
   Eye,
   MessageSquare,
   BarChart3,
-  Settings,
   Shield,
   AlertTriangle,
   CheckCircle,

@@ -1,5 +1,4 @@
-// hooks/useAdvancedValidation.ts
-// Продвинутый хук для валидации с кэшированием и оптимизацией
+"use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { validateField, VALIDATION_RULES } from '@/utils/formValidationRules';
@@ -55,6 +54,7 @@ export const useAdvancedValidation = (
       return validationCache.current[cacheKey];
     }
 
+    // Инициализируем результат
     let result: ValidationState = {
       isValid: true,
       errors: [],
@@ -66,26 +66,29 @@ export const useAdvancedValidation = (
     try {
       // Базовая валидация по правилам
       if (fieldName in VALIDATION_RULES) {
-        // hooks/useAdvancedValidation.ts (продолжение)
         const basicValidation = validateField(fieldName as keyof typeof VALIDATION_RULES, value);
-        result = {
-          ...result,
-          isValid: basicValidation.isValid,
-          errors: basicValidation.errors,
-          warnings: basicValidation.warnings || [],
-          info: basicValidation.info || []
-        };
+        
+        // Правильно объединяем результаты
+        result.isValid = basicValidation.isValid;
+        result.errors = [...(basicValidation.errors || [])];
+        result.warnings = [...(basicValidation.warnings || [])];
+        result.info = [...(basicValidation.info || [])];
       }
 
       // Специальная валидация для email
       if (fieldName === 'email' && value) {
-        const emailValidation = await validateEmail(value);
-        if (!emailValidation.isValid) {
-          result.isValid = false;
-          result.errors.push(...emailValidation.errors);
-        }
-        if (emailValidation.warnings) {
-          result.warnings.push(...emailValidation.warnings);
+        try {
+          const emailValidation = await validateEmail(value);
+          if (!emailValidation.isValid) {
+            result.isValid = false;
+            result.errors.push(...(emailValidation.errors || []));
+          }
+          if (emailValidation.warnings && emailValidation.warnings.length > 0) {
+            result.warnings.push(...emailValidation.warnings);
+          }
+        } catch (error) {
+          console.warn('Ошибка валидации email:', error);
+          // Не блокируем форму из-за ошибки валидации email
         }
       }
 
@@ -124,13 +127,23 @@ export const useAdvancedValidation = (
     }
 
     // Устанавливаем состояние "валидация в процессе"
-    setValidationStates(prev => ({
-      ...prev,
-      [fieldName]: {
-        ...prev[fieldName],
-        isValidating: true
-      }
-    }));
+    setValidationStates(prev => {
+      const currentState = prev[fieldName] || {
+        isValid: true,
+        errors: [],
+        warnings: [],
+        info: [],
+        isValidating: false
+      };
+
+      return {
+        ...prev,
+        [fieldName]: {
+          ...currentState,
+          isValidating: true
+        }
+      };
+    });
 
     // Создаем новый таймер
     debounceTimers.current[fieldName] = setTimeout(async () => {
@@ -153,7 +166,7 @@ export const useAdvancedValidation = (
     }));
 
     // Запускаем валидацию только если поле не пустое или это обязательное поле
-    if (value || ['email', 'password', 'name'].includes(fieldName)) {
+    if (value || ['email', 'password', 'name', 'confirmPassword'].includes(fieldName)) {
       validateFieldWithDebounce(fieldName, value);
     } else {
       // Очищаем валидацию для пустых необязательных полей
@@ -170,7 +183,7 @@ export const useAdvancedValidation = (
     const results: Record<string, ValidationState> = {};
     
     for (const [fieldName, value] of Object.entries(formData)) {
-      if (value || ['email', 'password', 'name'].includes(fieldName)) {
+      if (value || ['email', 'password', 'name', 'confirmPassword'].includes(fieldName)) {
         results[fieldName] = await validateFieldAsync(fieldName, value);
       }
     }
@@ -181,14 +194,25 @@ export const useAdvancedValidation = (
 
   // Проверка валидности всей формы
   useEffect(() => {
-    const hasErrors = Object.values(validationStates).some(state => 
-      !state.isValid || state.errors.length > 0
+    const states = Object.values(validationStates);
+    const hasErrors = states.some(state => 
+      state && (!state.isValid || (state.errors && state.errors.length > 0))
     );
-    const hasRequiredFields = ['email', 'password'].every(field => 
+    
+    const requiredFields = ['email', 'password'];
+    const hasRequiredFields = requiredFields.every(field => 
       formData[field] && formData[field].trim()
     );
     
-    setIsFormValid(!hasErrors && hasRequiredFields);
+    // Для формы регистрации также проверяем имя и подтверждение пароля
+    const isRegisterForm = 'name' in formData && 'confirmPassword' in formData;
+    if (isRegisterForm) {
+      const hasRegisterFields = formData.name && formData.name.trim() && 
+                               formData.confirmPassword && formData.confirmPassword.trim();
+      setIsFormValid(!hasErrors && hasRequiredFields && hasRegisterFields);
+    } else {
+      setIsFormValid(!hasErrors && hasRequiredFields);
+    }
   }, [validationStates, formData]);
 
   // Валидация при монтировании (если включена)
@@ -238,6 +262,27 @@ export const useAdvancedValidation = (
     clearValidation();
   }, [initialData, clearValidation]);
 
+  // Безопасные геттеры с проверкой на undefined
+  const hasErrors = Object.values(validationStates).some(state => 
+    state && state.errors && state.errors.length > 0
+  );
+  
+  const hasWarnings = Object.values(validationStates).some(state => 
+    state && state.warnings && state.warnings.length > 0
+  );
+  
+  const isValidating = Object.values(validationStates).some(state => 
+    state && state.isValidating
+  );
+  
+  const totalErrors = Object.values(validationStates).reduce((sum, state) => 
+    sum + (state && state.errors ? state.errors.length : 0), 0
+  );
+  
+  const totalWarnings = Object.values(validationStates).reduce((sum, state) => 
+    sum + (state && state.warnings ? state.warnings.length : 0), 0
+  );
+
   return {
     formData,
     validationStates,
@@ -248,12 +293,11 @@ export const useAdvancedValidation = (
     clearValidation,
     resetForm,
     // Вспомогательные геттеры
-    hasErrors: Object.values(validationStates).some(state => state.errors.length > 0),
-    hasWarnings: Object.values(validationStates).some(state => (state.warnings?.length || 0) > 0),
-    isValidating: Object.values(validationStates).some(state => state.isValidating),
+    hasErrors,
+    hasWarnings,
+    isValidating,
     // Статистика
-    totalErrors: Object.values(validationStates).reduce((sum, state) => sum + state.errors.length, 0),
-    totalWarnings: Object.values(validationStates).reduce((sum, state) => sum + (state.warnings?.length || 0), 0)
+    totalErrors,
+    totalWarnings
   };
 };
-

@@ -1,0 +1,10 @@
+{
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript"
+  ],
+  "plugins": ["unused-imports", "no-console"],
+  "rules": {
+    "unused-imports/no-unused-imports": "error"
+  }
+}

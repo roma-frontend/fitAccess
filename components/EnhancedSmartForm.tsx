@@ -1,7 +1,7 @@
 // components/EnhancedSmartForm.tsx
-// Улучшенная версия SmartForm с продвинутой валидацией
+"use client";
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ValidatedInput } from './ValidatedInput';
@@ -104,21 +104,32 @@ export const EnhancedSmartForm: React.FC<EnhancedSmartFormProps> = ({
     
     if (!isFormValid || isLoading) return;
     
-    // Финальная валидация перед отправкой
-    const finalValidation = await validateForm();
-    const hasValidationErrors = Object.values(finalValidation).some(state => !state.isValid);
-    
-    if (hasValidationErrors) {
-      console.warn('Форма содержит ошибки валидации');
-      return;
+    try {
+            const finalValidation = await validateForm();
+      const hasValidationErrors = Object.values(finalValidation).some(state => 
+        state && (!state.isValid || (state.errors && state.errors.length > 0))
+      );
+      
+      if (hasValidationErrors) {
+        console.warn('Форма содержит ошибки валидации');
+        return;
+      }
+      
+      await onSubmit(formData);
+    } catch (error) {
+      console.error('Ошибка отправки формы:', error);
     }
-    
-    await onSubmit(formData);
   };
 
   // Рендер поля формы
   const renderField = (field: any) => {
-    const fieldState = validationStates[field.name];
+    const fieldState = validationStates[field.name] || {
+      isValid: true,
+      errors: [],
+      warnings: [],
+      info: [],
+      isValidating: false
+    };
     
     if (field.type === 'select') {
       return (
@@ -159,7 +170,7 @@ export const EnhancedSmartForm: React.FC<EnhancedSmartFormProps> = ({
         />
         
         {/* Отображение ошибок поля */}
-        {fieldState && fieldState.errors.length > 0 && (
+        {fieldState.errors && fieldState.errors.length > 0 && (
           <div className="mt-1 space-y-1">
             {fieldState.errors.map((error, index) => (
               <p key={index} className="text-sm text-red-600 flex items-center">
@@ -171,7 +182,7 @@ export const EnhancedSmartForm: React.FC<EnhancedSmartFormProps> = ({
         )}
         
         {/* Отображение предупреждений */}
-        {fieldState && fieldState.warnings && fieldState.warnings.length > 0 && (
+        {fieldState.warnings && fieldState.warnings.length > 0 && (
           <div className="mt-1 space-y-1">
             {fieldState.warnings.map((warning, index) => (
               <p key={index} className="text-sm text-orange-600 flex items-center">
@@ -183,7 +194,7 @@ export const EnhancedSmartForm: React.FC<EnhancedSmartFormProps> = ({
         )}
         
         {/* Индикатор валидации */}
-        {fieldState && fieldState.isValidating && (
+        {fieldState.isValidating && (
           <div className="mt-1 flex items-center text-sm text-gray-500">
             <Loader2 className="h-3 w-3 mr-1 animate-spin" />
             Проверка...
@@ -199,7 +210,6 @@ export const EnhancedSmartForm: React.FC<EnhancedSmartFormProps> = ({
         <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-blue-800 rounded-full flex items-center justify-center mx-auto mb-4">
           <IconComponent className="h-8 w-8 text-white" />
         </div>
-        // components/EnhancedSmartForm.tsx (продолжение)
         <CardTitle className="text-2xl font-bold">{config.title}</CardTitle>
         <CardDescription className="text-base">{config.description}</CardDescription>
       </CardHeader>

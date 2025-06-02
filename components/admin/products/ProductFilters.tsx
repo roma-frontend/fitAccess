@@ -1,34 +1,51 @@
 // components/admin/products/ProductFilters.tsx
-"use client";
-
-import { useState } from 'react';
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import React, { memo } from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Search, Filter, X, Package } from "lucide-react";
-import { Product } from "./types";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Search, 
+  X, 
+  Loader2, 
+  SortAsc, 
+  SortDesc,
+  Filter,
+  RotateCcw
+} from 'lucide-react';
+import { 
+  CategoryFilter, 
+  StockFilter, 
+  PopularFilter, 
+  SortByOption, 
+  SortOrderOption 
+} from '@/types/product';
 
-interface ProductFiltersProps {
+export interface ProductFiltersProps {
   searchTerm: string;
-  onSearchChange: (search: string) => void;
-  categoryFilter: Product['category'] | 'all';
-  onCategoryFilterChange: (category: Product['category'] | 'all') => void;
-  stockFilter: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock';
-  onStockFilterChange: (stock: 'all' | 'in-stock' | 'low-stock' | 'out-of-stock') => void;
-  popularFilter: 'all' | 'popular' | 'regular';
-  onPopularFilterChange: (popular: 'all' | 'popular' | 'regular') => void;
+  onSearchChange: (value: string) => void;
+  categoryFilter: CategoryFilter;
+  onCategoryFilterChange: (value: CategoryFilter) => void;
+  stockFilter: StockFilter;
+  onStockFilterChange: (value: StockFilter) => void;
+  popularFilter: PopularFilter;
+  onPopularFilterChange: (value: PopularFilter) => void;
+  sortBy: SortByOption;
+  sortOrder: SortOrderOption;
+  onSortChange: (sortBy: SortByOption, sortOrder: SortOrderOption) => void;
   totalProducts: number;
   filteredProducts: number;
+  isDebouncing?: boolean;
 }
 
-export function ProductFilters({
+export const ProductFilters = memo(function ProductFilters({
   searchTerm,
   onSearchChange,
   categoryFilter,
@@ -37,68 +54,96 @@ export function ProductFilters({
   onStockFilterChange,
   popularFilter,
   onPopularFilterChange,
+  sortBy,
+  sortOrder,
+  onSortChange,
   totalProducts,
-  filteredProducts
+  filteredProducts,
+  isDebouncing = false
 }: ProductFiltersProps) {
-  const [showFilters, setShowFilters] = useState(false);
+  const hasActiveFilters = 
+    searchTerm !== '' ||
+    categoryFilter !== 'all' ||
+    stockFilter !== 'all' ||
+    popularFilter !== 'all' ||
+    sortBy !== 'name' ||
+    sortOrder !== 'asc';
 
-  const clearFilters = () => {
+  const clearSearch = () => onSearchChange('');
+
+  const toggleSortOrder = () => {
+    onSortChange(sortBy, sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const resetFilters = () => {
     onSearchChange('');
     onCategoryFilterChange('all');
     onStockFilterChange('all');
     onPopularFilterChange('all');
+    onSortChange('name', 'asc');
   };
 
-  const hasActiveFilters = searchTerm || categoryFilter !== 'all' || stockFilter !== 'all' || popularFilter !== 'all';
-
   return (
-    <div className="space-y-4">
-      {/* Search and Filter Toggle */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 max-w-md">
+    <Card>
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          {/* Заголовок с результатами */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="h-5 w-5 text-gray-500" />
+              <h3 className="font-medium">Фильтры</h3>
+              {isDebouncing && (
+                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              )}
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm">
+                {filteredProducts} из {totalProducts}
+              </Badge>
+              
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={resetFilters}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Сбросить
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Поиск */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Поиск по названию или описанию..."
+              placeholder="Поиск продуктов..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-10 transition-all focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-10"
             />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
-          >
-            <Filter className="h-4 w-4" />
-            Фильтры
-            {hasActiveFilters && (
-              <Badge variant="secondary" className="ml-1 px-1 py-0 text-xs">
-                {[searchTerm, categoryFilter !== 'all', stockFilter !== 'all', popularFilter !== 'all'].filter(Boolean).length}
-              </Badge>
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearSearch}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+              >
+                <X className="h-3 w-3" />
+              </Button>
             )}
-          </Button>
+          </div>
 
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Advanced Filters */}
-      {showFilters && (
-        <div className="bg-gray-50 p-4 rounded-lg border space-y-4">
+          {/* Основные фильтры */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Категория</label>
               <Select value={categoryFilter} onValueChange={onCategoryFilterChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Все категории" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все категории</SelectItem>
@@ -114,7 +159,7 @@ export function ProductFilters({
               <label className="text-sm font-medium text-gray-700">Наличие</label>
               <Select value={stockFilter} onValueChange={onStockFilterChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Все товары" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все товары</SelectItem>
@@ -129,7 +174,7 @@ export function ProductFilters({
               <label className="text-sm font-medium text-gray-700">Популярность</label>
               <Select value={popularFilter} onValueChange={onPopularFilterChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Все товары" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Все товары</SelectItem>
@@ -139,23 +184,114 @@ export function ProductFilters({
               </Select>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Results Summary */}
-      <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg">
-        <div className="flex items-center gap-2">
-          <Package className="h-4 w-4" />
-          <span>
-            Показано {filteredProducts} из {totalProducts} продуктов
-          </span>
+          {/* Сортировка */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Сортировка:</label>
+              <Select value={sortBy} onValueChange={(value: SortByOption) => onSortChange(value, sortOrder)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Название</SelectItem>
+                  <SelectItem value="price">Цена</SelectItem>
+                  <SelectItem value="inStock">Количество</SelectItem>
+                  <SelectItem value="createdAt">Дата создания</SelectItem>
+                  <SelectItem value="category">Категория</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleSortOrder}
+              className="flex items-center gap-1"
+            >
+              {sortOrder === 'asc' ? (
+                <SortAsc className="h-4 w-4" />
+              ) : (
+                <SortDesc className="h-4 w-4" />
+              )}
+              {sortOrder === 'asc' ? 'По возрастанию' : 'По убыванию'}
+            </Button>
+          </div>
+
+          {/* Активные фильтры */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2 pt-2 border-t">
+              {searchTerm && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Поиск: "{searchTerm}"
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={clearSearch}
+                  />
+                </Badge>
+              )}
+              {categoryFilter !== 'all' && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Категория: {getCategoryLabel(categoryFilter)}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => onCategoryFilterChange('all')}
+                  />
+                </Badge>
+              )}
+              {stockFilter !== 'all' && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Склад: {getStockLabel(stockFilter)}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => onStockFilterChange('all')}
+                  />
+                </Badge>
+              )}
+              {popularFilter !== 'all' && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Популярность: {getPopularLabel(popularFilter)}
+                  <X 
+                    className="h-3 w-3 cursor-pointer" 
+                    onClick={() => onPopularFilterChange('all')}
+                  />
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
-        {hasActiveFilters && (
-          <Badge variant="outline" className="text-blue-700 border-blue-300">
-            Фильтры применены
-          </Badge>
-        )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
+});
+
+// Хелперы для отображения лейблов
+function getCategoryLabel(category: CategoryFilter): string {
+  const labels = {
+    all: 'Все',
+    supplements: 'Добавки',
+    drinks: 'Напитки',
+    snacks: 'Снеки',
+    merchandise: 'Мерч'
+  };
+  return labels[category];
+}
+
+function getStockLabel(stock: StockFilter): string {
+  const labels = {
+    all: 'Все',
+    'in-stock': 'В наличии',
+    'low-stock': 'Заканчивается',
+    'out-of-stock': 'Нет в наличии'
+  };
+  return labels[stock];
+}
+
+function getPopularLabel(popular: PopularFilter): string {
+  const labels = {
+    all: 'Все',
+    popular: 'Популярные',
+    regular: 'Обычные'
+  };
+  return labels[popular];
 }
