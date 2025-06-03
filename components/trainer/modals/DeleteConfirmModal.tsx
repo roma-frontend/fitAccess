@@ -1,49 +1,52 @@
 // components/trainer/modals/DeleteConfirmModal.tsx
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
   title: string;
   message: string;
-  onConfirm: () => void;
-  onClose: () => void;
 }
 
 export default function DeleteConfirmModal({ 
   isOpen, 
-  title, 
-  message, 
+  onClose, 
   onConfirm, 
-  onClose 
+  title, 
+  message 
 }: DeleteConfirmModalProps) {
+  const handleConfirm = () => {
+    onConfirm();
+    onClose();
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-500" />
-            {title}
-          </DialogTitle>
+            <DialogTitle className="text-red-600">{title}</DialogTitle>
+          </div>
+          <DialogDescription className="text-gray-600">
+            {message}
+          </DialogDescription>
         </DialogHeader>
-
-        <div className="py-4">
-          <p className="text-gray-600">{message}</p>
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onClose} className="flex-1">
+        
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button type="button" variant="outline" onClick={onClose}>
             Отмена
           </Button>
-          <Button variant="destructive" onClick={onConfirm} className="flex-1">
+          <Button 
+            type="button" 
+            variant="destructive" 
+            onClick={handleConfirm}
+          >
             Удалить
           </Button>
         </div>

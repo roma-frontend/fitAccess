@@ -1,206 +1,252 @@
-// components/trainer/modals/EditClientModal.tsx
+// components/trainer/modals/EditWorkoutModal.tsx (исправленная версия)
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useTrainer, Client } from '@/contexts/TrainerContext';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { X, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTrainer } from '@/contexts/TrainerContext';
+import type { Workout } from '@/types/trainer';
 
-interface EditClientModalProps {
+interface EditWorkoutModalProps {
   isOpen: boolean;
-  clientId: string;
   onClose: () => void;
+  workoutId: string;
 }
 
-export default function EditClientModal({ isOpen, clientId, onClose }: EditClientModalProps) {
-  const { clients, updateClient } = useTrainer();
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    currentProgram: '',
+// Типизированные статусы тренировок
+type WorkoutStatus = "scheduled" | "in-progress" | "completed" | "cancelled" | "missed";
+type WorkoutType = "personal" | "group" | "cardio" | "strength" | "yoga" | "pilates" | "crossfit";
+
+interface WorkoutFormData {
+  clientName: string;
+  type: WorkoutType | '';
+  date: string;
+  time: string;
+  duration: number;
+  location: string;
+  notes: string;
+  price: number;
+  status: WorkoutStatus;
+}
+
+export default function EditWorkoutModal({ isOpen, onClose, workoutId }: EditWorkoutModalProps) {
+  const { workouts, updateWorkout } = useTrainer();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState<WorkoutFormData>({
+    clientName: '',
+    type: '',
+    date: '',
+    time: '',
+    duration: 60,
+    location: '',
     notes: '',
-    status: 'trial' as Client['status'],
-    progress: 0
+    price: 0,
+    status: 'scheduled'
   });
-  const [goals, setGoals] = useState<string[]>([]);
-  const [newGoal, setNewGoal] = useState('');
 
-  const client = clients.find(c => c.id === clientId);
-
+  // Загружаем данные тренировки
   useEffect(() => {
-    if (client) {
+    const workout = workouts.find(w => (w.id || w._id) === workoutId);
+    if (workout) {
       setFormData({
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        currentProgram: client.currentProgram,
-        notes: client.notes || '',
-        status: client.status,
-        progress: client.progress
+        clientName: workout.clientName || workout.userName || '',
+        type: (workout.type as WorkoutType) || '',
+        date: workout.date || workout.scheduledDate?.split('T')[0] || '',
+        time: workout.time || workout.scheduledTime || '',
+        duration: workout.duration || 60,
+        location: workout.location || '',
+        notes: workout.notes || '',
+        price: workout.price || 0,
+        status: (workout.status as WorkoutStatus) || 'scheduled'
       });
-      setGoals(client.goals);
     }
-  }, [client]);
+  }, [workoutId, workouts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      updateClient(clientId, {
-        ...formData,
-        goals
-      });
-      handleClose();
+      // Создаем объект для обновления с правильными типами
+      const updateData: Partial<Workout> = {
+        clientName: formData.clientName,
+        type: formData.type || undefined,
+        date: formData.date,
+        time: formData.time,
+        duration: formData.duration,
+        location: formData.location,
+        notes: formData.notes,
+        price: formData.price,
+        status: formData.status
+      };
+
+      const success = await updateWorkout(workoutId, updateData);
+      if (success) {
+        onClose();
+      }
     } catch (error) {
-      console.error('Ошибка обновления клиента:', error);
+      console.error('Ошибка обновления тренировки:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const handleClose = () => {
-    setNewGoal('');
-    onClose();
+  const handleInputChange = (field: keyof WorkoutFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const addGoal = () => {
-    if (newGoal.trim() && !goals.includes(newGoal.trim())) {
-      setGoals([...goals, newGoal.trim()]);
-      setNewGoal('');
-    }
+  const handleStatusChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      status: value as WorkoutStatus
+    }));
   };
 
-  const removeGoal = (goalToRemove: string) => {
-    setGoals(goals.filter(goal => goal !== goalToRemove));
+  const handleTypeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      type: value as WorkoutType
+    }));
   };
-
-  if (!client) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Редактировать клиента</DialogTitle>
+          <DialogTitle>Редактировать тренировку</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Полное имя *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="clientName">Клиент</Label>
             <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              id="clientName"
+              value={formData.clientName}
+              onChange={(e) => handleInputChange('clientName', e.target.value)}
+              placeholder="Имя клиента"
               required
             />
           </div>
 
-          <div>
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
+          <div className="space-y-2">
+            <Label htmlFor="type">Тип тренировки</Label>
+            <Select value={formData.type} onValueChange={handleTypeChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите тип тренировки" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="personal">Персональная</SelectItem>
+                <SelectItem value="group">Групповая</SelectItem>
+                <SelectItem value="cardio">Кардио</SelectItem>
+                <SelectItem value="strength">Силовая</SelectItem>
+                <SelectItem value="yoga">Йога</SelectItem>
+                <SelectItem value="pilates">Пилатес</SelectItem>
+                <SelectItem value="crossfit">Кроссфит</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <div>
-            <Label htmlFor="phone">Телефон *</Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="program">Программа тренировок</Label>
-            <Input
-              id="program"
-              value={formData.currentProgram}
-              onChange={(e) => setFormData({ ...formData, currentProgram: e.target.value })}
-            />
-          </div>
-
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="status">Статус</Label>
-            <select
-              id="status"
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value as Client['status'] })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="trial">Пробный</option>
-              <option value="active">Активный</option>
-              <option value="inactive">Неактивный</option>
-            </select>
+            <Select value={formData.status} onValueChange={handleStatusChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Выберите статус" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="scheduled">Запланировано</SelectItem>
+                <SelectItem value="in-progress">В процессе</SelectItem>
+                <SelectItem value="completed">Завершено</SelectItem>
+                <SelectItem value="cancelled">Отменено</SelectItem>
+                <SelectItem value="missed">Пропущено</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
-          <div>
-            <Label htmlFor="progress">Прогресс (%)</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">Дата</Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="time">Время</Label>
+              <Input
+                id="time"
+                type="time"
+                value={formData.time}
+                onChange={(e) => handleInputChange('time', e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="duration">Длительность (мин)</Label>
+              <Input
+                id="duration"
+                type="number"
+                value={formData.duration}
+                onChange={(e) => handleInputChange('duration', parseInt(e.target.value) || 60)}
+                min="15"
+                max="300"
+                step="15"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price">Стоимость (₽)</Label>
+              <Input
+                id="price"
+                type="number"
+                value={formData.price}
+                onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
+                min="0"
+                step="100"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="location">Место проведения</Label>
             <Input
-              id="progress"
-              type="number"
-              min="0"
-              max="100"
-              value={formData.progress}
-              onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
+              id="location"
+              value={formData.location}
+              onChange={(e) => handleInputChange('location', e.target.value)}
+              placeholder="Зал, студия, онлайн..."
             />
           </div>
 
-          <div>
-            <Label>Цели</Label>
-            <div className="flex gap-2 mb-2">
-              <Input
-                value={newGoal}
-                onChange={(e) => setNewGoal(e.target.value)}
-                placeholder="Добавить цель"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addGoal())}
-              />
-              <Button type="button" onClick={addGoal} size="sm">
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {goals.map((goal, index) => (
-                <Badge key={index} variant="outline" className="cursor-pointer" onClick={() => removeGoal(goal)}>
-                  {goal} <X className="h-3 w-3 ml-1" />
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="notes">Заметки</Label>
             <Textarea
               id="notes"
               value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              onChange={(e) => handleInputChange('notes', e.target.value)}
+              placeholder="Дополнительная информация..."
               rows={3}
             />
           </div>
 
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="button" variant="outline" onClick={onClose}>
               Отмена
             </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
-              {loading ? 'Сохранение...' : 'Сохранить'}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? 'Сохранение...' : 'Сохранить'}
             </Button>
           </div>
         </form>
@@ -208,4 +254,3 @@ export default function EditClientModal({ isOpen, clientId, onClose }: EditClien
     </Dialog>
   );
 }
-

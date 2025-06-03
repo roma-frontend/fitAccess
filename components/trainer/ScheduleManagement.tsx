@@ -1,4 +1,4 @@
-// components/trainer/ScheduleManagement.tsx
+// components/trainer/ScheduleManagement.tsx (исправленная версия)
 "use client";
 
 import { useState } from 'react';
@@ -32,13 +32,27 @@ export default function ScheduleManagement() {
   const [deletingWorkout, setDeletingWorkout] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const selectedDateWorkouts = workouts.filter(w => w.date === selectedDate);
+  // Фильтруем тренировки по выбранной дате
+  const selectedDateWorkouts = workouts.filter(w => {
+    // Проверяем разные форматы дат
+    if (w.date) {
+      return w.date === selectedDate;
+    }
+    if (w.scheduledDate) {
+      return w.scheduledDate.split('T')[0] === selectedDate;
+    }
+    if (w.createdAt) {
+      return new Date(w.createdAt).toISOString().split('T')[0] === selectedDate;
+    }
+    return false;
+  });
 
   const getWorkoutStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled': return 'bg-blue-100 text-blue-800';
       case 'completed': return 'bg-green-100 text-green-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
+      case 'in-progress': return 'bg-yellow-100 text-yellow-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -48,13 +62,22 @@ export default function ScheduleManagement() {
       case 'scheduled': return 'Запланировано';
       case 'completed': return 'Завершено';
       case 'cancelled': return 'Отменено';
-      default: return status;
+      case 'in-progress': return 'В процессе';
+      default: return status || 'Неизвестно';
     }
   };
 
-  const handleDeleteWorkout = (workoutId: string) => {
-    deleteWorkout(workoutId);
-    setDeletingWorkout(null);
+  const handleDeleteWorkout = async (workoutId: string) => {
+    if (!workoutId) return;
+    
+    const success = await deleteWorkout(workoutId);
+    if (success) {
+      setDeletingWorkout(null);
+      // Можно добавить уведомление об успехе
+    } else {
+      // Можно добавить уведомление об ошибке
+      console.error('Не удалось удалить тренировку');
+    }
   };
 
   // Генерация календаря
@@ -74,7 +97,13 @@ export default function ScheduleManagement() {
       const weekDays = [];
       for (let day = 0; day < 7; day++) {
         const dateStr = currentDate.toISOString().split('T')[0];
-        const dayWorkouts = workouts.filter(w => w.date === dateStr);
+        const dayWorkouts = workouts.filter(w => {
+          if (w.date) return w.date === dateStr;
+          if (w.scheduledDate) return w.scheduledDate.split('T')[0] === dateStr;
+          if (w.createdAt) return new Date(w.createdAt).toISOString().split('T')[0] === dateStr;
+          return false;
+        });
+        
         const isToday = dateStr === today.toISOString().split('T')[0];
         const isSelected = dateStr === selectedDate;
         const isCurrentMonth = currentDate.getMonth() === currentMonth;
@@ -164,17 +193,25 @@ export default function ScheduleManagement() {
             {selectedDateWorkouts.length > 0 ? (
               <div className="space-y-3">
                 {selectedDateWorkouts
-                  .sort((a, b) => a.time.localeCompare(b.time))
+                  .sort((a, b) => {
+                    const timeA = a.time || a.scheduledTime || '00:00';
+                    const timeB = b.time || b.scheduledTime || '00:00';
+                    return timeA.localeCompare(timeB);
+                  })
                   .map((workout) => (
                   <div key={workout.id} className="p-3 bg-gray-50 rounded-lg">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <p className="font-medium text-sm">{workout.clientName}</p>
-                        <p className="text-xs text-gray-600">{workout.type}</p>
+                        <p className="font-medium text-sm">
+                          {workout.clientName || workout.userName || 'Клиент не указан'}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {workout.type || 'Тип не указан'}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge className={`${getWorkoutStatusColor(workout.status)} text-xs px-2 py-1`}>
-                          {workout.time}
+                        <Badge className="bg-gray-100 text-gray-800 text-xs px-2 py-1">
+                          {workout.time || workout.scheduledTime || 'Время не указано'}
                         </Badge>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -199,17 +236,31 @@ export default function ScheduleManagement() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-1 mb-1">
-                      <MapPin className="h-3 w-3 text-gray-400" />
-                      <span className="text-xs text-gray-500">{workout.location}</span>
-                    </div>
+                    {workout.location && (
+                      <div className="flex items-center gap-1 mb-1">
+                        <MapPin className="h-3 w-3 text-gray-400" />
+                        <span className="text-xs text-gray-500">{workout.location}</span>
+                      </div>
+                    )}
                     
-                    <Badge className={`${getWorkoutStatusColor(workout.status)} text-xs px-2 py-1`}>
-                      {getStatusText(workout.status)}
+                                        <Badge className={`${getWorkoutStatusColor(workout.status || '')} text-xs px-2 py-1`}>
+                      {getStatusText(workout.status || '')}
                     </Badge>
                     
                     {workout.notes && (
                       <p className="text-xs text-gray-600 mt-2">{workout.notes}</p>
+                    )}
+                    
+                    {workout.duration && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Длительность: {workout.duration} мин
+                      </p>
+                    )}
+                    
+                    {workout.price && (
+                      <p className="text-xs text-gray-500">
+                        Стоимость: {workout.price} ₽
+                      </p>
                     )}
                   </div>
                 ))}
@@ -244,10 +295,23 @@ export default function ScheduleManagement() {
           <div className="grid grid-cols-7 gap-4">
             {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, index) => {
               const dayWorkouts = workouts.filter(w => {
-                const workoutDay = new Date(w.date).getDay();
+                let workoutDate: Date | null = null;
+                
+                if (w.date) {
+                  workoutDate = new Date(w.date);
+                } else if (w.scheduledDate) {
+                  workoutDate = new Date(w.scheduledDate);
+                } else if (w.createdAt) {
+                  workoutDate = new Date(w.createdAt);
+                }
+                
+                if (!workoutDate) return false;
+                
+                const workoutDay = workoutDate.getDay();
                 const adjustedDay = workoutDay === 0 ? 6 : workoutDay - 1; // Преобразуем воскресенье
                 return adjustedDay === index;
               });
+              
               const hours = dayWorkouts.reduce((sum, w) => sum + (w.duration || 60), 0) / 60;
               const maxHours = 10;
               const percentage = Math.min((hours / maxHours) * 100, 100);
@@ -275,7 +339,8 @@ export default function ScheduleManagement() {
       {/* Модальные окна */}
       <AddWorkoutModal 
         isOpen={showAddWorkout} 
-        onClose={() => setShowAddWorkout(false)} 
+        onClose={() => setShowAddWorkout(false)}
+        selectedDate={selectedDate}
       />
       
       {editingWorkout && (
@@ -290,11 +355,12 @@ export default function ScheduleManagement() {
         <DeleteConfirmModal
           isOpen={!!deletingWorkout}
           title="Удалить тренировку"
-          message={`Вы уверены, что хотите удалить эту тренировку? Это действие нельзя отменить.`}
-          onConfirm={() => handleDeleteWorkout(deletingWorkout)}
+          message="Вы уверены, что хотите удалить эту тренировку? Это действие нельзя отменить."
+          onConfirm={() => deletingWorkout && handleDeleteWorkout(deletingWorkout)}
           onClose={() => setDeletingWorkout(null)}
         />
       )}
     </div>
   );
 }
+

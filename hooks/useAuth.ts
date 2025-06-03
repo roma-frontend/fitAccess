@@ -1,7 +1,9 @@
+// hooks/useAuth.ts (обновленная версия с токеном)
 "use client";
 
 import React, { useState, useEffect, ReactNode } from 'react';
 import { User } from '@/lib/simple-auth';
+import { useRouter } from 'next/navigation';
 
 // Обновленный интерфейс для совместимости с главной страницей
 export interface AuthStatus {
@@ -17,12 +19,13 @@ export interface AuthStatus {
 
 interface AuthContextType {
   user: User | null;
+  token: string | null; // Добавляем токен
   loading: boolean;
-  authStatus: AuthStatus | null; // Добавляем для совместимости
+  authStatus: AuthStatus | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  setAuthStatus: (status: AuthStatus | null) => void; // Добавляем для совместимости
+  setAuthStatus: (status: AuthStatus | null) => void;
 }
 
 // Функция для получения URL дашборда по роли
@@ -64,8 +67,10 @@ const AuthContext = React.createContext<AuthContextType | null>(null);
 // Провайдер контекста аутентификации
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null); // Добавляем состояние токена
   const [loading, setLoading] = useState(true);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
+  const router = useRouter();
 
   // Синхронизируем authStatus с user
   useEffect(() => {
@@ -78,21 +83,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
+  // Загружаем токен из localStorage при инициализации
+  useEffect(() => {
+    const savedToken = localStorage.getItem('auth_token');
+    if (savedToken) {
+      setToken(savedToken);
+    }
+  }, []);
+
   const checkSession = async (): Promise<void> => {
     try {
+      // Проверяем токен из localStorage
+      const savedToken = localStorage.getItem('auth_token');
+      
       const response = await fetch('/api/auth/session', {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
+        headers: savedToken ? {
+          'Authorization': `Bearer ${savedToken}`
+        } : {}
       });
 
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.user) {
           setUser(data.user);
+          
+          // Если есть токен в ответе, сохраняем его
+          if (data.token) {
+            setToken(data.token);
+            localStorage.setItem('auth_token', data.token);
+          } else if (savedToken) {
+            setToken(savedToken);
+          }
         }
+      } else {
+        // Если сессия недействительна, очищаем токен
+        setToken(null);
+        localStorage.removeItem('auth_token');
       }
     } catch (error) {
       console.error('Ошибка проверки сессии:', error);
+      setToken(null);
+      localStorage.removeItem('auth_token');
     } finally {
       setLoading(false);
     }
@@ -115,6 +148,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.success && data.user) {
         setUser(data.user);
+        
+        // Сохраняем токен если он есть
+        if (data.token) {
+          setToken(data.token);
+          localStorage.setItem('auth_token', data.token);
+        }
+        
         return true;
       }
 
@@ -131,36 +171,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
+      // Сначала очищаем состояние
+      setUser(null);
+      setToken(null);
+      setAuthStatus({ authenticated: false });
+      
+      // Очищаем токен из localStorage
+      localStorage.removeItem('auth_token');
+      
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: token ? {
+          'Authorization': `Bearer ${token}`
+        } : {}
       });
-
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        setUser(null);
-        setAuthStatus({ authenticated: false });
-        
+  
+      if (response.ok) {
         // Очищаем локальное хранилище
         localStorage.clear();
         sessionStorage.clear();
         
-        // Очищаем куки
-        document.cookie.split(";").forEach(function(c) { 
-          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-        });
-        
-        // Перенаправляем на главную
-        window.location.replace('/');
-      } else {
-        console.error("Ошибка выхода:", data.error);
+        // Используем router вместо window.location
+        router.push('/');
+        router.refresh(); // Принудительно обновляем страницу
       }
     } catch (error) {
       console.error('Ошибка выхода:', error);
       setUser(null);
+      setToken(null);
       setAuthStatus({ authenticated: false });
-      window.location.replace('/');
+      localStorage.removeItem('auth_token');
+      router.push('/');
     } finally {
       setLoading(false);
     }
@@ -177,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value: AuthContextType = {
     user,
+    token, // Добавляем токен в контекст
     loading,
     authStatus,
     login,
@@ -300,5 +343,63 @@ export function useNavigation() {
     handleDashboardRedirect,
     navigateTo,
     authStatus
+  };
+}
+
+// Хук для API запросов с автоматической авторизацией
+export function useApiRequest() {
+  const { token } = useAuth();
+
+  const apiRequest = async (
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<Response> => {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+      ...options.headers,
+    };
+
+    return fetch(endpoint, {
+      ...options,
+      headers,
+    });
+  };
+
+  const get = async (endpoint: string): Promise<any> => {
+    const response = await apiRequest(endpoint);
+    return response.json();
+  };
+
+  const post = async (endpoint: string, data: any): Promise<any> => {
+    const response = await apiRequest(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  };
+
+  const put = async (endpoint: string, data: any): Promise<any> => {
+    const response = await apiRequest(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  };
+
+  const del = async (endpoint: string): Promise<any> => {
+    const response = await apiRequest(endpoint, {
+      method: 'DELETE',
+    });
+    return response.json();
+  };
+
+  return {
+    apiRequest,
+    get,
+    post,
+    put,
+    delete: del,
+    token
   };
 }

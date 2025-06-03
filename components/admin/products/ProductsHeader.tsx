@@ -5,11 +5,8 @@ import React, { useState } from 'react';
 import { ArrowLeft, Package, Plus, Search, Filter, RefreshCw, BarChart3, TrendingUp } from 'lucide-react';
 
 export interface ProductsHeaderProps {
-  /** Заголовок страницы */
   title?: string;
-  /** Подзаголовок или описание */
   subtitle?: string;
-  /** Статистика продуктов */
   stats?: {
     total: number;
     inStock: number;
@@ -17,23 +14,14 @@ export interface ProductsHeaderProps {
     outOfStock: number;
     popular: number;
   };
-  /** Показывать ли кнопку "Назад" */
   showBackButton?: boolean;
-  /** Показывать ли кнопки действий */
   showActions?: boolean;
-  /** Состояние загрузки */
   isLoading?: boolean;
-  /** Обработчик нажатия на кнопку "Назад" */
   onBack?: () => void;
-  /** Обработчик создания продукта */
   onCreateProduct?: () => void;
-  /** Обработчик поиска */
   onSearch?: () => void;
-  /** Обработчик фильтров */
   onFilter?: () => void;
-  /** Обработчик обновления */
   onRefresh?: () => void;
-  /** Обработчик просмотра аналитики */
   onAnalytics?: () => void;
 }
 
@@ -72,7 +60,7 @@ export function ProductsHeader({
   };
 
   return (
-    <header className="relative bg-gradient-to-r from-white via-gray-50 to-white border-b border-gray-200/80 backdrop-blur-sm">
+    <header className="relative bg-gradient-to-r from-white via-gray-50 to-white border-b border-gray-200/80 backdrop-blur-sm mb-4">
       {/* Декоративная линия */}
       <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-purple-500/20 to-transparent" />
       

@@ -21,12 +21,14 @@ import { KeyMetrics } from "@/components/admin/dashboard/KeyMetrics";
 import { WeeklyCalendar } from "@/components/admin/dashboard/WeeklyCalendar";
 import { ProgressTracker } from "@/components/admin/dashboard/ProgressTracker";
 import { DashboardFooter } from "@/components/admin/dashboard/DashboardFooter";
+import { useState } from "react";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const userRole = user?.role;
   const roleTexts = useRoleTexts(userRole);
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Получаем время суток для персонализированного приветствия
   const getGreeting = () => {
@@ -42,27 +44,51 @@ export default function AdminDashboard() {
   const goToSettings = () => router.push('admin/settings');
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
+    
     try {
+      console.log("🚪 Начинаем процесс выхода из системы...");
+      
       const response = await fetch("/api/auth/logout", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
-      if (response.ok) {
-        router.push("/");
-      } else {
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        console.log("✅ Успешный выход из системы");
+        
         toast({
-          variant: "destructive",
-          title: "Ошибка",
-          description: "Не удалось выйти из системы",
+          title: "Выход выполнен",
+          description: "Вы успешно вышли из системы",
         });
+
+        // Небольшая задержка для показа уведомления
+        setTimeout(() => {
+          // Перенаправляем на главную страницу
+          window.location.href = "/";
+        }, 1000);
+      } else {
+        throw new Error(data.error || "Ошибка при выходе из системы");
       }
     } catch (error) {
-      console.error("Ошибка выхода:", error);
+      console.error("❌ Ошибка выхода:", error);
+      
       toast({
         variant: "destructive",
-        title: "Ошибка",
-        description: "Произошла ошибка при попытке выхода",
+        title: "Ошибка выхода",
+        description: error instanceof Error ? error.message : "Не удалось выйти из системы",
       });
+      
+      // В случае ошибки все равно перенаправляем на главную
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 2000);
+    } finally {
+      setIsLoggingOut(false);
     }
   };
 

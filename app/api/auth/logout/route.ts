@@ -14,7 +14,6 @@ export async function POST(request: NextRequest) {
       auth_token: !!authToken
     });
     
-    // Удаляем сессии из всех возможных источников
     if (sessionId) {
       logout(sessionId);
     }
@@ -22,13 +21,16 @@ export async function POST(request: NextRequest) {
       logout(sessionIdDebug);
     }
 
-    const response = NextResponse.json({ success: true });
+    const response = NextResponse.json({ 
+      success: true,
+      timestamp: Date.now(),
+      message: 'Выход выполнен успешно'
+    });
     
-    // Удаляем ВСЕ возможные cookies авторизации
     const cookiesToDelete = ['session_id', 'session_id_debug', 'auth_token'];
     
     cookiesToDelete.forEach(cookieName => {
-      // Удаляем для разных путей и доменов
+      
       response.cookies.set(cookieName, '', {
         expires: new Date(0),
         path: '/',
@@ -37,23 +39,31 @@ export async function POST(request: NextRequest) {
         sameSite: 'lax'
       });
       
-      // Дополнительно для корневого домена
       response.cookies.set(cookieName, '', {
         expires: new Date(0),
         path: '/',
-        domain: undefined
+        httpOnly: false,
+      });
+      
+      response.cookies.set(cookieName, '', {
+        expires: new Date(0),
+        path: '/',
       });
     });
+    
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     
     console.log('✅ Logout: выход выполнен успешно');
     return response;
   } catch (error) {
     console.error('💥 Logout error:', error);
     
-    // Даже при ошибке пытаемся удалить cookies
     const response = NextResponse.json({ 
       success: false, 
-      error: 'Ошибка выхода из системы' 
+      error: 'Ошибка выхода из системы',
+      timestamp: Date.now()
     }, { status: 500 });
     
     const cookiesToDelete = ['session_id', 'session_id_debug', 'auth_token'];
