@@ -1,91 +1,110 @@
-// app/api/payments/create-payment-intent/route.ts
+// app/api/payments/create-payment-intent/route.ts (исправленная версия)
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',
 });
 
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔐 Создание Payment Intent - начало');
-    
-    // Проверяем авторизацию через основную систему
-    const authResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/check`, {
-      headers: {
-        'Cookie': request.headers.get('cookie') || '',
-      },
-    });
-    
-    const authData = await authResponse.json();
-    console.log('🍪 Auth check result:', authData);
-    
-    if (!authData.authenticated) {
-      console.log('❌ Пользователь не авторизован');
-      return NextResponse.json({ 
-        error: 'Не авторизован. Войдите в систему для оформления заказа.' 
-      }, { status: 401 });
-    }
+    const { items, totalAmount, pickupType, notes, userId } = await request.json();
 
-    // Проверяем, что это участник
-    if (authData.user.role !== 'member') {
-      console.log('❌ Доступ запрещен для роли:', authData.user.role);
-      return NextResponse.json({ 
-        error: 'Покупки доступны только участникам фитнес-центра.' 
-      }, { status: 403 });
-    }
-
-    const { items, totalAmount, pickupType, notes } = await request.json();
-    
-    console.log('📝 Данные платежа:', {
-      itemsCount: items?.length,
+    console.log('💳 Creating payment intent:', {
       totalAmount,
+      itemsCount: items?.length,
       pickupType,
-      userEmail: authData.user.email
+      userId,
+      items: items?.map((item: any) => ({ 
+        productId: item.productId, 
+        name: item.productName || item.name 
+      }))
     });
 
     // Валидация данных
-    if (!items || items.length === 0) {
-      return NextResponse.json({ 
-        error: 'Корзина пуста' 
-      }, { status: 400 });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return NextResponse.json(
+        { error: 'Товары не указаны' },
+        { status: 400 }
+      );
     }
 
     if (!totalAmount || totalAmount <= 0) {
-      return NextResponse.json({ 
-        error: 'Некорректная сумма заказа' 
-      }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Неверная сумма заказа' },
+        { status: 400 }
+      );
     }
 
-    console.log('✅ Создаем Payment Intent в Stripe...');
-
-    // Создаем Payment Intent
+    // Создаем Payment Intent в Stripe
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(totalAmount * 100), // Stripe работает в копейках
+      amount: Math.round(totalAmount * 100),
       currency: 'rub',
       metadata: {
-        userId: authData.user.id,
-        userEmail: authData.user.email,
-        userName: authData.user.name,
+        userId: userId || 'anonymous',
         pickupType,
-        notes: notes || '',
         itemsCount: items.length.toString(),
+        notes: notes || '',
       },
-      description: `Заказ в FitAccess - ${items.length} товаров`,
-      receipt_email: authData.user.email,
+      description: `Заказ магазина - ${items.length} товаров`,
     });
 
-    console.log('✅ Payment Intent создан:', paymentIntent.id);
+    console.log('✅ Payment intent created:', paymentIntent.id);
+
+    // Подготавливаем items для Convex
+    const convexItems = items.map((item: any) => {
+      let productId = item.productId;
+      
+      // Если productId выглядит как Convex ID, используем его
+      if (typeof productId === 'string' && productId.startsWith('k')) {
+        // Это уже правильный Convex ID
+      } else {
+        // Если это не Convex ID, преобразуем в строку
+        productId = String(productId);
+      }
+      
+      return {
+        productId,
+        productName: item.productName || item.name,
+        quantity: item.quantity,
+        price: item.price,
+        totalPrice: item.totalPrice || (item.price * item.quantity),
+      };
+    });
+
+    console.log('📦 Prepared items for Convex:', convexItems);
+
+    // Создаем заказ в Convex - ИСПРАВЛЕНО: убрали api.orders.create
+    const orderId = await convex.mutation("orders:create", {
+      userId,
+      items: convexItems,
+      totalAmount,
+      pickupType,
+      notes,
+      paymentIntentId: paymentIntent.id,
+      paymentMethod: 'stripe',
+    });
+
+    console.log('📦 Order created in Convex:', orderId);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
       paymentIntentId: paymentIntent.id,
+      orderId,
     });
 
   } catch (error) {
-    console.error('💥 Ошибка создания платежа:', error);
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Ошибка создания платежа'
-    }, { status: 500 });
+    console.error('❌ Error creating payment intent:', error);
+    
+    return NextResponse.json(
+      { 
+        error: error instanceof Error ? error.message : 'Ошибка создания платежа'
+      },
+      { status: 500 }
+    );
   }
 }

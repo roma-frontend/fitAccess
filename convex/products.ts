@@ -6,12 +6,12 @@ import { v } from "convex/values";
 export const getAll = query({
   handler: async (ctx) => {
     console.log("🔄 Convex Query: Получение всех активных продуктов");
-    
+
     const products = await ctx.db.query("products")
       .filter((q) => q.eq(q.field("isActive"), true))
       .order("desc")
       .collect();
-    
+
     console.log("✅ Convex Query: Найдено активных продуктов:", products.length);
     return products;
   },
@@ -20,15 +20,15 @@ export const getAll = query({
 export const getAllIncludingDeleted = query({
   handler: async (ctx) => {
     console.log("🔄 Convex Query: Получение ВСЕХ продуктов");
-    
+
     const products = await ctx.db.query("products")
       .order("desc")
       .collect();
-    
+
     console.log("✅ Convex Query: Найдено всего продуктов:", products.length);
     console.log("📊 Convex Query: Активных:", products.filter(p => p.isActive).length);
     console.log("📊 Convex Query: Удаленных:", products.filter(p => !p.isActive).length);
-    
+
     return products;
   },
 });
@@ -38,14 +38,14 @@ export const getById = query({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     console.log("🔄 Convex Query: Получение продукта по ID:", args.id);
-    
+
     const product = await ctx.db.get(args.id);
-    
+
     if (!product) {
       console.log("❌ Convex Query: Продукт не найден:", args.id);
       return null;
     }
-    
+
     console.log("✅ Convex Query: Продукт найден:", product.name, "isActive:", product.isActive);
     return product;
   },
@@ -70,7 +70,7 @@ export const restore = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔄 Convex: Восстановление продукта:", args.id);
-    
+
     // Проверяем существование продукта
     const existingProduct = await ctx.db.get(args.id);
     if (!existingProduct) {
@@ -94,7 +94,7 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     console.log("🔄 Convex: Получение списка активных продуктов");
-    
+
     const products = await ctx.db
       .query("products")
       .filter((q) => q.neq(q.field("isActive"), false)) // Только активные
@@ -112,7 +112,7 @@ export const softDelete = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔄 Convex: Мягкое удаление продукта:", args.id);
-    
+
     // Проверяем существование продукта
     const existingProduct = await ctx.db.get(args.id);
     if (!existingProduct) {
@@ -139,7 +139,7 @@ export const hardDelete = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔄 Convex: Жесткое удаление продукта:", args.id);
-    
+
     // Проверяем существование продукта
     const existingProduct = await ctx.db.get(args.id);
     if (!existingProduct) {
@@ -175,7 +175,7 @@ export const create = mutation({
     description: v.string(),
     category: v.union(
       v.literal("supplements"),
-      v.literal("drinks"), 
+      v.literal("drinks"),
       v.literal("snacks"),
       v.literal("merchandise")
     ),
@@ -194,7 +194,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔄 Convex Mutation: Создание продукта:", args.name);
-    
+
     const productId = await ctx.db.insert("products", {
       ...args,
       isActive: true,
@@ -202,7 +202,7 @@ export const create = mutation({
       minStock: args.minStock || 10,
       createdAt: Date.now(),
     });
-    
+
     console.log("✅ Convex Mutation: Продукт создан с ID:", productId);
     return productId;
   },
@@ -233,9 +233,9 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔄 Convex: Обновление продукта:", args.id);
-    
+
     const { id, ...updateData } = args;
-    
+
     // Проверяем существование продукта
     const existingProduct = await ctx.db.get(id);
     if (!existingProduct) {
@@ -255,12 +255,12 @@ export const remove = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     console.log("🔄 Convex Mutation: Мягкое удаление продукта:", args.id);
-    
+
     const result = await ctx.db.patch(args.id, {
       isActive: false,
       updatedAt: Date.now(),
     });
-    
+
     console.log("✅ Convex Mutation: Продукт деактивирован (мягкое удаление)");
     return result;
   },
@@ -271,9 +271,9 @@ export const deleteForever = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     console.log("🔄 Convex Mutation: Физическое удаление продукта:", args.id);
-    
+
     const result = await ctx.db.delete(args.id);
-    
+
     console.log("✅ Convex Mutation: Продукт физически удален из БД");
     return result;
   },
@@ -284,7 +284,7 @@ export const getDeleted = query({
   args: {},
   handler: async (ctx) => {
     console.log("🔄 Convex: Получение удаленных продуктов");
-    
+
     const deletedProducts = await ctx.db
       .query("products")
       .filter((q) => q.eq(q.field("isActive"), false)) // Только неактивные
@@ -300,19 +300,19 @@ export const getDeleted = query({
 export const getAllForDebug = query({
   handler: async (ctx) => {
     console.log("🔄 Convex Debug: Получение ВСЕХ продуктов для отладки");
-    
+
     const allProducts = await ctx.db.query("products").collect();
-    
+
     console.log("📊 Convex Debug: Всего продуктов в БД:", allProducts.length);
     console.log("📦 Convex Debug: Все продукты:", allProducts);
-    
+
     return allProducts;
   },
 });
 
 // Обновить остаток
 export const updateStock = mutation({
-  args: { 
+  args: {
     id: v.id("products"),
     newStock: v.number()
   },

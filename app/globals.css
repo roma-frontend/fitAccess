@@ -605,6 +605,168 @@
   }
 }
 
+
+/* Анимации для мобильного меню */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Задержки анимации для элементов меню */
+.animation-delay-0 { animation-delay: 0ms; }
+.animation-delay-50 { animation-delay: 50ms; }
+.animation-delay-100 { animation-delay: 100ms; }
+.animation-delay-150 { animation-delay: 150ms; }
+.animation-delay-200 { animation-delay: 200ms; }
+.animation-delay-250 { animation-delay: 250ms; }
+
+/* Плавные переходы для всех интерактивных элементов */
+.transition-all-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus management */
+[data-radix-focus-guard] {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Dialog/Sheet overlay improvements */
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Improved focus styles for dialog content */
+[data-radix-dialog-content]:focus {
+  outline: none;
+}
+
+[data-radix-dialog-content]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Better button focus styles */
+button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Improved link focus styles */
+a:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+  text-decoration: underline;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  [data-radix-dialog-overlay] {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+  
+  .border {
+    border-color: #000000;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  [data-radix-dialog-content] {
+    animation: none;
+  }
+  
+  [data-radix-dialog-overlay] {
+    animation: none;
+  }
+}
+
+
+/* Print styles */
+@media print {
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  .print\:block {
+    display: block !important;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .bg-gray-50,
+  .bg-gray-100,
+  .bg-blue-50 {
+    background: white !important;
+  }
+  
+  .border {
+    border-color: #000 !important;
+  }
+  
+  .shadow-lg,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+}
+
+
+/* Адаптивные утилиты */
+@media (max-width: 640px) {
+  .text-responsive {
+    font-size: 0.875rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .text-responsive {
+    font-size: 1rem;
+  }
+}
+
+@media (min-width: 1025px) {
+  .text-responsive {
+    font-size: 1.125rem;
+  }
+}
+
+
 /* Адаптивные input поля */
 .input-field {
   width: 100%;

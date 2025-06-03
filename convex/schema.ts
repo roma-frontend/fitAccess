@@ -245,30 +245,51 @@ export default defineSchema({
     .index("active_popular", ["isActive", "isPopular"]),
 
   orders: defineTable({
-    userId: v.optional(v.id("users")),
+    // Основная информация о заказе
+    userId: v.optional(v.string()),
     memberId: v.optional(v.string()),
-    items: v.optional(v.array(v.object({
-      productId: v.union(v.id("products"), v.string()),
-      productName: v.optional(v.string()),
-      name: v.optional(v.string()),
-      quantity: v.optional(v.number()),
-      price: v.optional(v.number()),
-      totalPrice: v.optional(v.number()),
-    }))),
-    totalPrice: v.optional(v.number()),
-    totalAmount: v.optional(v.number()),
-    total: v.optional(v.number()),
-    amount: v.optional(v.number()),
-    status: v.optional(v.string()),
-    pickupType: v.optional(v.string()),
-    paymentMethod: v.optional(v.string()),
+    
+    // Товары в заказе - делаем productId гибким
+    items: v.array(v.object({
+      productId: v.union(v.id("products"), v.string()), // Поддерживаем оба типа
+      productName: v.string(),
+      quantity: v.number(),
+      price: v.number(),
+      totalPrice: v.number(),
+    })),
+    
+    // Финансовая информация
+    totalAmount: v.number(),
+    
+    // Информация о доставке/получении
+    pickupType: v.string(),
     notes: v.optional(v.string()),
+    
+    // Статусы
+    status: v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    ),
+    paymentStatus: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("failed"),
+      v.literal("refunded")
+    ),
+    
+    // Платежная информация
+    paymentIntentId: v.optional(v.string()),
+    paymentId: v.optional(v.string()),
+    paymentMethod: v.optional(v.string()),
+    
+    // Временные метки
     orderTime: v.number(),
     estimatedReadyTime: v.optional(v.number()),
     completedTime: v.optional(v.number()),
-    paymentIntentId: v.optional(v.string()),
-    paymentId: v.optional(v.string()),
-    paymentStatus: v.optional(v.string()),
     paidAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
@@ -277,7 +298,8 @@ export default defineSchema({
     .index("by_order_time", ["orderTime"])
     .index("by_payment_status", ["paymentStatus"])
     .index("user_status", ["userId", "status"])
-    .index("member_status", ["memberId", "status"]),
+    .index("member_status", ["memberId", "status"])
+    .index("payment_status_order", ["paymentStatus", "orderTime"]),
 
   schedule_events: defineTable({
     title: v.string(),
