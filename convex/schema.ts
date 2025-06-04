@@ -1,4 +1,4 @@
-// convex/schema.ts (исправленная версия без дублирующихся индексов)
+// convex/schema.ts (исправленная версия)
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -86,7 +86,6 @@ export default defineSchema({
     .index("by_group", ["groupId"])
     .index("by_archived", ["isArchived"])
     .index("by_priority", ["priority"])
-    // Составные индексы (убираем дубликаты)
     .index("sender_type", ["senderId", "type"])
     .index("type_status", ["type", "status"])
     .index("archived_status", ["isArchived", "status"])
@@ -182,7 +181,6 @@ export default defineSchema({
     .index("creator_type", ["createdBy", "type"]),
 
   notifications: defineTable({
-    // Убираем userId, оставляем только recipientId
     recipientId: v.string(),
     recipientType: v.union(
       v.literal("user"),
@@ -190,7 +188,6 @@ export default defineSchema({
       v.literal("trainer"),
       v.literal("admin")
     ),
-
     type: v.union(
       v.literal("system"),
       v.literal("reminder"),
@@ -199,25 +196,20 @@ export default defineSchema({
       v.literal("order"),
       v.literal("payment"),
     ),
-
     title: v.string(),
     message: v.string(),
     isRead: v.boolean(),
-
     priority: v.union(
       v.literal("low"),
       v.literal("normal"),
       v.literal("high"),
       v.literal("urgent")
     ),
-
     actionUrl: v.optional(v.string()),
     relatedId: v.optional(v.string()),
     isImportant: v.optional(v.boolean()),
-
     createdAt: v.number(),
     readAt: v.optional(v.number()),
-
     metadata: v.optional(v.object({
       sourceId: v.optional(v.string()),
       sourceType: v.optional(v.string()),
@@ -266,27 +258,18 @@ export default defineSchema({
     .index("active_popular", ["isActive", "isPopular"]),
 
   orders: defineTable({
-    // Основная информация о заказе
     userId: v.optional(v.string()),
     memberId: v.optional(v.string()),
-
-    // Товары в заказе - делаем productId гибким
     items: v.array(v.object({
-      productId: v.union(v.id("products"), v.string()), // Поддерживаем оба типа
+      productId: v.union(v.id("products"), v.string()),
       productName: v.string(),
       quantity: v.number(),
       price: v.number(),
       totalPrice: v.number(),
     })),
-
-    // Финансовая информация
     totalAmount: v.number(),
-
-    // Информация о доставке/получении
     pickupType: v.string(),
     notes: v.optional(v.string()),
-
-    // Статусы
     status: v.union(
       v.literal("pending"),
       v.literal("confirmed"),
@@ -301,13 +284,9 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("refunded")
     ),
-
-    // Платежная информация
     paymentIntentId: v.optional(v.string()),
     paymentId: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
-
-    // Временные метки
     orderTime: v.number(),
     estimatedReadyTime: v.optional(v.number()),
     completedTime: v.optional(v.number()),
@@ -401,7 +380,7 @@ export default defineSchema({
       v.object({
         start: v.string(),
         end: v.string(),
-        days: v.array(v.number())
+                days: v.array(v.number())
       })
     )),
     hourlyRate: v.optional(v.number()),
@@ -451,44 +430,6 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("user_active", ["userId", "isActive"])
     .index("trainer_active", ["trainerId", "isActive"]),
-
-  members: defineTable({
-    name: v.string(),
-    email: v.optional(v.string()),
-    phone: v.string(),
-    password: v.optional(v.string()),
-    role: v.optional(v.string()),
-    photoUrl: v.optional(v.string()),
-    faceDescriptor: v.optional(v.array(v.number())),
-    membershipType: v.string(),
-    membershipStart: v.number(),
-    membershipExpiry: v.number(),
-    emergencyContact: v.optional(v.string()),
-    emergencyPhone: v.optional(v.string()),
-    medicalNotes: v.optional(v.string()),
-    birthDate: v.optional(v.number()),
-    status: v.string(),
-    preferredTrainers: v.optional(v.array(v.id("trainers"))),
-    fitnessGoals: v.optional(v.array(v.string())),
-    workoutPreferences: v.optional(v.array(v.string())),
-    joinDate: v.number(),
-    createdAt: v.number(),
-    lastVisit: v.optional(v.number()),
-    updatedAt: v.optional(v.number()),
-    membership: v.optional(v.object({
-      type: v.string(),
-      purchaseId: v.string(),
-      startDate: v.number(),
-      endDate: v.number(),
-      sessionsRemaining: v.number(),
-      status: v.string(),
-    })),
-  })
-    .index("by_email", ["email"])
-    .index("by_phone", ["phone"])
-    .index("by_status", ["status"])
-    .index("by_membership_type", ["membershipType"])
-    .index("status_membership", ["status", "membershipType"]),
 
   accessLogs: defineTable({
     userId: v.optional(v.id("users")),
@@ -730,6 +671,106 @@ export default defineSchema({
     .index("by_active", ["isActive"])
     .index("type_active", ["type", "isActive"]),
 
+  // Исправленная таблица staff
+  staff: defineTable({
+    name: v.string(),
+    email: v.string(),
+    password: v.string(),
+    role: v.union(
+      v.literal("admin"),
+      v.literal("super-admin"),
+      v.literal("manager"),
+      v.literal("trainer")
+    ),
+    phone: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    lastLoginAt: v.optional(v.number()),
+    resetPasswordToken: v.optional(v.string()),
+    resetPasswordExpires: v.optional(v.number()),
+    resetPasswordRequestedAt: v.optional(v.number()),
+    passwordChangedAt: v.optional(v.number()),
+  })
+    .index("by_email", ["email"])
+    .index("by_reset_token", ["resetPasswordToken"]),
+
+  // Исправленная таблица members
+   members: defineTable({
+    name: v.string(),
+    email: v.string(),
+    password: v.string(),
+    phone: v.optional(v.string()),
+    isActive: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()), // ИСПРАВЛЕНО: сделано опциональным
+    lastLoginAt: v.optional(v.number()),
+    
+    // Поля для восстановления пароля
+    resetPasswordToken: v.optional(v.string()),
+    resetPasswordExpires: v.optional(v.number()),
+    resetPasswordRequestedAt: v.optional(v.number()),
+    passwordChangedAt: v.optional(v.number()),
+
+    // Дополнительные поля участников
+    membershipType: v.optional(v.string()),
+    membershipStart: v.optional(v.number()),
+    membershipExpiry: v.optional(v.number()),
+    emergencyContact: v.optional(v.string()),
+    emergencyPhone: v.optional(v.string()),
+    medicalNotes: v.optional(v.string()),
+    birthDate: v.optional(v.number()),
+    status: v.optional(v.string()),
+    preferredTrainers: v.optional(v.array(v.id("trainers"))),
+    fitnessGoals: v.optional(v.array(v.string())),
+    workoutPreferences: v.optional(v.array(v.string())),
+    joinDate: v.optional(v.number()),
+    lastVisit: v.optional(v.number()),
+    photoUrl: v.optional(v.string()),
+    faceDescriptor: v.optional(v.array(v.number())),
+    role: v.optional(v.string()),
+    membership: v.optional(v.object({
+      type: v.string(),
+      purchaseId: v.string(),
+      startDate: v.number(),
+      endDate: v.number(),
+      sessionsRemaining: v.number(),
+      status: v.string(),
+    })),
+  })
+    .index("by_email", ["email"])
+    .index("by_phone", ["phone"])
+    .index("by_status", ["status"])
+    .index("by_membership_type", ["membershipType"])
+    .index("by_reset_token", ["resetPasswordToken"])
+    .index("status_membership", ["status", "membershipType"]),
+
+  // ИСПРАВЛЕННАЯ таблица passwordResetLogs с правильными типами
+  passwordResetLogs: defineTable({
+    // Используем string вместо union ID для гибкости
+    userId: v.string(),
+    userType: v.union(v.literal("staff"), v.literal("member")),
+    email: v.string(),
+    action: v.union(
+      v.literal("requested"),
+      v.literal("completed"),
+            v.literal("failed"),
+      v.literal("expired")
+    ),
+    ipAddress: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    timestamp: v.number(),
+    details: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_email", ["email"])
+    .index("by_timestamp", ["timestamp"])
+    .index("by_user_type", ["userType"])
+    .index("by_action", ["action"])
+    .index("user_type_action", ["userId", "userType", "action"])
+    .index("email_action", ["email", "action"])
+    .index("timestamp_action", ["timestamp", "action"]),
+
   systemSettings: defineTable({
     key: v.string(),
     value: v.any(),
@@ -772,3 +813,5 @@ export default defineSchema({
     .index("resource_action", ["resource", "action"])
     .index("user_resource", ["userId", "resource"]),
 });
+
+

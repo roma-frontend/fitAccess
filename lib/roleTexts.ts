@@ -17,8 +17,10 @@ export interface RoleTexts {
   messagesTitle?: string,
   settingsTitle: string;
   usersTitle?: string;
+  resetPasswordTitle?: string;
 
   productsDescription: string;
+  resetPasswordDescription?: string;
 
   // Статистика и прогресс
   statsTitle: string;
@@ -73,6 +75,8 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     dashboardSubtitle: 'Полный контроль над системой и безопасностью',
 
     productsDescription: 'Полное управление каталогом продуктов',
+    resetPasswordDescription: 'Управление процессом восстановления паролей',
+
 
     trainersTitle: 'Управление тренерами',
     usersTitle: 'Управление сотрудниками',
@@ -82,6 +86,7 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     reportsTitle: 'Системная аналитика',
     messagesTitle: 'Сообщение',
     settingsTitle: 'Настройки системы',
+    resetPasswordTitle: 'Сброс пароля',
     
 
     statsTitle: 'Системная статистика',
@@ -130,6 +135,10 @@ const roleTextsMap: Record<UserRole, RoleTexts> = {
     dashboardTitle: 'Административная панель',
     dashboardSubtitle: 'Управление фитнес-центром и бизнес-процессами',
     productsDescription: 'Управление продуктами и инвентарем',
+    resetPasswordDescription: 'Управление процессом восстановления паролей',
+
+    resetPasswordTitle: 'Сброс пароля',
+
 
     trainersTitle: 'Тренерский состав',
     usersTitle: 'Управление сотрудниками',

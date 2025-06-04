@@ -19,6 +19,8 @@ import {
   Shield,
   UserPlus,
   CheckCircle,
+  Mail,
+  ArrowLeft,
 } from "lucide-react";
 import { ValidatedInput } from "@/components/ValidatedInput";
 import { PasswordStrengthIndicator } from "@/components/PasswordStrengthIndicator";
@@ -104,6 +106,9 @@ export default function MemberLoginContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [emailValid, setEmailValid] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
@@ -205,7 +210,7 @@ export default function MemberLoginContent() {
       } finally {
         setIsValidating(false);
       }
-    }, 300); // Уменьшили debounce для лучшего UX
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [formData.email]);
@@ -288,6 +293,59 @@ export default function MemberLoginContent() {
     },
     [error]
   );
+
+  // Обработчик восстановления пароля
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!resetEmail.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description: "Введите email адрес",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: resetEmail.trim().toLowerCase(),
+          userType: "member",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setResetSent(true);
+        toast({
+          title: "Письмо отправлено! 📧",
+          description: "Проверьте вашу почту для восстановления пароля",
+        });
+      } else {
+        throw new Error(data.error || "Ошибка отправки письма");
+      }
+    } catch (error) {
+      console.error("Ошибка восстановления пароля:", error);
+      toast({
+        variant: "destructive",
+        title: "Ошибка",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Не удалось отправить письмо",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -416,7 +474,7 @@ export default function MemberLoginContent() {
         });
         toast({
           title: "Некорректные данные заполнены",
-                    description: "Посмотрите на работу валидации",
+          description: "Посмотрите на работу валидации",
         });
       }
     },
@@ -529,6 +587,124 @@ export default function MemberLoginContent() {
     );
   };
 
+  // Компонент восстановления пароля
+  const ForgotPasswordForm = () => (
+    <Card className="shadow-xl">
+      <CardHeader className="text-center pb-6">
+        <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Mail className="h-8 w-8 text-white" />
+        </div>
+        <CardTitle className="text-2xl font-bold">
+          {resetSent ? "Письмо отправлено" : "Восстановление пароля"}
+        </CardTitle>
+        <CardDescription className="text-base">
+          {resetSent
+            ? "Проверьте вашу почту и следуйте инструкциям"
+            : "Введите email для восстановления пароля"}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+        {resetSent ? (
+          <div className="text-center space-y-4">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <Mail className="h-12 w-12 text-green-600 mx-auto mb-2" />
+              <p className="text-green-800 font-medium">
+                Письмо с инструкциями отправлено на {resetEmail}
+              </p>
+              <p className="text-green-600 text-sm mt-2">
+                Проверьте папку "Спам", если письмо не пришло в течение 5 минут
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                onClick={() => {
+                  setResetSent(false);
+                  setResetEmail("");
+                }}
+                variant="outline"
+                className="w-full"
+                disabled={loading}
+              >
+                Отправить повторно
+              </Button>
+
+              <Button
+                onClick={() => setShowForgotPassword(false)}
+                variant="ghost"
+                className="w-full"
+                disabled={loading}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Вернуться к входу
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handlePasswordReset} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email адрес *
+              </label>
+              <ValidatedInput
+                type="email"
+                name="resetEmail"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                placeholder="your@email.com"
+                required
+                className="h-11 w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Введите email, который вы использовали при регистрации
+              </p>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading || !resetEmail.trim()}
+              className="w-full h-11"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Отправляем...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Отправить инструкции
+                </>
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={() => setShowForgotPassword(false)}
+              variant="ghost"
+              className="w-full"
+              disabled={loading}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Вернуться к входу
+            </Button>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <ForgotPasswordForm />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -621,7 +797,7 @@ export default function MemberLoginContent() {
               </Button>
             </form>
 
-            <div className="text-center">
+            <div className="text-center space-y-2">
               <button
                 type="button"
                 onClick={toggleMode}
@@ -632,6 +808,20 @@ export default function MemberLoginContent() {
                   ? "Нет аккаунта? Зарегистрируйтесь"
                   : "Уже есть аккаунт? Войдите"}
               </button>
+
+              {/* Ссылка на восстановление пароля только для входа */}
+              {isLogin && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPassword(true)}
+                    disabled={loading || isValidating}
+                    className="text-blue-600 hover:text-blue-500 text-sm transition-colors disabled:opacity-50"
+                  >
+                    Забыли пароль?
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="pt-6 border-t border-gray-200">
@@ -782,6 +972,10 @@ export default function MemberLoginContent() {
                   <span className="w-2 h-2 bg-green-500 rounded-full mr-2" />
                   <span>Защищенная передача данных</span>
                 </div>
+                <div className="flex items-center">
+                  <span className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                  <span>Безопасное восстановление пароля</span>
+                </div>
                 {!isLogin && (
                   <div className="flex items-center">
                     <span className="w-2 h-2 bg-green-500 rounded-full mr-2" />
@@ -814,7 +1008,7 @@ export default function MemberLoginContent() {
                 variant="outline"
                 size="sm"
                 className="w-full text-xs"
-                                disabled={loading || isValidating}
+                disabled={loading || isValidating}
               >
                 🚀 Заполнить корректные данные
               </Button>
@@ -873,35 +1067,23 @@ export default function MemberLoginContent() {
                 🗑️ Очистить форму
               </Button>
 
-              {/* Кнопка для принудительной валидации */}
+              {/* Кнопка для тестирования восстановления пароля */}
               <Button
                 onClick={() => {
-                  if (formData.email) {
-                    const validation = validateEmailFormat(formData.email);
-                    setEmailValid(validation.isValid);
-                    setValidationStates((prev) => ({
-                      ...prev,
-                      email: validation,
-                    }));
-                    toast({
-                      title: "Валидация выполнена",
-                      description: `Email ${validation.isValid ? "валиден" : "невалиден"}`,
-                      variant: validation.isValid ? "default" : "destructive",
-                    });
-                  } else {
-                    toast({
-                      title: "Введите email",
-                      description: "Сначала введите email адрес",
-                      variant: "destructive",
-                    });
-                  }
+                  setResetEmail("test@example.com");
+                  setShowForgotPassword(true);
+                  toast({
+                    title: "Тест восстановления пароля",
+                    description:
+                      "Открыта форма восстановления с тестовым email",
+                  });
                 }}
                 variant="outline"
                 size="sm"
                 className="w-full text-xs"
-                disabled={loading || isValidating || !formData.email}
+                disabled={loading || isValidating}
               >
-                🔍 Принудительная валидация email
+                🔑 Тест восстановления пароля
               </Button>
             </CardContent>
           </Card>
@@ -910,5 +1092,3 @@ export default function MemberLoginContent() {
     </div>
   );
 }
-
-

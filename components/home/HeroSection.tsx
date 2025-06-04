@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Shield, TrendingUp, ArrowRight, Zap, Globe, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { AuthStatus } from "@/types/home"; // Используем type import
+import type { AuthStatus } from "@/types/home";
 import { getRoleLabel } from "@/utils/roleHelpers";
 import { ANIMATION_CLASSES, combineAnimations } from "@/utils/animations";
 

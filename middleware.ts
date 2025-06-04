@@ -1,4 +1,4 @@
-// middleware.ts (финальная исправленная версия)
+// middleware.ts (обновленная версия с поддержкой восстановления пароля)
 import { NextRequest, NextResponse } from 'next/server';
 
 const publicRoutes = [
@@ -39,7 +39,11 @@ const publicRoutes = [
   '/quick-test',
   '/test-shop',
   '/debug-auth-status',
-  '/test-calendar-sync'
+  '/test-calendar-sync',
+  // Добавляем маршруты восстановления пароля
+  '/reset-password',
+  '/forgot-password',
+  '/password-reset-success'
 ];
 
 const memberRoutes = [
@@ -64,6 +68,9 @@ const staffRoutes = [
 
 const loginPages = ['/member-login', '/staff-login', '/login'];
 
+// Специальные маршруты восстановления пароля
+const passwordResetRoutes = ['/reset-password', '/forgot-password'];
+
 const isPublicRoute = (pathname: string): boolean => {
   return publicRoutes.includes(pathname) ||
          Boolean(pathname.match(/^\/trainer\/[^\/]+$/)) ||
@@ -85,6 +92,10 @@ const isStaffRoute = (pathname: string): boolean => {
   });
 };
 
+const isPasswordResetRoute = (pathname: string): boolean => {
+  return passwordResetRoutes.includes(pathname);
+};
+
 const getDashboardForRole = (role: string): string => {
   const normalizedRole = role.replace(/_/g, '-').toLowerCase();
   
@@ -95,6 +106,69 @@ const getDashboardForRole = (role: string): string => {
     case 'manager': return '/manager-dashboard';
     case 'trainer': return '/trainer-dashboard';
     default: return '/staff-dashboard';
+  }
+};
+
+// Валидация токена сброса пароля
+const validateResetToken = async (request: NextRequest): Promise<{ valid: boolean; userType?: string; error?: string }> => {
+  const token = request.nextUrl.searchParams.get('token');
+  const userType = request.nextUrl.searchParams.get('type');
+
+  if (!token || !userType) {
+    return { 
+      valid: false, 
+      error: 'Отсутствует токен или тип пользователя' 
+    };
+  }
+
+  if (!['staff', 'member'].includes(userType)) {
+    return { 
+      valid: false, 
+      error: 'Неверный тип пользователя' 
+    };
+  }
+
+  try {
+    const baseUrl = request.nextUrl.origin;
+    const verifyUrl = new URL('/api/auth/verify-reset-token', baseUrl);
+    
+    const response = await fetch(verifyUrl.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Middleware-Token-Check',
+      },
+      body: JSON.stringify({ token, userType }),
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) {
+      return { 
+        valid: false, 
+        error: `API ответил с ошибкой ${response.status}` 
+      };
+    }
+
+    const data = await response.json();
+    
+    if (data.success) {
+      return { 
+        valid: true, 
+        userType 
+      };
+    } else {
+      return { 
+        valid: false, 
+        error: data.error || 'Токен недействителен' 
+      };
+    }
+
+  } catch (error) {
+    console.error('Ошибка проверки токена сброса пароля:', error);
+    return { 
+      valid: false, 
+      error: 'Ошибка проверки токена' 
+    };
   }
 };
 
@@ -194,10 +268,62 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/static/') ||
       pathname.includes('.') ||
       pathname.startsWith('/api/')) {
+    
+    // Добавляем заголовки безопасности для API восстановления пароля
+    if (pathname.startsWith('/api/auth/forgot-password') || 
+        pathname.startsWith('/api/auth/reset-password') ||
+        pathname.startsWith('/api/auth/verify-reset-token')) {
+      
+      const response = NextResponse.next();
+      response.headers.set('X-Content-Type-Options', 'nosniff');
+      response.headers.set('X-Frame-Options', 'DENY');
+      response.headers.set('X-XSS-Protection', '1; mode=block');
+      response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      
+      console.log(`🔒 Middleware: добавлены заголовки безопасности для ${pathname}`);
+      return response;
+    }
+    
     return NextResponse.next();
   }
 
   console.log(`\n🚀 === MIDDLEWARE START для ${pathname} ===`);
+
+  // Специальная обработка маршрутов восстановления пароля
+  if (isPasswordResetRoute(pathname)) {
+    console.log(`🔑 Middleware: маршрут восстановления пароля ${pathname}`);
+    
+    if (pathname === '/reset-password') {
+      // Проверяем токен для страницы сброса пароля
+      const tokenValidation = await validateResetToken(request);
+      
+      if (!tokenValidation.valid) {
+        console.log(`❌ Middleware: недействительный токен для ${pathname}: ${tokenValidation.error}`);
+        
+        // Перенаправляем на соответствующую страницу входа
+        const userType = request.nextUrl.searchParams.get('type');
+        const loginUrl = userType === 'staff' ? '/staff-login' : '/member-login';
+        
+        console.log(`🏁 === MIDDLEWARE END - НЕДЕЙСТВИТЕЛЬНЫЙ ТОКЕН ===\n`);
+        return NextResponse.redirect(new URL(loginUrl, request.url));
+      }
+      
+      console.log(`✅ Middleware: токен действителен для ${pathname}`);
+    }
+    
+    // Проверяем, не авторизован ли уже пользователь
+    const auth = await checkAuthentication(request);
+    if (auth) {
+      console.log(`↗️ Middleware: пользователь уже авторизован, перенаправляем с ${pathname}`);
+      const dashboardUrl = getDashboardForRole(auth.user.role);
+      console.log(`🏁 === MIDDLEWARE END - УЖЕ АВТОРИЗОВАН ===\n`);
+      return NextResponse.redirect(new URL(dashboardUrl, request.url));
+    }
+    
+    console.log(`✅ Middleware: доступ разрешен к ${pathname}`);
+    console.log(`🏁 === MIDDLEWARE END - ВОССТАНОВЛЕНИЕ ПАРОЛЯ ===\n`);
+    return NextResponse.next();
+  }
 
   // Пропускаем публичные маршруты
   if (isPublicRoute(pathname)) {
@@ -244,7 +370,7 @@ export async function middleware(request: NextRequest) {
     
     if (!auth) {
       console.log(`❌ Middleware: нет авторизации для ${pathname}, перенаправляем на /staff-login`);
-      console.log(`🏁 === MIDDLEWARE END - ПЕРЕНАПРАВЛЕНИЕ ===\n`);
+            console.log(`🏁 === MIDDLEWARE END - ПЕРЕНАПРАВЛЕНИЕ ===\n`);
       return NextResponse.redirect(new URL('/staff-login?redirect=' + encodeURIComponent(pathname), request.url));
     }
     
@@ -279,3 +405,4 @@ export const config = {
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
+

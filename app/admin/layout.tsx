@@ -1,19 +1,19 @@
 // app/admin/layout.tsx
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { useUnifiedData } from '@/contexts/UnifiedDataContext';
-import { useRoleTexts, getContextualHints } from '@/lib/roleTexts';
-import { SuperAdminProvider } from '@/contexts/SuperAdminContext';
-import { QueryProvider } from '@/components/providers/QueryProvider'; // Добавляем
+import { useState, useEffect, useMemo } from "react";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
+import { useUnifiedData } from "@/contexts/UnifiedDataContext";
+import { useRoleTexts, getContextualHints } from "@/lib/roleTexts";
+import { SuperAdminProvider } from "@/contexts/SuperAdminContext";
+import { QueryProvider } from "@/components/providers/QueryProvider"; // Добавляем
 
 // Импорт компонентов
-import { Sidebar } from '@/components/admin/layout/Sidebar';
-import { MobileHeader } from '@/components/admin/layout/MobileHeader';
-import { MobileMenu } from '@/components/admin/layout/MobileMenu';
-import { QuickActions } from '@/components/admin/layout/QuickActions';
+import { Sidebar } from "@/components/admin/layout/Sidebar";
+import { MobileHeader } from "@/components/admin/layout/MobileHeader";
+import { MobileMenu } from "@/components/admin/layout/MobileMenu";
+import { QuickActions } from "@/components/admin/layout/QuickActions";
 
 import {
   LayoutDashboard,
@@ -25,17 +25,18 @@ import {
   AlertTriangle,
   RefreshCw,
   MessageCircle,
-  Package
+  Package,
+  Shield,
 } from "lucide-react";
-import { GlobalNotifications } from '@/components/admin/layout/GlobalNotifications';
-import { PersonalizedTooltips } from '@/components/admin/layout/PersonalizedTooltips';
+import { GlobalNotifications } from "@/components/admin/layout/GlobalNotifications";
+import { PersonalizedTooltips } from "@/components/admin/layout/PersonalizedTooltips";
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
   const userRole = user?.role;
   const roleTexts = useRoleTexts(userRole);
-  
+
   const {
     events,
     loading: scheduleLoading,
@@ -43,7 +44,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     isOnline,
     retryCount,
     lastSync,
-    syncAllData
+    syncAllData,
   } = useUnifiedData();
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -54,19 +55,25 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   // Функция проверки прав доступа
   const hasPermission = (resource: string, action: string) => {
     if (!userRole) return false;
-    
+
     switch (userRole) {
-      case 'super-admin':
+      case "super-admin":
         return true;
-      case 'admin':
+      case "admin":
         return true;
-      case 'manager':
-        return ['users', 'schedule', 'messages', 'analytics', 'products'].includes(resource);
-      case 'trainer':
-        return ['schedule', 'messages'].includes(resource);
-      case 'member':
-      case 'client':
-        return ['schedule', 'messages'].includes(resource);
+      case "manager":
+        return [
+          "users",
+          "schedule",
+          "messages",
+          "analytics",
+          "products",
+        ].includes(resource);
+      case "trainer":
+        return ["schedule", "messages"].includes(resource);
+      case "member":
+      case "client":
+        return ["schedule", "messages"].includes(resource);
       default:
         return false;
     }
@@ -78,50 +85,57 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
     const items = [
       {
-        href: '/admin',
+        href: "/admin",
         label: roleTexts.dashboardTitle,
         icon: LayoutDashboard,
-        permission: null
+        permission: null,
       },
       {
-        href: '/admin/users',
+        href: "/admin/users",
         label: roleTexts.usersTitle,
         icon: Users,
-        permission: { resource: 'users', action: 'read' }
+        permission: { resource: "users", action: "read" },
       },
       {
-        href: '/admin/products',
-        label: 'Продукты', // Добавляем продукты
+        href: "/admin/products",
+        label: roleTexts.productsTitle,
         icon: Package,
-        permission: { resource: 'products', action: 'read' }
+        permission: { resource: "products", action: "read" },
       },
       {
-        href: '/admin/analytics',
+        href: "/admin/analytics",
         label: roleTexts.reportsTitle,
         icon: BarChart3,
-        permission: { resource: 'analytics', action: 'read' }
+        permission: { resource: "analytics", action: "read" },
       },
       {
-        href: '/admin/schedule',
+        href: "/admin/schedule",
         label: roleTexts.scheduleTitle,
         icon: Calendar,
-        permission: { resource: 'schedule', action: 'read' }
-      },     
-      {
-        href: '/admin/messages',
-        label: roleTexts.messagesTitle,
-        icon: MessageCircle,
-        permission: { resource: 'messages', action: 'read' }
+        permission: { resource: "schedule", action: "read" },
       },
       {
-        href: '/admin/settings',
+        href: "/admin/messages",
+        label: roleTexts.messagesTitle,
+        icon: MessageCircle,
+        permission: { resource: "messages", action: "read" },
+      },
+      {
+        href: "/admin/settings",
         label: roleTexts.settingsTitle,
         icon: Settings,
-        permission: { resource: 'settings', action: 'read' }
+        permission: { resource: "settings", action: "read" },
+      },
+      {
+        label: roleTexts.resetPasswordTitle,
+        href: "/admin/password-reset",
+        icon: Shield,
+        description: roleTexts.resetPasswordDescription,
+        permission: null,
       },
     ];
 
-    return items.filter(item => {
+    return items.filter((item) => {
       if (!item.permission) return true;
       return hasPermission(item.permission.resource, item.permission.action);
     });
@@ -130,7 +144,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   // Статистика для сайдбара
   const sidebarStats = useMemo(() => {
     const today = new Date();
-    const todayEvents = events.filter(event => {
+    const todayEvents = events.filter((event) => {
       try {
         const eventDate = new Date(event.startTime);
         return eventDate.toDateString() === today.toDateString();
@@ -139,7 +153,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const thisWeekEvents = events.filter(event => {
+    const thisWeekEvents = events.filter((event) => {
       try {
         const eventDate = new Date(event.startTime);
         const weekStart = new Date(today);
@@ -152,15 +166,20 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const completionRate = events.length > 0 
-      ? Math.round((events.filter(e => e.status === 'completed').length / events.length) * 100)
-      : 0;
+    const completionRate =
+      events.length > 0
+        ? Math.round(
+            (events.filter((e) => e.status === "completed").length /
+              events.length) *
+              100
+          )
+        : 0;
 
     return {
       totalEvents: events.length,
       todayEvents: todayEvents.length,
       weekEvents: thisWeekEvents.length,
-      completionRate
+      completionRate,
     };
   }, [events]);
 
@@ -168,27 +187,32 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const systemStatus = useMemo(() => {
     if (scheduleError) {
       return {
-        text: roleTexts.warningMessages?.offlineMode || 'Работа в автономном режиме',
-        color: 'text-red-600',
-        bgColor: 'from-red-50 to-red-100',
-        icon: AlertTriangle
+        text:
+          roleTexts.warningMessages?.offlineMode ||
+          "Работа в автономном режиме",
+        color: "text-red-600",
+        bgColor: "from-red-50 to-red-100",
+        icon: AlertTriangle,
       };
     }
-    
+
     if (isOnline) {
       return {
-        text: userRole === 'super-admin' ? 'Все системы работают' : 'Система работает',
-        color: 'text-green-600',
-        bgColor: 'from-green-50 to-green-100',
-        icon: CheckCircle
+        text:
+          userRole === "super-admin"
+            ? "Все системы работают"
+            : "Система работает",
+        color: "text-green-600",
+        bgColor: "from-green-50 to-green-100",
+        icon: CheckCircle,
       };
     }
-    
+
     return {
-      text: 'Проверка соединения...',
-      color: 'text-yellow-600',
-      bgColor: 'from-yellow-50 to-yellow-100',
-      icon: RefreshCw
+      text: "Проверка соединения...",
+      color: "text-yellow-600",
+      bgColor: "from-yellow-50 to-yellow-100",
+      icon: RefreshCw,
     };
   }, [scheduleError, isOnline, userRole, roleTexts]);
 
@@ -220,7 +244,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
       {/* Мобильная шапка */}
-      <MobileHeader 
+      <MobileHeader
         roleTexts={roleTexts}
         onMenuOpen={() => setSidebarOpen(true)}
       />
@@ -252,15 +276,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Основной контент */}
         <main className="flex-1 overflow-hidden">
           <div className="h-full overflow-y-auto">
-            <div className="p-4 lg:p-6">
-              {children}
-            </div>
+            <div className="p-4 lg:p-6">{children}</div>
           </div>
         </main>
       </div>
 
       {/* Глобальные уведомления */}
-      <GlobalNotifications 
+      <GlobalNotifications
         lastSync={lastSync}
         scheduleLoading={scheduleLoading}
         scheduleError={scheduleError}
@@ -282,24 +304,24 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             transform: translateY(0);
           }
         }
-        
+
         .animate-fade-in {
           animation: fade-in 0.3s ease-out;
         }
-        
+
         .overflow-y-auto::-webkit-scrollbar {
           width: 4px;
         }
-        
+
         .overflow-y-auto::-webkit-scrollbar-track {
           background: transparent;
         }
-        
+
         .overflow-y-auto::-webkit-scrollbar-thumb {
           background: rgba(156, 163, 175, 0.5);
           border-radius: 2px;
         }
-        
+
         .overflow-y-auto::-webkit-scrollbar-thumb:hover {
           background: rgba(156, 163, 175, 0.8);
         }
@@ -308,10 +330,16 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <SuperAdminProvider>
-      <QueryProvider> {/* Добавляем QueryProvider */}
+      <QueryProvider>
+        {" "}
+        {/* Добавляем QueryProvider */}
         <AdminLayoutContent>{children}</AdminLayoutContent>
       </QueryProvider>
     </SuperAdminProvider>

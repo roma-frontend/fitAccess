@@ -33,11 +33,11 @@ const getDashboardUrl = (role: string): string => {
   const dashboardUrls: Record<string, string> = {
     'admin': '/admin',
     'super-admin': '/admin',
-    'manager': '/manager',
-    'trainer': '/trainer',
-    'client': '/member',
-    'member': '/member',
-    'staff': '/staff'
+    'manager': '/manager-dashboard',
+    'trainer': '/trainer-dashboard',
+    'client': '/member-dashboard',
+    'member': '/member-dashboard',
+    'staff': '/staff-dashboard'
   };
   
   return dashboardUrls[role] || '/dashboard';

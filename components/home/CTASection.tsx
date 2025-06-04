@@ -11,7 +11,7 @@ import {
   Heart 
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { AuthStatus } from "@/types/home"; // Используем type import
+import type { AuthStatus } from "@/types/home";
 
 interface CTASectionProps {
   authStatus: AuthStatus | null;
