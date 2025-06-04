@@ -2,7 +2,6 @@
 import { useProductsQuery, useProductMutations } from './useProductsQuery';
 import type { Product, ProductFormData } from '@/types/product';
 
-// Исправленный реэкспорт типов
 export type { Product, ProductFormData } from '@/types/product';
 
 export function useProducts(params?: {
@@ -29,32 +28,42 @@ export function useProductManagement() {
   const mutations = useProductMutations();
 
   return {
-    createProduct: async (data: ProductFormData): Promise<boolean> => {
+    createProduct: async (data: ProductFormData): Promise<Product> => {
       try {
-        await mutations.createProduct(data);
-        return true;
+        const result = await mutations.createProduct(data);
+        return result;
       } catch (error) {
         console.error('Create product error:', error);
-        return false;
+        throw error;
       }
     },
-    updateProduct: async (id: string, data: Partial<ProductFormData>): Promise<boolean> => {
+    
+    updateProduct: async (id: string, data: Partial<ProductFormData>): Promise<Product> => {
       try {
-        await mutations.updateProduct(id, data);
-        return true;
+        const result = await mutations.updateProduct(id, data);
+        return result;
       } catch (error) {
         console.error('Update product error:', error);
-        return false;
+        throw error;
       }
     },
-    deleteProduct: async (id: string, deleteType: 'soft' | 'hard' = 'soft'): Promise<boolean> => {
+    
+    deleteProduct: async (id: string, deleteType: 'soft' | 'hard' = 'soft'): Promise<void> => {
       try {
         await mutations.deleteProduct(id, deleteType);
-        return true;
+        // ✅ Для удаления возвращаем void
       } catch (error) {
         console.error('Delete product error:', error);
-        return false;
+        throw error;
       }
-    }
+    },
+    
+    isCreating: mutations.isCreating,
+    isUpdating: mutations.isUpdating,
+    isDeleting: mutations.isDeleting,
+    
+    createError: mutations.createError,
+    updateError: mutations.updateError,
+    deleteError: mutations.deleteError,
   };
 }

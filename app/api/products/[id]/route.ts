@@ -1,4 +1,3 @@
-// app/api/products/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from "convex/browser";
 
@@ -9,35 +8,82 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Ожидаем разрешения Promise для получения параметров
     const { id } = await params;
     const body = await request.json();
     
-    console.log("🔄 API: Обновление продукта:", id, body);
+    console.log("🔄 API PUT: Обновление продукта:", id);
+    console.log("📦 API PUT: Данные для обновления:", body);
 
-    const result = await convex.mutation("products:update", {
+    const { _id, createdAt, ...updateData } = body;
+
+    // ✅ Выполняем обновление и получаем результат сразу
+    const updatedProduct = await convex.mutation("products:update", {
       id,
-      ...body,
+      ...updateData,
       updatedAt: Date.now()
     });
 
-    console.log("✅ API: Продукт обновлен:", result);
+    console.log("✅ API PUT: Результат мутации:", updatedProduct);
+
+    // ✅ Если мутация вернула обновленный продукт, используем его
+    if (updatedProduct) {
+      const response = NextResponse.json({ 
+        success: true, 
+        data: updatedProduct,
+        message: 'Продукт успешно обновлен',
+        timestamp: Date.now()
+      });
+
+      // Добавляем заголовки для принудительного обновления
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      response.headers.set('ETag', `"${Date.now()}"`); // Уникальный ETag
+      
+      return response;
+    }
+
+    // ✅ Если мутация не вернула продукт, получаем его отдельно
+    const freshProduct = await convex.query("products:getById", { id });
     
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       success: true, 
-      data: result,
-      message: 'Продукт успешно обновлен'
+      data: freshProduct,
+      message: 'Продукт успешно обновлен',
+      timestamp: Date.now()
     });
+
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    response.headers.set('ETag', `"${Date.now()}"`);
+    
+    return response;
+    
   } catch (error) {
-    console.error("❌ API: Ошибка обновления продукта:", error);
+    console.error("❌ API PUT: Ошибка обновления продукта:", error);
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Ошибка обновления продукта' 
+        error: error instanceof Error ? error.message : 'Ошибка обновления продукта'
       },
       { status: 500 }
     );
   }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  console.log("🔄 API POST: Перенаправление на PUT логику");
+  return PUT(request, { params });
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  console.log("🔄 API PATCH: Перенаправление на PUT логику");
+  return PUT(request, { params });
 }
 
 export async function DELETE(
@@ -45,40 +91,45 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Ожидаем разрешения Promise для получения параметров
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const deleteType = searchParams.get('type') || 'soft';
     
-    console.log(`🔄 API: ${deleteType === 'hard' ? 'Физическое' : 'Мягкое'} удаление продукта:`, id);
+    console.log(`🔄 API DELETE: ${deleteType === 'hard' ? 'Физическое' : 'Мягкое'} удаление продукта:`, id);
 
     if (deleteType === 'hard') {
-      const result = await convex.mutation("products:hardDelete", {
-        id
-      });
+      const result = await convex.mutation("products:hardDelete", { id });
       
-      console.log("✅ API: Продукт физически удален:", result);
+      console.log("✅ API DELETE: Продукт физически удален:", result);
       
-      return NextResponse.json({ 
+      const response = NextResponse.json({ 
         success: true, 
         message: 'Продукт навсегда удален из базы данных',
-        data: result 
+        data: result,
+        timestamp: Date.now()
       });
-    } else {
-      const result = await convex.mutation("products:softDelete", {
-        id
-      });
-
-      console.log("✅ API: Продукт мягко удален:", result);
       
-      return NextResponse.json({ 
+      // Заголовки для предотвращения кэширования
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return response;
+    } else {
+      const result = await convex.mutation("products:softDelete", { id });
+
+      console.log("✅ API DELETE: Продукт мягко удален:", result);
+      
+      const response = NextResponse.json({ 
         success: true, 
         message: 'Продукт деактивирован',
-        data: result 
+        data: result,
+        timestamp: Date.now()
       });
+      
+      // Заголовки для предотвращения кэширования
+      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      return response;
     }
   } catch (error) {
-    console.error("❌ API: Ошибка удаления продукта:", error);
+    console.error("❌ API DELETE: Ошибка удаления продукта:", error);
     return NextResponse.json(
       { 
         success: false, 
@@ -89,7 +140,6 @@ export async function DELETE(
   }
 }
 
-// Опционально: добавьте GET метод для получения конкретного продукта
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -97,7 +147,7 @@ export async function GET(
   try {
     const { id } = await params;
     
-    console.log("🔄 API: Получение продукта:", id);
+    console.log("🔄 API GET: Получение продукта:", id);
 
     const result = await convex.query("products:getById", { id });
 
@@ -111,14 +161,19 @@ export async function GET(
       );
     }
 
-    console.log("✅ API: Продукт получен:", result);
+    console.log("✅ API GET: Продукт получен:", result);
     
-    return NextResponse.json({ 
+    const response = NextResponse.json({ 
       success: true, 
-      data: result 
+      data: result,
+      timestamp: Date.now()
     });
+    
+    // Заголовки для предотвращения кэширования
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    return response;
   } catch (error) {
-    console.error("❌ API: Ошибка получения продукта:", error);
+    console.error("❌ API GET: Ошибка получения продукта:", error);
     return NextResponse.json(
       { 
         success: false, 
@@ -127,4 +182,17 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+// Добавляем OPTIONS для CORS
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+    },
+  });
 }

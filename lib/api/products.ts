@@ -10,16 +10,6 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-interface PaginatedResponse<T> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
 // Функции для работы с API
 export async function fetchProducts(params?: {
   page?: number;
@@ -70,6 +60,8 @@ export async function fetchProduct(id: string): Promise<Product> {
 }
 
 export async function createProduct(data: ProductFormData): Promise<Product> {
+  console.log('🔄 API createProduct: отправляем данные:', data);
+  
   const response = await fetch(`${API_BASE_URL}/products`, {
     method: 'POST',
     headers: {
@@ -78,59 +70,84 @@ export async function createProduct(data: ProductFormData): Promise<Product> {
     body: JSON.stringify(data),
   });
 
+  console.log('📡 API createProduct: статус ответа:', response.status);
+
   if (!response.ok) {
-    throw new Error(`Failed to create product: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    console.error('❌ API createProduct: ошибка ответа:', errorData);
+    throw new Error(errorData.error || `Failed to create product: ${response.statusText}`);
   }
 
   const result: ApiResponse<Product> = await response.json();
+  console.log('📦 API createProduct: результат:', result);
   
   if (!result.success) {
+    console.error('❌ API createProduct: success = false:', result);
     throw new Error(result.message || 'Failed to create product');
   }
 
+  console.log('✅ API createProduct: продукт создан:', result.data);
   return result.data;
 }
 
 export async function updateProduct(id: string, data: Partial<ProductFormData>): Promise<Product> {
+  console.log('🔄 API updateProduct: отправляем данные:', { id, data });
+  
   const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(data),
   });
 
+  console.log('📡 API updateProduct: статус ответа:', response.status);
+
   if (!response.ok) {
-    throw new Error(`Failed to update product: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    console.error('❌ API updateProduct: ошибка ответа:', errorData);
+    throw new Error(errorData.error || `Failed to update product: ${response.statusText}`);
   }
 
   const result: ApiResponse<Product> = await response.json();
+  console.log('📦 API updateProduct: результат:', result);
   
   if (!result.success) {
+    console.error('❌ API updateProduct: success = false:', result);
     throw new Error(result.message || 'Failed to update product');
   }
 
+  console.log('✅ API updateProduct: продукт обновлен:', result.data);
   return result.data;
 }
 
 export async function deleteProduct(id: string, deleteType: 'soft' | 'hard' = 'soft'): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+  console.log('🔄 API deleteProduct called:', { id, deleteType });
+  
+  const response = await fetch(`${API_BASE_URL}/products/${id}?type=${deleteType}`, {
     method: 'DELETE',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ deleteType }),
   });
 
+  console.log('📡 Delete Response status:', response.status);
+
   if (!response.ok) {
-    throw new Error(`Failed to delete product: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({}));
+    console.error('❌ Delete Response error:', errorData);
+    throw new Error(errorData.error || `Failed to delete product: ${response.statusText}`);
   }
 
   const result: ApiResponse<null> = await response.json();
+  console.log('📦 Delete Response data:', result);
   
   if (!result.success) {
+    console.error('❌ Delete API returned success: false:', result);
     throw new Error(result.message || 'Failed to delete product');
   }
+
+  console.log('✅ Product deleted successfully');
 }
 
 export async function bulkUpdateProducts(

@@ -1,7 +1,7 @@
-// components/admin/products/ProductForm.tsx (исправленная версия)
+// components/admin/products/ProductForm.tsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,10 +13,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useProducts } from '@/hooks/useProducts';
+import { useCloudinaryUpload } from '@/hooks/useCloudinaryUpload';
 import type { Product, ProductFormData } from '@/types/product';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
 
-// Исправленная схема Zod
+// Схема Zod - точно соответствует ProductFormData
 const productSchema = z.object({
   name: z.string().min(1, 'Название обязательно').max(100, 'Название слишком длинное'),
   description: z.string().min(1, 'Описание обязательно').max(500, 'Описание слишком длинное'),
@@ -26,28 +27,28 @@ const productSchema = z.object({
   }),
   inStock: z.number().min(0, 'Количество не может быть отрицательным'),
   isPopular: z.boolean(),
-  imageUrl: z.string().refine((url) => {
-    if (url === '') return true; // Разрешаем пустую строку
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  }, 'Введите корректный URL изображения или оставьте поле пустым')
-}) satisfies z.ZodType<ProductFormData>;
+  imageUrl: z.string().optional()
+});
+
+type ProductFormSchema = z.infer<typeof productSchema>;
 
 interface ProductFormProps {
   product?: Product;
-  onSuccess: () => void;
+  onSuccess: (updatedProduct?: Product) => void;
   onCancel: () => void;
 }
 
 export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) {
-  const { createProduct, updateProduct, isCreating, isUpdating } = useProducts();
+  const { createProduct, updateProduct, isCreating, isUpdating, refetch } = useProducts();
+  const { upload, isUploading, error: uploadError, clearError } = useCloudinaryUpload();
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [uploadMethod, setUploadMethod] = useState<'url' | 'file'>('url');
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<ProductFormData>({
+  const form = useForm<ProductFormSchema>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: product?.name || '',
@@ -65,31 +66,155 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
   useEffect(() => {
     if (watchImageUrl && watchImageUrl.startsWith('http')) {
       setImagePreview(watchImageUrl);
+    } else if (uploadedImageUrl) {
+      setImagePreview(uploadedImageUrl);
     } else {
       setImagePreview('');
     }
-  }, [watchImageUrl]);
+  }, [watchImageUrl, uploadedImageUrl]);
 
-  const onSubmit = async (data: ProductFormData) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
     try {
-      // Если imageUrl пустая, устанавливаем дефолтное изображение
-      const formDataWithImage = {
-        ...data,
-        imageUrl: data.imageUrl || '/images/default-product.jpg'
-      };
+      clearError();
+      console.log('🔄 ProductForm: Начинаем загрузку файла:', file.name);
 
-      if (product) {
-        await updateProduct(product._id, formDataWithImage);
-      } else {
-        await createProduct(formDataWithImage);
-      }
-      onSuccess();
+      // Показываем превью сразу
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // Загружаем в Cloudinary
+      const imageUrl = await upload(file, {
+        folder: 'products',
+        uploadPreset: 'ml_default'
+      });
+
+      console.log('✅ ProductForm: Файл загружен, URL:', imageUrl);
+
+      // Сохраняем URL в отдельном состоянии
+      setUploadedImageUrl(imageUrl);
+
+      // Обновляем форму с новым URL
+      form.setValue('imageUrl', imageUrl, {
+        shouldValidate: true,
+        shouldDirty: true
+      });
+
+      const currentValue = form.getValues('imageUrl');
+      console.log('📋 ProductForm: imageUrl в форме после установки:', currentValue);
+
     } catch (error) {
-      console.error('Form submission error:', error);
+      console.error('❌ ProductForm: Ошибка загрузки файла:', error);
+      setImagePreview('');
+      setUploadedImageUrl('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  const isLoading = isCreating || isUpdating;
+  const handleDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+
+    if (file && file.type.startsWith('image/')) {
+      const input = fileInputRef.current;
+      if (input) {
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        input.files = dataTransfer.files;
+        await handleFileUpload({ target: input } as React.ChangeEvent<HTMLInputElement>);
+      }
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const onSubmit = async (data: ProductFormSchema) => {
+    try {
+      if (isUploading || isSubmitting) {
+        console.log('⏳ ProductForm: Операция уже выполняется...');
+        return;
+      }
+
+      setIsSubmitting(true);
+      setSubmitStatus('saving');
+
+      console.log('📤 ProductForm: Отправляем данные формы:', data);
+
+      // Используем загруженный URL если он есть
+      const finalImageUrl = uploadedImageUrl || data.imageUrl || '';
+
+      // Приводим к типу ProductFormData
+      const formDataToSend: ProductFormData = {
+        ...data,
+        imageUrl: finalImageUrl
+      };
+
+      console.log('📤 ProductForm: Финальные данные для отправки:', formDataToSend);
+
+      let result: Product;
+
+      if (product) {
+        console.log('🔄 ProductForm: Обновляем существующий продукт');
+        result = await updateProduct(product._id, formDataToSend);
+        console.log('✅ ProductForm: Продукт обновлен:', result);
+      } else {
+        console.log('🔄 ProductForm: Создаем новый продукт');
+        result = await createProduct(formDataToSend);
+        console.log('✅ ProductForm: Продукт создан:', result);
+      }
+
+      setSubmitStatus('success');
+
+      // ✅ Принудительно обновляем данные
+      console.log('🔄 Обновляем кеш...');
+      if (refetch) {
+        await refetch();
+      }
+
+      // ✅ Даем время для обновления UI и кеша
+      console.log('⏳ Ждем обновления UI...');
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // ✅ Передаем результат в onSuccess
+      onSuccess(result);
+
+    } catch (error) {
+      console.error('❌ ProductForm: Ошибка отправки формы:', error);
+      setSubmitStatus('error');
+
+      // Показываем ошибку пользователю на 3 секунды, затем сбрасываем
+      setTimeout(() => {
+        setSubmitStatus('idle');
+      }, 3000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isLoading = isCreating || isUpdating || isSubmitting;
+
+  const getButtonText = () => {
+    if (isUploading) return 'Загружаем изображение...';
+    if (submitStatus === 'saving') return 'Сохраняем...';
+    if (submitStatus === 'success') return 'Успешно сохранено!';
+    if (submitStatus === 'error') return 'Ошибка сохранения';
+    return product ? 'Сохранить изменения' : 'Создать продукт';
+  };
+
+  const getButtonVariant = () => {
+    if (submitStatus === 'success') return 'default';
+    if (submitStatus === 'error') return 'destructive';
+    return 'default';
+  };
 
   const categoryOptions = [
     { value: 'supplements', label: 'Добавки' },
@@ -111,7 +236,11 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
                 <FormItem>
                   <FormLabel>Название продукта</FormLabel>
                   <FormControl>
-                    <Input placeholder="Введите название продукта" {...field} />
+                    <Input
+                      placeholder="Введите название продукта"
+                      {...field}
+                      disabled={isLoading}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -125,10 +254,11 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
                 <FormItem>
                   <FormLabel>Описание</FormLabel>
                   <FormControl>
-                    <Textarea 
+                    <Textarea
                       placeholder="Введите описание продукта"
                       className="min-h-[100px]"
                       {...field}
+                      disabled={isLoading}
                     />
                   </FormControl>
                   <FormMessage />
@@ -144,11 +274,12 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
                   <FormItem>
                     <FormLabel>Цена (₽)</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="number"
                         placeholder="0"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -163,11 +294,12 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
                   <FormItem>
                     <FormLabel>Количество</FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         type="number"
                         placeholder="0"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage />
@@ -182,7 +314,11 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Категория</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isLoading}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Выберите категорию" />
@@ -216,6 +352,7 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
                     <Switch
                       checked={field.value}
                       onCheckedChange={field.onChange}
+                      disabled={isLoading}
                     />
                   </FormControl>
                 </FormItem>
@@ -225,25 +362,96 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
 
           {/* Изображение */}
           <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="imageUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL изображения (необязательно)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="https://example.com/image.jpg"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                  <div className="text-xs text-gray-500">
-                    Если не указать изображение, будет использовано изображение по умолчанию
-                  </div>
-                </FormItem>
-              )}
-            />
+            <div className="space-y-2">
+              <Label>Изображение продукта</Label>
+
+              <div className="flex space-x-2">
+                <Button
+                  type="button"
+                  variant={uploadMethod === 'file' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setUploadMethod('file')}
+                  disabled={isUploading || isLoading}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Загрузить файл
+                </Button>
+                <Button
+                  type="button"
+                  variant={uploadMethod === 'url' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setUploadMethod('url')}
+                  disabled={isUploading || isLoading}
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  URL изображения
+                </Button>
+              </div>
+            </div>
+
+            {uploadMethod === 'url' && (
+              <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>URL изображения</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://example.com/image.jpg"
+                        {...field}
+                        disabled={isUploading || isLoading}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {uploadMethod === 'file' && (
+              <div className="space-y-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isUploading || isLoading}
+                />
+
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${isUploading || isLoading
+                      ? 'border-blue-300 bg-blue-50 cursor-not-allowed'
+                      : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  onClick={() => !isUploading && !isLoading && fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
+                  {isUploading ? (
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                      <p className="mt-2 text-sm text-gray-600">Загружаем изображение...</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Upload className="h-8 w-8 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-600">
+                        Нажмите для выбора файла или перетащите изображение сюда
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PNG, JPG, GIF до 10MB
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {uploadError && (
+                  <p className="text-sm text-red-600">{uploadError}</p>
+                )}
+              </div>
+            )}
 
             {/* Превью изображения */}
             {imagePreview && (
@@ -254,7 +462,10 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
                     src={imagePreview}
                     alt="Превью"
                     className="w-full h-48 object-cover"
-                    onError={() => setImagePreview('')}
+                    onError={() => {
+                      setImagePreview('');
+                      setUploadedImageUrl('');
+                    }}
                   />
                   <Button
                     type="button"
@@ -264,7 +475,12 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
                     onClick={() => {
                       form.setValue('imageUrl', '');
                       setImagePreview('');
+                      setUploadedImageUrl('');
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                      }
                     }}
+                    disabled={isUploading || isLoading}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -272,9 +488,9 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
               </div>
             )}
 
-            {!imagePreview && (
+            {!imagePreview && uploadMethod === 'url' && (
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
                 <div className="mt-2">
                   <p className="text-sm text-gray-600">
                     Введите URL изображения выше для предварительного просмотра
@@ -288,19 +504,63 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
           </div>
         </div>
 
+        {/* Статус операции */}
+        {submitStatus !== 'idle' && (
+          <div className={`p-4 rounded-lg ${submitStatus === 'saving' ? 'bg-blue-50 border border-blue-200' :
+              submitStatus === 'success' ? 'bg-green-50 border border-green-200' :
+                submitStatus === 'error' ? 'bg-red-50 border border-red-200' : ''
+            }`}>
+            <div className="flex items-center">
+              {submitStatus === 'saving' && (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-500 mr-2" />
+                  <span className="text-blue-700">Сохраняем изменения...</span>
+                </>
+              )}
+              {submitStatus === 'success' && (
+                <>
+                  <div className="h-4 w-4 rounded-full bg-green-500 mr-2 flex items-center justify-center">
+                    <div className="h-2 w-2 bg-white rounded-full"></div>
+                  </div>
+                  <span className="text-green-700">
+                    {product ? 'Продукт успешно обновлен!' : 'Продукт успешно создан!'}
+                  </span>
+                </>
+              )}
+              {submitStatus === 'error' && (
+                <>
+                  <X className="h-4 w-4 text-red-500 mr-2" />
+                  <span className="text-red-700">Произошла ошибка при сохранении</span>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Кнопки действий */}
         <div className="flex justify-end space-x-4 pt-6 border-t">
           <Button
             type="button"
             variant="outline"
             onClick={onCancel}
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
           >
             Отмена
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {product ? 'Сохранить изменения' : 'Создать продукт'}
+          <Button
+            type="submit"
+            variant={getButtonVariant()}
+            disabled={isLoading || isUploading || submitStatus === 'success'}
+          >
+            {(isLoading || submitStatus === 'saving') && (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            {submitStatus === 'success' && (
+              <div className="mr-2 h-4 w-4 rounded-full bg-white flex items-center justify-center">
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+              </div>
+            )}
+            {getButtonText()}
           </Button>
         </div>
       </form>

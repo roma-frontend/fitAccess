@@ -1,10 +1,10 @@
 // hooks/useProductsQuery.ts
 import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
-import { 
-  fetchProducts, 
-  fetchProduct, 
-  createProduct, 
-  updateProduct, 
+import {
+  fetchProducts,
+  fetchProduct,
+  createProduct,
+  updateProduct,
   deleteProduct,
   bulkUpdateProducts,
   bulkDeleteProducts
@@ -55,7 +55,6 @@ export function useProductQuery(id: string, options?: Partial<UseQueryOptions<Pr
   });
 }
 
-// Хук для мутаций продуктов
 export function useProductMutations() {
   const queryClient = useQueryClient();
 
@@ -76,27 +75,59 @@ export function useProductMutations() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<ProductFormData> }) =>
       updateProduct(id, data),
-    onSuccess: (updatedProduct) => {
-      queryClient.setQueryData(['products', updatedProduct._id], updatedProduct);
-      queryClient.setQueryData(['products'], (oldData: Product[] = []) =>
-        oldData.map(product => 
-          product._id === updatedProduct._id ? updatedProduct : product
-        )
-      );
+    onSuccess: (updatedProduct, { id }) => {
+      console.log('🔍 Update mutation onSuccess:', { updatedProduct, id });
+
+      // Проверяем, что продукт существует и имеет _id
+      if (updatedProduct && updatedProduct._id) {
+        queryClient.setQueryData(['products', updatedProduct._id], updatedProduct);
+        queryClient.setQueryData(['products'], (oldData: Product[] = []) =>
+          oldData.map(product =>
+            product._id === updatedProduct._id ? updatedProduct : product
+          )
+        );
+        console.log('✅ Cache updated successfully');
+      } else {
+        console.warn('⚠️ Updated product is null or missing _id, invalidating cache instead');
+        // Если продукт null, просто обновляем весь кеш
+        queryClient.invalidateQueries({ queryKey: ['products'] });
+        queryClient.invalidateQueries({ queryKey: ['products', id] });
+      }
     },
     onError: (error) => {
       console.error('Failed to update product:', error);
     }
   });
 
+
   const deleteMutation = useMutation({
     mutationFn: ({ id, deleteType }: { id: string; deleteType?: 'soft' | 'hard' }) =>
       deleteProduct(id, deleteType),
-    onSuccess: (_, { id }) => {
+    onSuccess: (_, { id, deleteType }) => {
+      console.log('🔍 Delete mutation onSuccess:', { id, deleteType });
+
+      // Удаляем из кеша конкретного продукта
       queryClient.removeQueries({ queryKey: ['products', id] });
-      queryClient.setQueryData(['products'], (oldData: Product[] = []) =>
-        oldData.filter(product => product._id !== id)
-      );
+
+      // Обновляем список продуктов в зависимости от типа удаления
+      if (deleteType === 'hard') {
+        // При жестком удалении убираем из всех списков
+        queryClient.setQueryData(['products'], (oldData: Product[] = []) => {
+          if (!oldData) return [];
+          return oldData.filter(product => product._id !== id);
+        });
+      } else {
+        // При мягком удалении обновляем статус или убираем из активных
+        queryClient.setQueryData(['products'], (oldData: Product[] = []) => {
+          if (!oldData) return [];
+          return oldData.filter(product => product._id !== id);
+        });
+      }
+
+      // Дополнительно инвалидируем все связанные запросы
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+
+      console.log('✅ Delete cache updated successfully');
     },
     onError: (error) => {
       console.error('Failed to delete product:', error);
@@ -148,14 +179,14 @@ export function useProductMutations() {
       bulkUpdateMutation.mutateAsync({ ids, updates }),
     bulkDeleteProducts: (ids: string[], deleteType?: 'soft' | 'hard') =>
       bulkDeleteMutation.mutateAsync({ ids, deleteType }),
-    
+
     // Состояния загрузки
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     isBulkUpdating: bulkUpdateMutation.isPending,
     isBulkDeleting: bulkDeleteMutation.isPending,
-    
+
     // Ошибки
     createError: createMutation.error?.message,
     updateError: updateMutation.error?.message,

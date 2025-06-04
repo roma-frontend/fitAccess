@@ -9,7 +9,7 @@ export interface CloudinaryUploadOptions {
 export async function cloudinaryUpload(
   file: File,
   {
-    uploadPreset = 'fitAccess',
+    uploadPreset = 'ml_default',
     folder = 'user-avatars',
     resourceType = 'image',
     transformation
@@ -100,7 +100,7 @@ export function getCloudinaryUrl(
   publicId: string, 
   transformations: string[] = []
 ): string {
-  const cloudName = 'dgbtipi5o'; // 🔁 ЗАМЕНИ НА СВОЙ CLOUDINARY CLOUD NAME
+  const cloudName = 'dgbtipi5o';
   
   const baseUrl = `https://res.cloudinary.com/${cloudName}/image/upload`;
   

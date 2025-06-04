@@ -95,7 +95,7 @@ export default function ProductsPage() {
       />
 
       {/* Быстрая статистика */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Всего продуктов</CardTitle>
@@ -181,7 +181,7 @@ export default function ProductsPage() {
           )}
           
           {stats.lowStock > 0 && (
-            <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2 p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-yellow-800">

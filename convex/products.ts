@@ -180,7 +180,7 @@ export const create = mutation({
       v.literal("merchandise")
     ),
     price: v.number(),
-    imageUrl: v.optional(v.string()),
+    imageUrl: v.optional(v.string()), // ✅ Убедитесь, что это есть
     inStock: v.number(),
     minStock: v.optional(v.number()),
     isPopular: v.optional(v.boolean()),
@@ -194,9 +194,10 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔄 Convex Mutation: Создание продукта:", args.name);
+    console.log("🖼️ Convex Mutation: imageUrl:", args.imageUrl); // Добавьте лог
 
     const productId = await ctx.db.insert("products", {
-      ...args,
+      ...args, // ✅ Это должно включать imageUrl
       isActive: true,
       isPopular: args.isPopular || false,
       minStock: args.minStock || 10,
@@ -207,6 +208,7 @@ export const create = mutation({
     return productId;
   },
 });
+
 
 export const update = mutation({
   args: {
@@ -220,7 +222,9 @@ export const update = mutation({
       v.literal("merchandise")
     )),
     price: v.optional(v.number()),
+    imageUrl: v.optional(v.string()),
     inStock: v.optional(v.number()),
+    minStock: v.optional(v.number()),
     isPopular: v.optional(v.boolean()),
     nutrition: v.optional(v.object({
       calories: v.optional(v.number()),
@@ -233,6 +237,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔄 Convex: Обновление продукта:", args.id);
+    console.log("🖼️ Convex: Новый imageUrl:", args.imageUrl);
 
     const { id, ...updateData } = args;
 
@@ -243,12 +248,18 @@ export const update = mutation({
     }
 
     // Обновляем продукт
-    const result = await ctx.db.patch(id, updateData);
+    await ctx.db.patch(id, {
+      ...updateData,
+      updatedAt: Date.now()
+    });
 
-    console.log("✅ Convex: Продукт обновлен");
-    return result;
+    // Возвращаем обновленный продукт
+    const updatedProduct = await ctx.db.get(id);
+    console.log("✅ Convex: Продукт обновлен:", updatedProduct);
+    
+    return updatedProduct;
   },
-})
+});
 
 // Мягкое удаление (деактивация)
 export const remove = mutation({

@@ -45,7 +45,6 @@ export async function POST(request: NextRequest) {
   try {
     console.log("🔄 API POST: Начало обработки");
     
-    // Проверяем переменные окружения
     if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
       throw new Error("NEXT_PUBLIC_CONVEX_URL не установлен");
     }
@@ -64,7 +63,6 @@ export async function POST(request: NextRequest) {
     
     console.log("🔗 API POST: Convex URL:", process.env.NEXT_PUBLIC_CONVEX_URL);
     
-    // Динамический импорт Convex
     const { ConvexHttpClient } = await import("convex/browser");
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL);
     
@@ -78,6 +76,7 @@ export async function POST(request: NextRequest) {
       inStock: body.inStock || 0,
       minStock: body.minStock || 10,
       isPopular: body.isPopular || false,
+      imageUrl: body.imageUrl, // ✅ Добавляем imageUrl
       nutrition: body.nutrition
     });
 
