@@ -1,10 +1,8 @@
-// app/admin/products/page.tsx
 "use client";
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Package, AlertCircle, TrendingUp, BarChart3 } from 'lucide-react';
 import { ProductsWithFilters } from '@/components/admin/products/ProductsWithFilters';
@@ -13,10 +11,18 @@ import { DeleteProductDialog } from '@/components/admin/products/DeleteProductDi
 import { ProductsHeader } from '@/components/admin/products/ProductsHeader';
 import { useProducts } from '@/hooks/useProducts';
 import { useRouter } from 'next/navigation';
-import type { Product } from '@/types/product';
+import type { Product, ProductFormData } from '@/types/product';
 
 export default function ProductsPage() {
-  const { products, isLoading } = useProducts();
+  const { 
+    products, 
+    isLoading, 
+    createProduct, 
+    updateProduct, 
+    isCreating, 
+    isUpdating 
+  } = useProducts();
+  
   const router = useRouter();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -49,6 +55,29 @@ export default function ProductsPage() {
 
   const handleCloseDeleteDialog = () => {
     setDeletingProduct(null);
+  };
+
+  // Функции для работы с продуктами
+  const handleCreateSubmit = async (data: ProductFormData) => {
+    try {
+      await createProduct(data);
+      setIsCreateDialogOpen(false);
+    } catch (error) {
+      console.error('Ошибка создания продукта:', error);
+      throw error; // Пробрасываем ошибку для обработки в форме
+    }
+  };
+
+  const handleUpdateSubmit = async (data: ProductFormData) => {
+    if (!editingProduct) return;
+    
+    try {
+      await updateProduct(editingProduct._id, data);
+      setEditingProduct(null);
+    } catch (error) {
+      console.error('Ошибка обновления продукта:', error);
+      throw error; // Пробрасываем ошибку для обработки в форме
+    }
   };
 
   const handleRefresh = () => {
@@ -205,34 +234,22 @@ export default function ProductsPage() {
         onDelete={handleDeleteProduct}
       />
 
-      {/* Диалог создания продукта */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Создать новый продукт</DialogTitle>
-          </DialogHeader>
-          <ProductForm
-            onSuccess={handleCloseCreateDialog}
-            onCancel={handleCloseCreateDialog}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Форма создания продукта */}
+      <ProductForm
+        isOpen={isCreateDialogOpen}
+        onClose={handleCloseCreateDialog}
+        onSubmit={handleCreateSubmit}
+        isLoading={isCreating}
+      />
 
-      {/* Диалог редактирования продукта */}
-      <Dialog open={!!editingProduct} onOpenChange={(open) => !open && handleCloseEditDialog()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Редактировать продукт</DialogTitle>
-          </DialogHeader>
-          {editingProduct && (
-            <ProductForm
-              product={editingProduct}
-              onSuccess={handleCloseEditDialog}
-              onCancel={handleCloseEditDialog}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Форма редактирования продукта */}
+      <ProductForm
+        product={editingProduct || undefined}
+        isOpen={!!editingProduct}
+        onClose={handleCloseEditDialog}
+        onSubmit={handleUpdateSubmit}
+        isLoading={isUpdating}
+      />
 
       {/* Диалог удаления продукта */}
       {deletingProduct && (

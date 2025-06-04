@@ -10,7 +10,6 @@ export function useProductsStoreWithDefaults() {
   
   return {
     ...store,
-    // Гарантируем определенные значения
     searchQuery: store.searchQuery ?? '',
     selectedCategory: store.selectedCategory ?? 'all',
     priceRange: store.priceRange ?? [0, 10000] as [number, number],

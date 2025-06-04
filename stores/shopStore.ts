@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-type OrderStep = 'shop' | 'payment' | 'confirm';
+export type OrderStep = 'shop' | 'cart' | 'checkout' | 'payment' | 'confirm' | 'success';
 
 interface ShopStore {
   // Шаги заказа
@@ -15,9 +15,17 @@ interface ShopStore {
   orderNotes: string;
   setOrderNotes: (notes: string) => void;
   
+  // Способ оплаты
+  paymentMethod: string;
+  setPaymentMethod: (method: string) => void;
+  
   // Чек
   receipt: any;
   setReceipt: (receipt: any) => void;
+  
+  // Отображение чека
+  showReceipt: boolean;
+  setShowReceipt: (show: boolean) => void;
   
   // Сброс состояния
   resetOrder: () => void;
@@ -37,16 +45,26 @@ export const useShopStore = create<ShopStore>()(
       orderNotes: '',
       setOrderNotes: (notes) => set({ orderNotes: notes }),
       
+      // Способ оплаты
+      paymentMethod: 'card',
+      setPaymentMethod: (method) => set({ paymentMethod: method }),
+      
       // Чек
       receipt: null,
       setReceipt: (receipt) => set({ receipt }),
+      
+      // Отображение чека
+      showReceipt: false,
+      setShowReceipt: (show) => set({ showReceipt: show }),
       
       // Сброс состояния
       resetOrder: () => set({
         orderStep: 'shop',
         pickupType: 'pickup',
         orderNotes: '',
+        paymentMethod: 'card',
         receipt: null,
+        showReceipt: false,
       }),
     }),
     {
@@ -66,7 +84,8 @@ export const useShopStore = create<ShopStore>()(
         orderStep: state.orderStep,
         pickupType: state.pickupType,
         orderNotes: state.orderNotes,
-        // receipt не сохраняем в localStorage
+        paymentMethod: state.paymentMethod,
+        // receipt и showReceipt не сохраняем в localStorage
       }),
     }
   )

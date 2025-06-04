@@ -6,21 +6,20 @@ import { getProductImage } from '@/utils/productUtils';
 import { formatPrice } from '@/utils/priceUtils';
 
 interface CartItemProps {
-  item: CartItem; // ИСПРАВЛЕНО: используем интерфейс из store
+  item: CartItem;
 }
 
 const CartItemComponent = memo(({ item }: CartItemProps) => {
   const { updateQuantity, removeItem } = useCartStore();
 
   const handleQuantityChange = (newQuantity: number) => {
-    updateQuantity(item.id, newQuantity); // ИСПРАВЛЕНО: используем item.id вместо item.product._id
+    updateQuantity(item.id, newQuantity);
   };
 
   const handleRemove = () => {
-    removeItem(item.id); // ИСПРАВЛЕНО: используем item.id вместо item.product._id
+    removeItem(item.id);
   };
 
-  // ИСПРАВЛЕНО: создаем объект product для getProductImage
   const productForImage = {
     _id: item.id,
     name: item.name,

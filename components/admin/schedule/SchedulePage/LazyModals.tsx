@@ -70,7 +70,6 @@ const LazyModals = memo(function LazyModals({
                     isOpen={showEventForm}
                     onClose={onCloseEventForm}
                     onSubmit={onSubmitEvent}
-                    editingEvent={editingEvent} // Теперь это правильный проп
                     trainers={trainers}
                     clients={clients}
                     initialDate={formInitialDate}

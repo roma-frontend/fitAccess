@@ -1,4 +1,4 @@
-// components/trainer/QuickActions.tsx (новый компонент для быстрых действий)
+// components/trainer/QuickActions.tsx
 "use client";
 
 import { useState } from 'react';
@@ -24,10 +24,40 @@ export default function QuickActions() {
   const [showAddClient, setShowAddClient] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
+  
+  // Safe filtering with date validation
   const todayWorkouts = workouts.filter(w => w.date === today);
-  const upcomingWorkouts = workouts.filter(w => 
-    new Date(w.date) > new Date() && w.status === 'scheduled'
-  ).slice(0, 3);
+  
+  const upcomingWorkouts = workouts.filter(w => {
+    if (!w.date) return false; // Skip workouts without dates
+    
+    try {
+      const workoutDate = new Date(w.date);
+      const currentDate = new Date();
+      return workoutDate > currentDate && w.status === 'scheduled';
+    } catch (error) {
+      console.error('Invalid date format:', w.date);
+      return false;
+    }
+  }).slice(0, 3);
+
+  // Helper function to safely format dates
+  const formatWorkoutDate = (dateString: string | undefined) => {
+    if (!dateString) return 'Дата не указана';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Неверная дата';
+      }
+      return date.toLocaleDateString('ru-RU', {
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return 'Ошибка даты';
+    }
+  };
 
   const quickActionCards = [
     {
@@ -125,13 +155,13 @@ export default function QuickActions() {
                       <Dumbbell className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                      <p className="font-semibold">{workout.clientName}</p>
-                      <p className="text-sm text-gray-600">{workout.type}</p>
-                      <p className="text-xs text-gray-500">{workout.location}</p>
+                      <p className="font-semibold">{workout.clientName || 'Клиент не указан'}</p>
+                      <p className="text-sm text-gray-600">{workout.type || 'Тип не указан'}</p>
+                      <p className="text-xs text-gray-500">{workout.location || 'Место не указано'}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{workout.time}</p>
+                    <p className="font-medium">{workout.time || 'Время не указано'}</p>
                     <Badge className={`${
                       workout.status === 'completed' ? 'bg-green-100 text-green-800' :
                       workout.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
@@ -146,7 +176,7 @@ export default function QuickActions() {
             </div>
           ) : (
             <div className="text-center py-8">
-                            <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <Clock className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 mb-4">На сегодня тренировок не запланировано</p>
               <Button onClick={() => setShowAddWorkout(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -171,17 +201,14 @@ export default function QuickActions() {
               {upcomingWorkouts.map((workout) => (
                 <div key={workout.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                   <div>
-                    <p className="font-medium">{workout.clientName}</p>
-                    <p className="text-sm text-gray-600">{workout.type}</p>
+                    <p className="font-medium">{workout.clientName || 'Клиент не указан'}</p>
+                    <p className="text-sm text-gray-600">{workout.type || 'Тип не указан'}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">
-                      {new Date(workout.date).toLocaleDateString('ru-RU', {
-                        month: 'short',
-                        day: 'numeric'
-                      })}
+                      {formatWorkoutDate(workout.date)}
                     </p>
-                    <p className="text-xs text-gray-500">{workout.time}</p>
+                    <p className="text-xs text-gray-500">{workout.time || 'Время не указано'}</p>
                   </div>
                 </div>
               ))}
@@ -202,4 +229,3 @@ export default function QuickActions() {
     </div>
   );
 }
-

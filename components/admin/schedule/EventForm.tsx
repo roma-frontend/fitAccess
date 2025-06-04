@@ -1,4 +1,3 @@
-// components/admin/schedule/EventForm.tsx
 import React, { memo, useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ export interface EventFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreateEventData) => Promise<{ success: boolean; id?: string }>;
-  editingEvent?: ScheduleEvent | null;
+  event?: ScheduleEvent | null; // Changed from editingEvent to event
   trainers: any[];
   clients: any[];
   initialDate?: Date;
@@ -24,7 +23,7 @@ export const EventForm = memo(function EventForm({
   isOpen,
   onClose,
   onSubmit,
-  editingEvent = null,
+  event = null, // Changed from editingEvent to event
   trainers,
   clients,
   initialDate,
@@ -51,17 +50,17 @@ export const EventForm = memo(function EventForm({
 
   // Инициализация формы
   useEffect(() => {
-    if (editingEvent) {
+    if (event) {
       setFormData({
-        title: editingEvent.title,
-        type: editingEvent.type,
-        trainerId: editingEvent.trainerId,
-        clientId: editingEvent.clientId || "",
-        startTime: new Date(editingEvent.startTime).toISOString().slice(0, 16),
-        endTime: new Date(editingEvent.endTime).toISOString().slice(0, 16),
-        location: editingEvent.location || "",
-        description: editingEvent.description || "",
-        status: editingEvent.status,
+        title: event.title,
+        type: event.type,
+        trainerId: event.trainerId,
+        clientId: event.clientId || "",
+        startTime: new Date(event.startTime).toISOString().slice(0, 16),
+        endTime: new Date(event.endTime).toISOString().slice(0, 16),
+        location: event.location || "",
+        description: event.description || "",
+        status: event.status,
       });
     } else {
       // Новое событие
@@ -85,7 +84,7 @@ export const EventForm = memo(function EventForm({
       });
     }
     setErrors({});
-  }, [editingEvent, initialDate, initialHour]);
+  }, [event, initialDate, initialHour]); // Changed dependency from editingEvent to event
 
   const validateForm = useCallback(() => {
     const newErrors: Record<string, string> = {};
@@ -182,7 +181,7 @@ export const EventForm = memo(function EventForm({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {editingEvent ? "Редактировать событие" : "Создать событие"}
+            {event ? "Редактировать событие" : "Создать событие"}
           </DialogTitle>
         </DialogHeader>
 
@@ -298,12 +297,12 @@ export const EventForm = memo(function EventForm({
           </div>
 
           {/* Status */}
-          {editingEvent && (
+          {event && (
             <div>
               <Label htmlFor="status">Статус</Label>
               <Select value={formData.status} onValueChange={handleStatusChange}>
                 <SelectTrigger>
-                <SelectValue placeholder="Выберите статус" />
+                  <SelectValue placeholder="Выберите статус" />
                 </SelectTrigger>
                 <SelectContent>
                   {statusOptions.map(status => (
@@ -364,7 +363,7 @@ export const EventForm = memo(function EventForm({
                   Сохранение...
                 </>
               ) : (
-                editingEvent ? "Сохранить изменения" : "Создать событие"
+                event ? "Сохранить изменения" : "Создать событие"
               )}
             </Button>
           </div>
@@ -373,4 +372,3 @@ export const EventForm = memo(function EventForm({
     </Dialog>
   );
 });
-

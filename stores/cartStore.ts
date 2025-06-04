@@ -1,22 +1,28 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { Id } from "@/convex/_generated/dataModel";
 
 export interface CartItem {
-  id: Id<"products">;
+  id: string;
   name: string;
   price: number;
   quantity: number;
   imageUrl?: string;
   category: string;
+  inStock: number;
+  nutrition?: {
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+  };
 }
 
 interface CartStore {
   items: CartItem[];
   isOpen: boolean;
   addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
-  removeItem: (id: Id<"products">) => void;
-  updateQuantity: (id: Id<"products">, quantity: number) => void;
+  removeItem: (id: string) => void; // ✅ Changed from Id<"products"> to string
+  updateQuantity: (id: string, quantity: number) => void; // ✅ Changed from Id<"products"> to string
   clearCart: () => void;
   toggleCart: () => void;
   getTotalItems: () => number;
@@ -98,9 +104,8 @@ export const useCartStore = create<CartStore>()(
         }
         return localStorage;
       }),
-      version: 4, // Увеличиваем версию для сброса старых данных
+      version: 4,
       migrate: (persistedState: any, version: number) => {
-        // Сбрасываем старые данные для упрощения
         return {
           items: [],
           isOpen: false

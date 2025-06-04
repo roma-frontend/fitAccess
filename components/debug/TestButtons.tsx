@@ -56,7 +56,8 @@ export default function TestButtons() {
         endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
         trainerId: 'trainer1',
         clientId: 'client1',
-        location: 'Тестовый зал'
+        location: 'Тестовый зал',
+        status: 'scheduled'
       });
       console.log('✅ Тестовое событие добавлено');
     } catch (error) {
@@ -128,7 +129,8 @@ export default function TestButtons() {
         endTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         trainerId: 'trainer1',
         clientId: 'client1',
-        location: 'Тестовый зал'
+        location: 'Тестовый зал',
+        status: 'scheduled'
       });
       
       // Не добавляем в dashboard - создаем рассинхронизацию
@@ -156,7 +158,8 @@ export default function TestButtons() {
           endTime: new Date(Date.now() + ((i + 1) * 60 * 60 * 1000)).toISOString(),
           trainerId: `trainer${(i % 3) + 1}`,
           clientId: `client${(i % 5) + 1}`,
-          location: `Зал ${(i % 3) + 1}`
+          location: `Зал ${(i % 3) + 1}`,
+          status: 'scheduled'
         })
       );
       

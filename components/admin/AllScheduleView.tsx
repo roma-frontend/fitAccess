@@ -1,4 +1,3 @@
-// components/admin/AllScheduleView.tsx (исправленная версия)
 "use client";
 
 import { useState } from "react";
@@ -16,21 +15,21 @@ import {
 } from "lucide-react";
 import { useSchedule } from "@/contexts/ScheduleContext"; // Используем единый контекст
 import { useSuperAdmin } from "@/contexts/SuperAdminContext";
-import { CalendarView } from "@/components/admin/schedule/CalendarView";
-import { EventsList } from "@/components/admin/schedule/EventsList";
-import { TrainerWorkload } from "@/components/admin/schedule/TrainerWorkload";
-import { EventDetailsModal } from "@/components/admin/schedule/EventDetailsModal";
-import { EventForm } from "@/components/admin/schedule/EventForm";
 import {
   ScheduleEvent,
   CreateEventData,
 } from "@/components/admin/schedule/types";
 import { QuickMessageModal } from "./messaging/QuickMessageModal";
+import CalendarView from "./schedule/CalendarView";
+import EventsList from "./schedule/EventsList";
+import TrainerWorkload from "./schedule/TrainerWorkload";
+import { EventDetailsModal } from "./schedule/EventDetailsModal";
+import { EventForm } from "./schedule/EventForm";
 
 export default function AllScheduleView() {
   // Используем данные из единого контекста расписания
-  const { 
-    events, 
+  const {
+    events,
     trainers: scheduleTrainers,
     loading,
     createEvent,
@@ -39,9 +38,9 @@ export default function AllScheduleView() {
     updateEventStatus,
     refreshData
   } = useSchedule();
-  
+
   const { trainers: adminTrainers, clients } = useSuperAdmin();
-  
+
   const [activeView, setActiveView] = useState("calendar");
   const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
@@ -106,7 +105,7 @@ export default function AllScheduleView() {
         await updateEvent(editingEvent._id, data);
         setShowEventForm(false);
         setEditingEvent(null);
-        
+
         return {
           success: true,
           id: editingEvent._id
@@ -115,7 +114,7 @@ export default function AllScheduleView() {
         const result = await createEvent(data);
         setShowEventForm(false);
         setEditingEvent(null);
-        
+
         return {
           success: true,
           id: typeof result === 'string' ? result : undefined
@@ -211,9 +210,9 @@ export default function AllScheduleView() {
             ))}
           </select>
 
-          <Button 
+          <Button
             onClick={refreshData}
-            variant="outline" 
+            variant="outline"
             className="flex items-center gap-2"
           >
             <RefreshCw className="h-4 w-4" />
@@ -302,7 +301,7 @@ export default function AllScheduleView() {
 
       {/* Event Form Modal */}
       <EventForm
-        event={editingEvent}
+        event={editingEvent} // Changed from 'editingEvent' to 'event'
         isOpen={showEventForm}
         onClose={() => {
           setShowEventForm(false);
@@ -315,6 +314,7 @@ export default function AllScheduleView() {
           role: t.role,
         }))}
         clients={clients.map((c) => ({ id: c.id, name: c.name }))}
+        isApiAvailable={true} // Added required prop
       />
 
       {/* Quick Message Modal */}
@@ -328,10 +328,10 @@ export default function AllScheduleView() {
         relatedTo={
           messageEvent
             ? {
-                type: "event",
-                id: messageEvent._id,
-                title: messageEvent.title,
-              }
+              type: "event",
+              id: messageEvent._id,
+              title: messageEvent.title,
+            }
             : undefined
         }
         defaultSubject={

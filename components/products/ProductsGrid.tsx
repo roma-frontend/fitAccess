@@ -40,7 +40,6 @@ export default function ProductsGrid() {
     searchQuery,
     category: selectedCategory,
     priceRange,
-    sortBy,
     sortOrder,
   });
 

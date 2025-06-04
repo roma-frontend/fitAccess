@@ -1,4 +1,3 @@
-// hooks/usePersistentFiltersTyped.ts
 import { useLocalStorage } from './useLocalStorage';
 import { useCallback } from 'react';
 import { FilterState, CategoryFilter, StockFilter, PopularFilter, SortByOption, SortOrderOption } from '@/types/product';
@@ -75,11 +74,43 @@ export function usePersistentFiltersTyped() {
     setStoredFilters(defaultFilters);
   }, [setStoredFilters]);
 
+  // Специфические функции обновления для каждого фильтра
+  const updateSearchTerm = useCallback((value: string) => {
+    updateFilter('searchTerm', value);
+  }, [updateFilter]);
+
+  const updateCategoryFilter = useCallback((value: CategoryFilter) => {
+    updateFilter('categoryFilter', value);
+  }, [updateFilter]);
+
+  const updateStockFilter = useCallback((value: StockFilter) => {
+    updateFilter('stockFilter', value);
+  }, [updateFilter]);
+
+  const updatePopularFilter = useCallback((value: PopularFilter) => {
+    updateFilter('popularFilter', value);
+  }, [updateFilter]);
+
+  const updateSortBy = useCallback((value: SortByOption) => {
+    updateFilter('sortBy', value);
+  }, [updateFilter]);
+
+  const updateSortOrder = useCallback((value: SortOrderOption) => {
+    updateFilter('sortOrder', value);
+  }, [updateFilter]);
+
   return {
     filters,
     updateFilter,
     updateMultipleFilters,
     resetFilters,
+    // Специфические функции обновления
+    updateSearchTerm,
+    updateCategoryFilter,
+    updateStockFilter,
+    updatePopularFilter,
+    updateSortBy,
+    updateSortOrder,
     // Константы
     CATEGORY_FILTERS,
     STOCK_FILTERS,

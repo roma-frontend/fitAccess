@@ -27,8 +27,8 @@ import { MessagesFilters } from "@/components/messages/MessagesFilters";
 import { MessagesList } from "@/components/messages/MessagesList";
 import { MessageViewer } from "@/components/messages/MessageViewer";
 import { NewMessageModal } from "@/components/messages/NewMessageModal";
-import { NotificationToast } from "@/components/messages/NotificationToast";
 import { MessageHeader } from "@/components/messages/MessageHeader";
+import { SimpleToast } from "@/components/ui/SimpleToast"; 
 
 // Определяем правильный тип для нового сообщения
 interface NewMessageState {
@@ -69,7 +69,7 @@ export default function MessagesPage() {
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'info';
-    text: string; // Переименовали message в text
+    text: string;
   } | null>(null);
 
   // Состояние нового сообщения
@@ -414,7 +414,7 @@ export default function MessagesPage() {
 
       {/* Уведомления */}
       {notification && (
-        <NotificationToast
+       <SimpleToast
           type={notification.type}
           message={notification.text}
           onClose={() => setNotification(null)}

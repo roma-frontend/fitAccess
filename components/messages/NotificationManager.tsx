@@ -2,9 +2,10 @@
 import React, { memo, useState, useEffect, useCallback } from "react";
 import { NotificationToast } from "./NotificationToast";
 import { Message } from "@/types/messages";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface NotificationManagerProps {
-  currentUserId: string;
+  currentUserId: string; // Keep as string for easier integration
   onMessageView: (messageId: string) => void;
   onMessageReply: (messageId: string) => void;
 }
@@ -22,20 +23,42 @@ export const NotificationManager = memo(({
 }: NotificationManagerProps) => {
   const [notifications, setNotifications] = useState<ActiveNotification[]>([]);
 
-  // Подписка на новые сообщения (в реальном приложении через Convex)
+  // Подписка на новые сообщения
   useEffect(() => {
-    // Здесь будет подписка на новые сообщения
+    // Здесь будет подписка на новые сообщения через Convex
     // const unsubscribe = api.messages.subscribe({
-    //   recipientId: currentUserId,
+    //   recipientId: currentUserId as Id<"users">,
     //   onNewMessage: handleNewMessage
     // });
     
-    // return unsubscribe;
+    // Для тестирования можно добавить mock данные
+    const mockMessage: Message = {
+      _id: "test-message-1" as Id<"messages">,
+      _creationTime: Date.now(),
+      type: "direct",
+      subject: "Тестовое уведомление",
+      content: "Это тестовое сообщение для проверки уведомлений",
+      senderId: "sender-1" as Id<"users">,
+      senderName: "Тестовый отправитель",
+      recipientIds: [currentUserId as Id<"users">],
+      recipientNames: ["Получатель"],
+      priority: "normal",
+      status: "sent",
+      isArchived: false
+    };
+
+    // Симуляция получения нового сообщения через 3 секунды
+    const timer = setTimeout(() => {
+      handleNewMessage(mockMessage);
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [currentUserId]);
 
   const handleNewMessage = useCallback((message: Message) => {
     // Проверяем, что сообщение для текущего пользователя
-    if (!message.recipientIds.includes(currentUserId)) return;
+    const userIdAsId = currentUserId as Id<"users">;
+    if (!message.recipientIds.includes(userIdAsId)) return;
     
     // Проверяем, что уведомление еще не показано
     if (notifications.some(n => n.message._id === message._id)) return;

@@ -1,4 +1,3 @@
-// components/admin/schedule/EventDetailsModal.tsx
 import React, { memo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Edit, Trash2, MessageCircle, Calendar, Clock, MapPin, User } from "luci
 
 interface EventDetailsModalProps {
   isOpen: boolean;
-  event: ScheduleEvent;
+  event: ScheduleEvent | null; // Allow null
   onClose: () => void;
   onEdit: (event: ScheduleEvent) => void;
   onDelete: (eventId: string) => void;
@@ -27,6 +26,11 @@ export const EventDetailsModal = memo(function EventDetailsModal({
   onSendMessage,
   userRole,
 }: EventDetailsModalProps) {
+  // Add early return if event is null
+  if (!event) {
+    return null;
+  }
+
   const statusColors = {
     scheduled: "bg-blue-100 text-blue-800",
     confirmed: "bg-green-100 text-green-800",

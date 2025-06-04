@@ -171,9 +171,11 @@ export interface Message {
   receiverId: string;
   content: string;
   timestamp: number;
+  senderName: string;
+  attachments: string | [],
   status?: 'sent' | 'delivered' | 'read';
-  type?: 'direct' | 'group' | 'announcement' | 'notification'; // Add this
-  priority?: 'normal' | 'urgent' | 'high' | 'low'; // Update this
+  type?: 'direct' | 'group' | 'announcement' | 'notification';
+  priority?: 'normal' | 'urgent' | 'high' | 'low';
   readAt?: Record<string, number>;
   createdAt?: string;
   _creationTime?: number;

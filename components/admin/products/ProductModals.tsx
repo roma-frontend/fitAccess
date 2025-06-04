@@ -1,9 +1,8 @@
-// components/admin/products/ProductModals.tsx
 import React, { memo } from 'react';
 import { ProductForm } from './ProductForm';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Archive, Trash2 } from 'lucide-react';
-import { Product, ProductFormData } from '@/hooks/useProducts';
+import { Product, ProductFormData } from '@/types/product'; // Изменил импорт
 
 interface DeleteDialogState {
   open: boolean;
@@ -40,25 +39,21 @@ export const ProductModals = memo(function ProductModals({
   return (
     <>
       {/* Форма создания продукта */}
-      {showCreateForm && (
-        <ProductForm
-          isOpen={showCreateForm}
-          onClose={onCloseCreateForm}
-          onSubmit={onCreateProduct}
-          isLoading={formLoading}
-        />
-      )}
+      <ProductForm
+        isOpen={showCreateForm}
+        onClose={onCloseCreateForm}
+        onSubmit={onCreateProduct}
+        isLoading={formLoading}
+      />
 
       {/* Форма редактирования продукта */}
-      {editingProduct && (
-        <ProductForm
-          product={editingProduct}
-          isOpen={!!editingProduct}
-          onClose={onCloseEditForm}
-          onSubmit={(data) => onUpdateProduct(data, editingProduct)}
-          isLoading={formLoading}
-        />
-      )}
+      <ProductForm
+        product={editingProduct || undefined}
+        isOpen={!!editingProduct}
+        onClose={onCloseEditForm}
+        onSubmit={(data: ProductFormData) => onUpdateProduct(data, editingProduct)}
+        isLoading={formLoading}
+      />
 
       {/* Диалог подтверждения удаления */}
       <ConfirmDialog

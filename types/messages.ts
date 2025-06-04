@@ -64,6 +64,7 @@ export interface NotificationTemplate {
   createdBy: Id<"users">;
   category?: string;
   priority: "low" | "normal" | "high" | "urgent";
+  trigger: "event_reminder" | "payment_due" | "membership_expiry" | "new_member" | "manual";
   settings?: {
     allowScheduling?: boolean;
     requireApproval?: boolean;

@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import {
   RefreshCw,  // ← Добавить этот импорт
-  Database, 
-  Users, 
-  Calendar, 
+  Database,
+  Users,
+  Calendar,
   Activity,
   CheckCircle,
   XCircle,
@@ -71,17 +71,17 @@ export default function DataDebugger() {
 
   const refreshAllData = async () => {
     setLastUpdate(new Date());
-    
+
     // Обновляем данные во всех контекстах
     const promises = [];
-    
+
     // ✅ ИСПРАВЛЕНО: используем правильные методы
     if (dashboard?.syncAllData) promises.push(dashboard.syncAllData());
     if (schedule?.refreshData) promises.push(schedule.refreshData()); // ← refreshData вместо refreshEvents
     if (superAdmin?.refreshData) promises.push(superAdmin.refreshData());
     if (admin?.refreshData) promises.push(admin.refreshData());
     if (manager?.refreshData) promises.push(manager.refreshData());
-    
+
     try {
       await Promise.all(promises);
       console.log('🔄 Все данные обновлены');
@@ -181,10 +181,10 @@ export default function DataDebugger() {
                           {context.icon}
                           <span className="font-medium">{context.name}</span>
                         </div>
-                        <Badge 
+                        <Badge
                           variant={
                             status.status === 'success' ? 'default' :
-                            status.status === 'loading' ? 'secondary' : 'destructive'
+                              status.status === 'loading' ? 'secondary' : 'destructive'
                           }
                         >
                           {status.status === 'success' && <CheckCircle className="h-3 w-3 mr-1" />}
@@ -273,7 +273,7 @@ function SyncTestComponent() {
 
   const runSyncTest = async () => {
     const results: typeof testResults = [];
-    
+
     // Тест 1: Добавление события
     results.push({
       test: 'Добавление события',
@@ -289,11 +289,12 @@ function SyncTestComponent() {
         title: `Тест событие ${Date.now()}`,
         description: 'Тестовое событие для проверки синхронизации',
         type: 'training',
-        startTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(), // Через час
-        endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // Через 2 часа
+        startTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        endTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
         trainerId: 'trainer1',
         clientId: 'client1',
-        location: 'Тестовый зал'
+        location: 'Тестовый зал',
+        status: 'scheduled'
       });
 
       results[results.length - 1] = {
@@ -380,11 +381,10 @@ function SyncTestComponent() {
           {testResults.map((result, index) => (
             <div
               key={index}
-              className={`p-3 rounded border-l-4 ${
-                result.status === 'success' ? 'border-green-500 bg-green-50' :
-                result.status === 'error' ? 'border-red-500 bg-red-50' :
-                'border-blue-500 bg-blue-50'
-              }`}
+              className={`p-3 rounded border-l-4 ${result.status === 'success' ? 'border-green-500 bg-green-50' :
+                  result.status === 'error' ? 'border-red-500 bg-red-50' :
+                    'border-blue-500 bg-blue-50'
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="font-medium">{result.test}</span>
@@ -398,8 +398,8 @@ function SyncTestComponent() {
         </div>
       )}
 
-            {/* Дополнительная информация о состоянии */}
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+      {/* Дополнительная информация о состоянии */}
+      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
         <h4 className="font-medium mb-3">Текущее состояние контекстов:</h4>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>

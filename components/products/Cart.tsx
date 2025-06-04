@@ -16,7 +16,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import SafeImage from '@/components/common/SafeImage';
-import { Id } from "@/convex/_generated/dataModel";
 
 const Cart = memo(() => {
   const isHydrated = useHydration();
@@ -56,7 +55,8 @@ const Cart = memo(() => {
     toggleCart();
   };
 
-  const handleRemoveItem = (itemId: Id<"products">, itemName: string) => {
+  // ✅ Change parameter type from Id<"products"> to string
+  const handleRemoveItem = (itemId: string, itemName: string) => {
     removeItem(itemId);
     toast({
       title: "Товар удален",
@@ -64,7 +64,8 @@ const Cart = memo(() => {
     });
   };
 
-  const handleUpdateQuantity = (itemId: Id<"products">, newQuantity: number) => {
+  // ✅ Change parameter type from Id<"products"> to string
+  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
     updateQuantity(itemId, newQuantity);
   };
 

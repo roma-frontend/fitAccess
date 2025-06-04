@@ -2,7 +2,7 @@ import { Id } from "@/convex/_generated/dataModel";
 
 // Тип для элементов платежа в нашей системе
 export interface ShopPaymentItem {
-  productId: Id<"products">;
+  productId: string;
   productName: string;
   quantity: number;
   price: number;

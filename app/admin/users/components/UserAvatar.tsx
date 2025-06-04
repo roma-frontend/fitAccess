@@ -5,7 +5,7 @@ import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface UserAvatarProps {
-  photoUrl?: string;
+  photoUrl?: string | null;
   name: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;

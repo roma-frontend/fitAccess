@@ -53,11 +53,11 @@ const ProductFilters = memo(() => {
     { value: 'merchandise', label: 'Товары', count: products.filter(p => p.category === 'merchandise').length },
   ];
 
-  const sortOptions = [
-    { value: 'name', label: 'По названию' },
-    { value: 'price', label: 'По цене' },
-    { value: 'popular', label: 'По популярности' }, // ИСПРАВЛЕНО: 'popular' вместо 'popularity'
-  ];
+const sortOptions = [
+  { value: 'name', label: 'По названию' },
+  { value: 'price', label: 'По цене' },
+  { value: 'popularity', label: 'По популярности' }, 
+];
 
   return (
     <Card>
