@@ -4,8 +4,6 @@
 import { useWorkoutsQuery, useTodayWorkoutsQuery, useWorkoutQuery, useWorkoutMutations } from './useWorkoutsAPI';
 import type { Workout } from '@/types/trainer';
 
-export type { Workout } from '@/types/trainer';
-
 export function useWorkouts(params?: {
   page?: number;
   limit?: number;
@@ -36,10 +34,10 @@ export function useWorkoutManagement() {
     createWorkout: async (data: {
       trainerId: string;
       userId: string;
-      type: string;
+      type: "personal" | "group" | "cardio" | "strength" | "yoga" | "pilates" | "crossfit";
       duration?: number;
       price?: number;
-      status?: string;
+      status?: "scheduled" | "in-progress" | "completed" | "cancelled" | "missed";
     }): Promise<boolean> => {
       try {
         await mutations.createWorkout(data);

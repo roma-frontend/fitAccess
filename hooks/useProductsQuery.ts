@@ -32,7 +32,10 @@ export function useProductsQuery(params?: ProductsQueryParams) {
   } = useQuery({
     queryKey: ['products', params],
     queryFn: () => fetchProducts(params),
-    staleTime: 5 * 60 * 1000, // 5 минут
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     enabled: true,
   });
 
@@ -75,23 +78,30 @@ export function useProductMutations() {
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<ProductFormData> }) =>
       updateProduct(id, data),
-    onSuccess: (updatedProduct, { id }) => {
+    onSuccess: async (updatedProduct, { id }) => {
       console.log('🔍 Update mutation onSuccess:', { updatedProduct, id });
 
-      // Проверяем, что продукт существует и имеет _id
       if (updatedProduct && updatedProduct._id) {
+        // ✅ Оптимистично обновляем кеш
         queryClient.setQueryData(['products', updatedProduct._id], updatedProduct);
+
+        // ✅ Обновляем список продуктов
         queryClient.setQueryData(['products'], (oldData: Product[] = []) =>
           oldData.map(product =>
             product._id === updatedProduct._id ? updatedProduct : product
           )
         );
+
+        // ✅ Принудительно инвалидируем для гарантии свежести
+        await queryClient.invalidateQueries({
+          queryKey: ['products'],
+          refetchType: 'active'
+        });
+
         console.log('✅ Cache updated successfully');
       } else {
-        console.warn('⚠️ Updated product is null or missing _id, invalidating cache instead');
-        // Если продукт null, просто обновляем весь кеш
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-        queryClient.invalidateQueries({ queryKey: ['products', id] });
+        console.warn('⚠️ Updated product is null, invalidating cache');
+        await queryClient.invalidateQueries({ queryKey: ['products'] });
       }
     },
     onError: (error) => {

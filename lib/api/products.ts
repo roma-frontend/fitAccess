@@ -20,7 +20,10 @@ export async function fetchProducts(params?: {
   sortOrder?: 'asc' | 'desc';
 }): Promise<Product[]> {
   const searchParams = new URLSearchParams();
-  
+
+  // ✅ Добавляем timestamp для обхода кэша
+  searchParams.set('_t', Date.now().toString());
+
   if (params?.page) searchParams.set('page', params.page.toString());
   if (params?.limit) searchParams.set('limit', params.limit.toString());
   if (params?.category && params.category !== 'all') searchParams.set('category', params.category);
@@ -28,14 +31,21 @@ export async function fetchProducts(params?: {
   if (params?.sortBy) searchParams.set('sortBy', params.sortBy);
   if (params?.sortOrder) searchParams.set('sortOrder', params.sortOrder);
 
-  const response = await fetch(`${API_BASE_URL}/products?${searchParams}`);
-  
+  const response = await fetch(`${API_BASE_URL}/products?${searchParams}`, {
+    // ✅ Принудительно обходим кэш
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    }
+  });
+
   if (!response.ok) {
     throw new Error(`Failed to fetch products: ${response.statusText}`);
   }
 
   const result: ApiResponse<Product[]> = await response.json();
-  
+
   if (!result.success) {
     throw new Error(result.message || 'Failed to fetch products');
   }
@@ -45,13 +55,13 @@ export async function fetchProducts(params?: {
 
 export async function fetchProduct(id: string): Promise<Product> {
   const response = await fetch(`${API_BASE_URL}/products/${id}`);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch product: ${response.statusText}`);
   }
 
   const result: ApiResponse<Product> = await response.json();
-  
+
   if (!result.success) {
     throw new Error(result.message || 'Failed to fetch product');
   }
@@ -61,7 +71,7 @@ export async function fetchProduct(id: string): Promise<Product> {
 
 export async function createProduct(data: ProductFormData): Promise<Product> {
   console.log('🔄 API createProduct: отправляем данные:', data);
-  
+
   const response = await fetch(`${API_BASE_URL}/products`, {
     method: 'POST',
     headers: {
@@ -80,7 +90,7 @@ export async function createProduct(data: ProductFormData): Promise<Product> {
 
   const result: ApiResponse<Product> = await response.json();
   console.log('📦 API createProduct: результат:', result);
-  
+
   if (!result.success) {
     console.error('❌ API createProduct: success = false:', result);
     throw new Error(result.message || 'Failed to create product');
@@ -92,7 +102,7 @@ export async function createProduct(data: ProductFormData): Promise<Product> {
 
 export async function updateProduct(id: string, data: Partial<ProductFormData>): Promise<Product> {
   console.log('🔄 API updateProduct: отправляем данные:', { id, data });
-  
+
   const response = await fetch(`${API_BASE_URL}/products/${id}`, {
     method: 'PUT',
     headers: {
@@ -111,7 +121,7 @@ export async function updateProduct(id: string, data: Partial<ProductFormData>):
 
   const result: ApiResponse<Product> = await response.json();
   console.log('📦 API updateProduct: результат:', result);
-  
+
   if (!result.success) {
     console.error('❌ API updateProduct: success = false:', result);
     throw new Error(result.message || 'Failed to update product');
@@ -123,7 +133,7 @@ export async function updateProduct(id: string, data: Partial<ProductFormData>):
 
 export async function deleteProduct(id: string, deleteType: 'soft' | 'hard' = 'soft'): Promise<void> {
   console.log('🔄 API deleteProduct called:', { id, deleteType });
-  
+
   const response = await fetch(`${API_BASE_URL}/products/${id}?type=${deleteType}`, {
     method: 'DELETE',
     headers: {
@@ -141,7 +151,7 @@ export async function deleteProduct(id: string, deleteType: 'soft' | 'hard' = 's
 
   const result: ApiResponse<null> = await response.json();
   console.log('📦 Delete Response data:', result);
-  
+
   if (!result.success) {
     console.error('❌ Delete API returned success: false:', result);
     throw new Error(result.message || 'Failed to delete product');
@@ -151,7 +161,7 @@ export async function deleteProduct(id: string, deleteType: 'soft' | 'hard' = 's
 }
 
 export async function bulkUpdateProducts(
-  ids: string[], 
+  ids: string[],
   updates: Partial<ProductFormData>
 ): Promise<Product[]> {
   const response = await fetch(`${API_BASE_URL}/products/bulk`, {
@@ -167,7 +177,7 @@ export async function bulkUpdateProducts(
   }
 
   const result: ApiResponse<Product[]> = await response.json();
-  
+
   if (!result.success) {
     throw new Error(result.message || 'Failed to bulk update products');
   }
@@ -176,7 +186,7 @@ export async function bulkUpdateProducts(
 }
 
 export async function bulkDeleteProducts(
-  ids: string[], 
+  ids: string[],
   deleteType: 'soft' | 'hard' = 'soft'
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/products/bulk`, {
@@ -192,7 +202,7 @@ export async function bulkDeleteProducts(
   }
 
   const result: ApiResponse<null> = await response.json();
-  
+
   if (!result.success) {
     throw new Error(result.message || 'Failed to bulk delete products');
   }

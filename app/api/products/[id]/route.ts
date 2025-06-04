@@ -3,68 +3,41 @@ import { ConvexHttpClient } from "convex/browser";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    
-    console.log("🔄 API PUT: Обновление продукта:", id);
-    console.log("📦 API PUT: Данные для обновления:", body);
 
     const { _id, createdAt, ...updateData } = body;
 
-    // ✅ Выполняем обновление и получаем результат сразу
+    // ✅ Обновляем продукт
     const updatedProduct = await convex.mutation("products:update", {
       id,
       ...updateData,
       updatedAt: Date.now()
     });
 
-    console.log("✅ API PUT: Результат мутации:", updatedProduct);
-
-    // ✅ Если мутация вернула обновленный продукт, используем его
-    if (updatedProduct) {
-      const response = NextResponse.json({ 
-        success: true, 
-        data: updatedProduct,
-        message: 'Продукт успешно обновлен',
-        timestamp: Date.now()
-      });
-
-      // Добавляем заголовки для принудительного обновления
-      response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      response.headers.set('Pragma', 'no-cache');
-      response.headers.set('Expires', '0');
-      response.headers.set('ETag', `"${Date.now()}"`); // Уникальный ETag
-      
-      return response;
-    }
-
-    // ✅ Если мутация не вернула продукт, получаем его отдельно
-    const freshProduct = await convex.query("products:getById", { id });
-    
-    const response = NextResponse.json({ 
-      success: true, 
-      data: freshProduct,
+    // ✅ Создаем ответ с заголовками против кэширования
+    const response = NextResponse.json({
+      success: true,
+      data: updatedProduct,
       message: 'Продукт успешно обновлен',
       timestamp: Date.now()
     });
 
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // ✅ Заголовки для принудительного обновления
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
     response.headers.set('ETag', `"${Date.now()}"`);
-    
+    response.headers.set('Last-Modified', new Date().toUTCString());
+
     return response;
-    
+
   } catch (error) {
     console.error("❌ API PUT: Ошибка обновления продукта:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Ошибка обновления продукта'
-      },
+      { success: false, error: error instanceof Error ? error.message : 'Ошибка обновления продукта' },
       { status: 500 }
     );
   }
@@ -94,21 +67,21 @@ export async function DELETE(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const deleteType = searchParams.get('type') || 'soft';
-    
+
     console.log(`🔄 API DELETE: ${deleteType === 'hard' ? 'Физическое' : 'Мягкое'} удаление продукта:`, id);
 
     if (deleteType === 'hard') {
       const result = await convex.mutation("products:hardDelete", { id });
-      
+
       console.log("✅ API DELETE: Продукт физически удален:", result);
-      
-      const response = NextResponse.json({ 
-        success: true, 
+
+      const response = NextResponse.json({
+        success: true,
         message: 'Продукт навсегда удален из базы данных',
         data: result,
         timestamp: Date.now()
       });
-      
+
       // Заголовки для предотвращения кэширования
       response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       return response;
@@ -116,14 +89,14 @@ export async function DELETE(
       const result = await convex.mutation("products:softDelete", { id });
 
       console.log("✅ API DELETE: Продукт мягко удален:", result);
-      
-      const response = NextResponse.json({ 
-        success: true, 
+
+      const response = NextResponse.json({
+        success: true,
         message: 'Продукт деактивирован',
         data: result,
         timestamp: Date.now()
       });
-      
+
       // Заголовки для предотвращения кэширования
       response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
       return response;
@@ -131,9 +104,9 @@ export async function DELETE(
   } catch (error) {
     console.error("❌ API DELETE: Ошибка удаления продукта:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Ошибка удаления продукта' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Ошибка удаления продукта'
       },
       { status: 500 }
     );
@@ -146,38 +119,38 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    
+
     console.log("🔄 API GET: Получение продукта:", id);
 
     const result = await convex.query("products:getById", { id });
 
     if (!result) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Продукт не найден' 
+        {
+          success: false,
+          error: 'Продукт не найден'
         },
         { status: 404 }
       );
     }
 
     console.log("✅ API GET: Продукт получен:", result);
-    
-    const response = NextResponse.json({ 
-      success: true, 
+
+    const response = NextResponse.json({
+      success: true,
       data: result,
       timestamp: Date.now()
     });
-    
+
     // Заголовки для предотвращения кэширования
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     return response;
   } catch (error) {
     console.error("❌ API GET: Ошибка получения продукта:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Ошибка получения продукта' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Ошибка получения продукта'
       },
       { status: 500 }
     );

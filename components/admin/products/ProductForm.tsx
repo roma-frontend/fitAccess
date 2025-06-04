@@ -1,6 +1,7 @@
 // components/admin/products/ProductForm.tsx
 "use client";
 
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,6 +40,7 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) {
+  const queryClient = useQueryClient();
   const { createProduct, updateProduct, isCreating, isUpdating, refetch } = useProducts();
   const { upload, isUploading, error: uploadError, clearError } = useCloudinaryUpload();
   const [imagePreview, setImagePreview] = useState<string>('');
@@ -138,67 +140,52 @@ export function ProductForm({ product, onSuccess, onCancel }: ProductFormProps) 
   };
 
   const onSubmit = async (data: ProductFormSchema) => {
-    try {
-      if (isUploading || isSubmitting) {
-        console.log('⏳ ProductForm: Операция уже выполняется...');
-        return;
-      }
-
-      setIsSubmitting(true);
-      setSubmitStatus('saving');
-
-      console.log('📤 ProductForm: Отправляем данные формы:', data);
-
-      // Используем загруженный URL если он есть
-      const finalImageUrl = uploadedImageUrl || data.imageUrl || '';
-
-      // Приводим к типу ProductFormData
-      const formDataToSend: ProductFormData = {
-        ...data,
-        imageUrl: finalImageUrl
-      };
-
-      console.log('📤 ProductForm: Финальные данные для отправки:', formDataToSend);
-
-      let result: Product;
-
-      if (product) {
-        console.log('🔄 ProductForm: Обновляем существующий продукт');
-        result = await updateProduct(product._id, formDataToSend);
-        console.log('✅ ProductForm: Продукт обновлен:', result);
-      } else {
-        console.log('🔄 ProductForm: Создаем новый продукт');
-        result = await createProduct(formDataToSend);
-        console.log('✅ ProductForm: Продукт создан:', result);
-      }
-
-      setSubmitStatus('success');
-
-      // ✅ Принудительно обновляем данные
-      console.log('🔄 Обновляем кеш...');
-      if (refetch) {
-        await refetch();
-      }
-
-      // ✅ Даем время для обновления UI и кеша
-      console.log('⏳ Ждем обновления UI...');
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // ✅ Передаем результат в onSuccess
-      onSuccess(result);
-
-    } catch (error) {
-      console.error('❌ ProductForm: Ошибка отправки формы:', error);
-      setSubmitStatus('error');
-
-      // Показываем ошибку пользователю на 3 секунды, затем сбрасываем
-      setTimeout(() => {
-        setSubmitStatus('idle');
-      }, 3000);
-    } finally {
-      setIsSubmitting(false);
+  try {
+    if (isUploading || isSubmitting) {
+      console.log('⏳ ProductForm: Операция уже выполняется...');
+      return;
     }
-  };
+
+    setIsSubmitting(true);
+    setSubmitStatus('saving');
+
+    const finalImageUrl = uploadedImageUrl || data.imageUrl || '';
+    const formDataToSend: ProductFormData = {
+      ...data,
+      imageUrl: finalImageUrl
+    };
+
+    let result: Product;
+
+    if (product) {
+      result = await updateProduct(product._id, formDataToSend);
+    } else {
+      result = await createProduct(formDataToSend);
+    }
+
+    setSubmitStatus('success');
+
+    // ✅ Принудительно обновляем кеш и ждем завершения
+    await Promise.all([
+      refetch?.(),
+      // Дополнительно инвалидируем кеш React Query
+      queryClient.invalidateQueries({ queryKey: ['products'] }),
+      queryClient.invalidateQueries({ queryKey: ['products', result._id] })
+    ]);
+
+    // ✅ Небольшая задержка для гарантии обновления UI
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    onSuccess(result);
+
+  } catch (error) {
+    console.error('❌ ProductForm: Ошибка отправки формы:', error);
+    setSubmitStatus('error');
+    setTimeout(() => setSubmitStatus('idle'), 3000);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const isLoading = isCreating || isUpdating || isSubmitting;
 

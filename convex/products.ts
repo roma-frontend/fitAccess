@@ -209,6 +209,33 @@ export const create = mutation({
   },
 });
 
+export const getCount = query({
+  handler: async (ctx) => {
+    console.log("🔄 Convex Query: Подсчет количества продуктов");
+
+    try {
+      const allProducts = await ctx.db.query("products").collect();
+      
+      const activeCount = allProducts.filter(p => p.isActive !== false).length;
+      const inactiveCount = allProducts.filter(p => p.isActive === false).length;
+      const totalCount = allProducts.length;
+
+      const result = {
+        total: totalCount,
+        active: activeCount,
+        inactive: inactiveCount,
+        deleted: inactiveCount // alias for inactive
+      };
+
+      console.log("✅ Convex Query: Подсчет завершен:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ Convex Query: Ошибка подсчета:", error);
+      throw error;
+    }
+  },
+});
+
 
 export const update = mutation({
   args: {

@@ -1,4 +1,4 @@
-// types/user.ts (обновленная версия)
+// types/user.ts (complete updated version)
 export type UserRole = 'super-admin' | 'admin' | 'manager' | 'trainer' | 'member' | 'client';
 
 export interface User {
@@ -26,7 +26,6 @@ export interface CreateUserData {
   name: string;
   isActive: boolean;
   photoUrl?: string;
-  // Дополнительные поля для тренеров
   phone?: string;
   bio?: string;
   specializations?: string[];
@@ -49,7 +48,75 @@ export interface UpdateUserData {
   hourlyRate?: number;
 }
 
+// Add the missing UserStats interface
+export interface UserStats {
+  total: number;
+  active: number;
+  inactive: number;
+  byRole: Record<UserRole, number>;
+  newThisMonth: number;
+  newThisWeek: number;
+  lastLoginStats: {
+    today: number;
+    thisWeek: number;
+    thisMonth: number;
+    never: number;
+  };
+  trainerStats?: {
+    totalTrainers: number;
+    activeTrainers: number;
+    averageRating: number;
+    totalSessions: number;
+  };
+}
+
 export interface OperationResult {
   success: boolean;
   error?: string;
+}
+
+// Additional interfaces for better type safety
+export interface UserFilters {
+  role?: UserRole;
+  isActive?: boolean;
+  search?: string;
+  sortBy?: 'name' | 'email' | 'createdAt' | 'lastLogin';
+  sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+export interface UsersPaginationInfo {
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+  hasMore: boolean;
+}
+
+export interface UsersApiResponse {
+  success: boolean;
+  users: User[];
+  stats?: UserStats;
+  pagination?: UsersPaginationInfo;
+  error?: string;
+}
+
+// Bulk action types
+export type BulkAction = 'activate' | 'deactivate' | 'delete' | 'updateRole';
+
+export interface BulkActionRequest {
+  action: BulkAction;
+  userIds: string[];
+  updates?: {
+    role?: UserRole;
+    isActive?: boolean;
+  };
+}
+
+export interface BulkActionResult {
+  success: boolean;
+  processed: number;
+  failed: number;
+  errors?: string[];
 }

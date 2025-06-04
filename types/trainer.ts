@@ -20,6 +20,15 @@ export interface Trainer {
   _creationTime?: number;
 }
 
+export interface TrainerStatsDetailed {
+  total: number;
+  fromTrainersTable: number;
+  fromUsersTable: number;
+  activeTrainers: number;
+  specializations: Record<string, number>;
+  averageRating: number;
+}
+
 export interface Member {
   id: string;
   _id?: string;
@@ -96,26 +105,43 @@ export interface UserBooking {
 
 // Статистические интерфейсы
 export interface TrainerStats {
-  totalTrainers: number;
-  activeTrainers: number;
+  activeClients: number;
+  totalClients: number;
+  activeMembers: number;
+  totalMembers: number;
+  completedWorkouts: number;
   avgRating: number;
-  totalSessions: number;
-  totalRevenue: number;
+  totalTrainers: number;
+  totalUsers: number;
 }
 
 export interface MessageStats {
   unreadMessages: number;
+  todayMessages: number;
   totalMessages: number;
-  urgentMessages: number;
+  messagesByType: {
+    direct: number;
+    group: number;
+    announcement: number;
+    notification: number;
+  };
+  messagesByPriority: {
+    urgent: number;
+    high: number;
+    normal: number;
+    low: number;
+  };
 }
 
 export interface WorkoutStats {
   todayWorkouts: number;
-  completedWorkouts: number;
+  thisWeekWorkouts: number;
   scheduledWorkouts: number;
+  completedWorkouts: number;
   cancelledWorkouts: number;
-  totalRevenue: number;
-  averagePrice: number;
+  totalWorkouts: number;
+  workoutsByType: Record<string, number>;
+  averageDuration: number;
 }
 
 export interface MemberStats {
@@ -124,7 +150,8 @@ export interface MemberStats {
   inactive: number;
   expiringSoon: number;
   newThisMonth: number;
-  retention: number;
+  membershipTypes: Record<string, number>;
+  retention?: number;
 }
 
 export interface ClientStats {
@@ -145,11 +172,13 @@ export interface Message {
   content: string;
   timestamp: number;
   status?: 'sent' | 'delivered' | 'read';
-  priority?: 'normal' | 'urgent';
+  type?: 'direct' | 'group' | 'announcement' | 'notification'; // Add this
+  priority?: 'normal' | 'urgent' | 'high' | 'low'; // Update this
   readAt?: Record<string, number>;
   createdAt?: string;
   _creationTime?: number;
 }
+
 
 // Типы для фильтров и пагинации
 export interface TrainerFilters {
