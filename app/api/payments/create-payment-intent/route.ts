@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',
@@ -12,13 +11,24 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
-    const { items, totalAmount, pickupType, notes, userId } = await request.json();
+    // ✅ Добавляем memberId в деструктуризацию
+    const { 
+      items, 
+      totalAmount, 
+      pickupType, 
+      notes, 
+      userId, 
+      memberId,        // ✅ Добавляем это поле
+      memberEmail, 
+      customerName 
+    } = await request.json();
 
     console.log('💳 Creating payment intent:', {
       totalAmount,
       itemsCount: items?.length,
       pickupType,
       userId,
+      memberId,        // ✅ Добавляем в лог
       items: items?.map((item: any) => ({ 
         productId: item.productId, 
         name: item.productName || item.name 
@@ -46,11 +56,15 @@ export async function POST(request: NextRequest) {
       currency: 'rub',
       metadata: {
         userId: userId || 'anonymous',
+        memberId: memberId || '',           // ✅ Добавляем memberId в metadata
         pickupType,
         itemsCount: items.length.toString(),
         notes: notes || '',
+        email: memberEmail || 'customer@fitaccess.ru',
+        customerName: customerName || 'Покупатель',
       },
       description: `Заказ магазина - ${items.length} товаров`,
+      receipt_email: memberEmail || undefined,
     });
 
     console.log('✅ Payment intent created:', paymentIntent.id);
@@ -78,15 +92,16 @@ export async function POST(request: NextRequest) {
 
     console.log('📦 Prepared items for Convex:', convexItems);
 
-    // Создаем заказ в Convex - ИСПРАВЛЕНО: убрали api.orders.create
+    // ✅ Создаем заказ в Convex с правильными параметрами
     const orderId = await convex.mutation("orders:create", {
-      userId,
+      userId: userId || undefined,         // ✅ Передаем userId или undefined
+      memberId: memberId || undefined,     // ✅ Передаем memberId или undefined
       items: convexItems,
       totalAmount,
       pickupType,
       notes,
       paymentIntentId: paymentIntent.id,
-      paymentMethod: 'stripe',
+      paymentMethod: 'card',
     });
 
     console.log('📦 Order created in Convex:', orderId);

@@ -1,3 +1,4 @@
+// OrderConfirmation.tsx (исправленная версия)
 import React from 'react';
 import { useShopStore } from '@/stores/shopStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ export default function OrderConfirmation() {
   };
 
   const handleBackToShop = () => {
-    resetOrder(); // Сбрасываем все данные заказа
+    resetOrder();
   };
 
   if (!receipt) {
@@ -30,6 +31,10 @@ export default function OrderConfirmation() {
       </div>
     );
   }
+
+  // ✅ Безопасное получение email с fallback
+  const customerEmail = receipt.customer?.email || 'ваш email';
+  const orderId = receipt.orderId || receipt.receiptId || 'неизвестен';
 
   return (
     <div className="max-w-4xl mx-auto p-4">
@@ -84,11 +89,15 @@ export default function OrderConfirmation() {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-gray-600">
-              Ваш заказ #{receipt.orderId} был успешно оплачен и передан в обработку.
+              Ваш заказ #{orderId} был успешно оплачен и передан в обработку.
             </p>
-            <p className="text-sm text-gray-500">
-              Вы получите уведомление на email {receipt.customer.email} когда заказ будет готов к получению.
-            </p>
+            
+            {/* ✅ Условное отображение email */}
+            {customerEmail !== 'ваш email' && (
+              <p className="text-sm text-gray-500">
+                Вы получите уведомление на email {customerEmail} когда заказ будет готов к получению.
+              </p>
+            )}
             
             {/* Информация о получении */}
             <div className="bg-blue-50 p-4 rounded-lg mt-4">

@@ -22,22 +22,34 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       success: true,
       data: updatedProduct,
       message: 'Продукт успешно обновлен',
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      // Добавляем версию для принудительного обновления
+      version: `${Date.now()}-${Math.random()}`
     });
 
-    // ✅ Заголовки для принудительного обновления
-    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+    // ✅ Усиленные заголовки против кэширования
+    response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0, s-maxage=0');
     response.headers.set('Pragma', 'no-cache');
     response.headers.set('Expires', '0');
-    response.headers.set('ETag', `"${Date.now()}"`);
+    response.headers.set('ETag', `"${Date.now()}-${Math.random()}"`);
     response.headers.set('Last-Modified', new Date().toUTCString());
+    response.headers.set('Vary', '*');
+    
+    // Добавляем CORS заголовки
+    response.headers.set('Access-Control-Allow-Origin', '*');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     return response;
 
   } catch (error) {
     console.error("❌ API PUT: Ошибка обновления продукта:", error);
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Ошибка обновления продукта' },
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Ошибка обновления продукта',
+        timestamp: Date.now()
+      },
       { status: 500 }
     );
   }

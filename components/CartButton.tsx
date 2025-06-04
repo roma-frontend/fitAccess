@@ -16,7 +16,7 @@ const CartButton = memo(() => {
     return (
       <Button 
         variant="outline" 
-        className="relative"
+        className="relative bg-white/90 backdrop-blur-sm border-white/20 text-gray-700 hover:bg-white"
         aria-label="Корзина (загрузка...)"
         disabled
       >
@@ -38,7 +38,11 @@ const CartButton = memo(() => {
     <Button
       variant="outline"
       onClick={toggleCart}
-      className="relative"
+      className={`relative transition-all duration-200 ${
+        hasItems 
+          ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700 shadow-lg' 
+          : 'bg-white/90 backdrop-blur-sm border-white/20 text-gray-700 hover:bg-white'
+      }`}
       aria-label={
         hasItems 
           ? `Открыть корзину с ${totalItems} товарами`
@@ -50,7 +54,7 @@ const CartButton = memo(() => {
       {hasItems && (
         <Badge 
           variant="destructive" 
-          className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0 flex items-center justify-center text-xs"
+          className="absolute -top-2 -right-2 w-6 h-6 rounded-full p-0 flex items-center justify-center text-xs bg-red-500 border-2 border-white animate-pulse"
           aria-label={`Количество товаров в корзине: ${totalItems}`}
         >
           {totalItems > 99 ? '99+' : totalItems}
@@ -70,4 +74,3 @@ const CartButton = memo(() => {
 CartButton.displayName = 'CartButton';
 
 export default CartButton;
-

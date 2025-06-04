@@ -22,8 +22,6 @@ interface ProductsQueryParams {
 
 // Хук для получения списка продуктов
 export function useProductsQuery(params?: ProductsQueryParams) {
-  const queryClient = useQueryClient();
-
   const {
     data: products = [],
     isLoading,
@@ -32,10 +30,11 @@ export function useProductsQuery(params?: ProductsQueryParams) {
   } = useQuery({
     queryKey: ['products', params],
     queryFn: () => fetchProducts(params),
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 0, // Данные сразу устаревают
+    gcTime: 0, // Не кэшируем
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     enabled: true,
   });
 
@@ -53,7 +52,7 @@ export function useProductQuery(id: string, options?: Partial<UseQueryOptions<Pr
     queryKey: ['products', id],
     queryFn: () => fetchProduct(id),
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0, // Убираем кэширование для отдельных продуктов
     ...options
   });
 }
@@ -61,6 +60,62 @@ export function useProductQuery(id: string, options?: Partial<UseQueryOptions<Pr
 export function useProductMutations() {
   const queryClient = useQueryClient();
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<ProductFormData> }) =>
+      updateProduct(id, data),
+    onMutate: async ({ id, data }) => {
+      // Отменяем исходящие запросы
+      await queryClient.cancelQueries({ queryKey: ['products'] });
+      
+      // Получаем предыдущие данные для отката
+      const previousProducts = queryClient.getQueryData(['products']);
+      
+      // Оптимистично обновляем UI
+      queryClient.setQueryData(['products'], (old: Product[] = []) =>
+        old.map(product =>
+          product._id === id ? { ...product, ...data } : product
+        )
+      );
+      
+      return { previousProducts };
+    },
+    onSuccess: async (updatedProduct, { id }) => {
+      console.log('🔍 Update mutation onSuccess:', { updatedProduct, id });
+
+      if (updatedProduct && updatedProduct._id) {
+        // Обновляем кеш конкретного продукта
+        queryClient.setQueryData(['products', updatedProduct._id], updatedProduct);
+
+        // Обновляем список продуктов
+        queryClient.setQueryData(['products'], (oldData: Product[] = []) =>
+          oldData.map(product =>
+            product._id === updatedProduct._id ? updatedProduct : product
+          )
+        );
+
+        // Принудительно инвалидируем и рефетчим
+        await queryClient.invalidateQueries({
+          queryKey: ['products'],
+          refetchType: 'active'
+        });
+
+        console.log('✅ Cache updated successfully');
+      }
+    },
+    onError: (error, variables, context) => {
+      // Откатываем изменения при ошибке
+      if (context?.previousProducts) {
+        queryClient.setQueryData(['products'], context.previousProducts);
+      }
+      console.error('Failed to update product:', error);
+    },
+    onSettled: () => {
+      // Всегда инвалидируем после завершения
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    }
+  });
+
+  // Остальные мутации остаются без изменений...
   const createMutation = useMutation({
     mutationFn: createProduct,
     onSuccess: (newProduct) => {
@@ -75,68 +130,27 @@ export function useProductMutations() {
     }
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<ProductFormData> }) =>
-      updateProduct(id, data),
-    onSuccess: async (updatedProduct, { id }) => {
-      console.log('🔍 Update mutation onSuccess:', { updatedProduct, id });
-
-      if (updatedProduct && updatedProduct._id) {
-        // ✅ Оптимистично обновляем кеш
-        queryClient.setQueryData(['products', updatedProduct._id], updatedProduct);
-
-        // ✅ Обновляем список продуктов
-        queryClient.setQueryData(['products'], (oldData: Product[] = []) =>
-          oldData.map(product =>
-            product._id === updatedProduct._id ? updatedProduct : product
-          )
-        );
-
-        // ✅ Принудительно инвалидируем для гарантии свежести
-        await queryClient.invalidateQueries({
-          queryKey: ['products'],
-          refetchType: 'active'
-        });
-
-        console.log('✅ Cache updated successfully');
-      } else {
-        console.warn('⚠️ Updated product is null, invalidating cache');
-        await queryClient.invalidateQueries({ queryKey: ['products'] });
-      }
-    },
-    onError: (error) => {
-      console.error('Failed to update product:', error);
-    }
-  });
-
-
   const deleteMutation = useMutation({
     mutationFn: ({ id, deleteType }: { id: string; deleteType?: 'soft' | 'hard' }) =>
       deleteProduct(id, deleteType),
     onSuccess: (_, { id, deleteType }) => {
       console.log('🔍 Delete mutation onSuccess:', { id, deleteType });
 
-      // Удаляем из кеша конкретного продукта
       queryClient.removeQueries({ queryKey: ['products', id] });
 
-      // Обновляем список продуктов в зависимости от типа удаления
       if (deleteType === 'hard') {
-        // При жестком удалении убираем из всех списков
         queryClient.setQueryData(['products'], (oldData: Product[] = []) => {
           if (!oldData) return [];
           return oldData.filter(product => product._id !== id);
         });
       } else {
-        // При мягком удалении обновляем статус или убираем из активных
         queryClient.setQueryData(['products'], (oldData: Product[] = []) => {
           if (!oldData) return [];
           return oldData.filter(product => product._id !== id);
         });
       }
 
-      // Дополнительно инвалидируем все связанные запросы
       queryClient.invalidateQueries({ queryKey: ['products'] });
-
       console.log('✅ Delete cache updated successfully');
     },
     onError: (error) => {
@@ -157,6 +171,7 @@ export function useProductMutations() {
           return updated || product;
         })
       );
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (error) => {
       console.error('Failed to bulk update products:', error);
@@ -173,6 +188,7 @@ export function useProductMutations() {
       queryClient.setQueryData(['products'], (oldData: Product[] = []) =>
         oldData.filter(product => !ids.includes(product._id))
       );
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (error) => {
       console.error('Failed to bulk delete products:', error);

@@ -329,13 +329,12 @@ export function getCategoryDisplayName(category: string): string {
   return names[category] || category;
 }
 
-export function formatProductPrice(price: number): string {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: 'RUB',
-    minimumFractionDigits: 0
-  }).format(price);
-}
+export const formatProductPrice = (price: number | undefined | null): string => {
+  if (typeof price !== 'number' || isNaN(price)) {
+    return '0 ₽';
+  }
+  return `${price.toLocaleString('ru-RU')} ₽`;
+};
 
 export function getStockStatus(product: ShopProduct): 'in_stock' | 'low_stock' | 'out_of_stock' {
   if (product.inStock === 0) return 'out_of_stock';

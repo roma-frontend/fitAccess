@@ -148,7 +148,7 @@ export default function MemberHeader({
             <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
               <div 
                 className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group min-w-0"
-                onClick={() => router.push('/member-dashboard')}
+                onClick={() => router.push('/')}
               >
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 shadow-lg flex-shrink-0">
                   <Dumbbell className="h-4 w-4 sm:h-6 sm:w-6 text-white" />

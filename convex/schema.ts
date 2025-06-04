@@ -42,7 +42,7 @@ export default defineSchema({
   messages: defineTable({
     type: v.union(
       v.literal("direct"),
-      v.literal("group"), 
+      v.literal("group"),
       v.literal("announcement"),
       v.literal("notification")
     ),
@@ -182,34 +182,55 @@ export default defineSchema({
     .index("creator_type", ["createdBy", "type"]),
 
   notifications: defineTable({
-    userId: v.id("users"),
+    // Убираем userId, оставляем только recipientId
+    recipientId: v.string(),
+    recipientType: v.union(
+      v.literal("user"),
+      v.literal("member"),
+      v.literal("trainer"),
+      v.literal("admin")
+    ),
+
     type: v.union(
       v.literal("system"),
       v.literal("reminder"),
       v.literal("alert"),
-      v.literal("info")
+      v.literal("info"),
+      v.literal("order"),
+      v.literal("payment"),
     ),
+
     title: v.string(),
     message: v.string(),
     isRead: v.boolean(),
+
     priority: v.union(
       v.literal("low"),
       v.literal("normal"),
       v.literal("high"),
       v.literal("urgent")
     ),
+
     actionUrl: v.optional(v.string()),
+    relatedId: v.optional(v.string()),
+    isImportant: v.optional(v.boolean()),
+
+    createdAt: v.number(),
+    readAt: v.optional(v.number()),
+
     metadata: v.optional(v.object({
       sourceId: v.optional(v.string()),
       sourceType: v.optional(v.string()),
       data: v.optional(v.any()),
     })),
   })
-    .index("by_user", ["userId"])
-    .index("by_read", ["isRead"])
+    .index("by_recipient", ["recipientId"])
     .index("by_type", ["type"])
-    .index("user_read", ["userId", "isRead"])
-    .index("user_type", ["userId", "type"]),
+    .index("by_read", ["isRead"])
+    .index("by_created", ["createdAt"])
+    .index("recipient_read", ["recipientId", "isRead"])
+    .index("recipient_type", ["recipientId", "type"])
+    .index("type_created", ["type", "createdAt"]),
 
   products: defineTable({
     name: v.string(),
@@ -248,7 +269,7 @@ export default defineSchema({
     // Основная информация о заказе
     userId: v.optional(v.string()),
     memberId: v.optional(v.string()),
-    
+
     // Товары в заказе - делаем productId гибким
     items: v.array(v.object({
       productId: v.union(v.id("products"), v.string()), // Поддерживаем оба типа
@@ -257,14 +278,14 @@ export default defineSchema({
       price: v.number(),
       totalPrice: v.number(),
     })),
-    
+
     // Финансовая информация
     totalAmount: v.number(),
-    
+
     // Информация о доставке/получении
     pickupType: v.string(),
     notes: v.optional(v.string()),
-    
+
     // Статусы
     status: v.union(
       v.literal("pending"),
@@ -280,12 +301,12 @@ export default defineSchema({
       v.literal("failed"),
       v.literal("refunded")
     ),
-    
+
     // Платежная информация
     paymentIntentId: v.optional(v.string()),
     paymentId: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
-    
+
     // Временные метки
     orderTime: v.number(),
     estimatedReadyTime: v.optional(v.number()),

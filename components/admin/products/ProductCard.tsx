@@ -60,13 +60,20 @@ export const ProductCard = memo(function ProductCard({
 
   const stockStatus = getStockStatus();
 
+  // Добавляем key для принудительного ререндера при изменении данных
+  const cardKey = `${product._id}-${product.updatedAt || product.createdAt}`;
+
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+    <Card 
+      key={cardKey}
+      className="group hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1"
+    >
       <div className="relative">
         {/* Изображение */}
         <div className="h-48 w-full overflow-hidden rounded-t-lg bg-gray-100">
           {product.imageUrl ? (
             <LazyImage
+              key={`${product._id}-image-${product.updatedAt || product.createdAt}`}
               src={product.imageUrl}
               alt={product.name}
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"

@@ -1,15 +1,45 @@
-import React, { memo } from 'react';
-import { useShopData } from '@/hooks/useShopData';
+// Обновите ProductGrid.tsx
+import React, { memo, useEffect } from 'react';
+import { useShopProductsAPI } from '@/hooks/useShopProductsAPI';
 import { useProductsStore } from '@/stores/productsStore';
 import ProductCard from './ProductCard';
 import { Loader2, Package, AlertCircle } from 'lucide-react';
 
 const ProductGrid = memo(() => {
-  const shopData = useShopData();
-  const { filteredProducts, loading, error } = useProductsStore();
+  // Получаем данные из API
+  const { products: apiProducts, loading: apiLoading, error: apiError } = useShopProductsAPI();
+  
+  // Получаем состояние из store
+  const { 
+    filteredProducts, 
+    loading: storeLoading, 
+    error: storeError,
+    setProducts,
+    setLoading,
+    setError 
+  } = useProductsStore();
 
-  // Показываем загрузку
-  if (shopData.loading || loading) {
+  // Синхронизируем API данные со store
+  useEffect(() => {
+    setLoading(apiLoading);
+  }, [apiLoading, setLoading]);
+
+  useEffect(() => {
+    setError(apiError);
+  }, [apiError, setError]);
+
+  useEffect(() => {
+    if (apiProducts && apiProducts.length > 0) {
+      console.log('🔄 ProductGrid: Обновляем store с продуктами:', apiProducts.length);
+      setProducts(apiProducts);
+    }
+  }, [apiProducts, setProducts]);
+
+  const loading = apiLoading || storeLoading;
+  const error = apiError || storeError;
+
+  // Остальная логика остается той же...
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -20,7 +50,6 @@ const ProductGrid = memo(() => {
     );
   }
 
-  // Показываем ошибку
   if (error) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -33,7 +62,6 @@ const ProductGrid = memo(() => {
     );
   }
 
-  // Показываем пустое состояние
   if (filteredProducts.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -50,7 +78,6 @@ const ProductGrid = memo(() => {
     );
   }
 
-  // Показываем сетку продуктов
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {filteredProducts.map((product) => (
@@ -61,5 +88,4 @@ const ProductGrid = memo(() => {
 });
 
 ProductGrid.displayName = 'ProductGrid';
-
 export default ProductGrid;

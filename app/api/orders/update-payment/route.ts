@@ -8,22 +8,16 @@ export async function POST(request: NextRequest) {
   try {
     const { paymentIntentId, status, paymentStatus, paymentId, paidAt } = await request.json();
 
-    console.log('🔄 Updating order payment status:', { paymentIntentId, status, paymentStatus });
-
-    // Получаем заказ - ИСПРАВЛЕНО: используем строковый идентификатор
-    const order = await convex.query("orders:getByPaymentIntentId", { 
-      paymentIntentId 
+    console.log('💳 Updating order payment status:', {
+      paymentIntentId,
+      status,
+      paymentStatus,
+      paymentId,
+      paidAt
     });
 
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Заказ не найден' },
-        { status: 404 }
-      );
-    }
-
-    // Обновляем заказ - ИСПРАВЛЕНО: используем строковый идентификатор
-    await convex.mutation("orders:updateByPaymentIntentId", {
+    // Обновляем заказ в Convex
+    const updatedOrder = await convex.mutation("orders:updatePaymentStatus", {
       paymentIntentId,
       status,
       paymentStatus,
@@ -31,11 +25,11 @@ export async function POST(request: NextRequest) {
       paidAt,
     });
 
-    console.log('✅ Order updated successfully');
+    console.log('✅ Order updated:', updatedOrder._id);
 
     return NextResponse.json({
       success: true,
-      order,
+      order: updatedOrder,
     });
 
   } catch (error) {
@@ -43,6 +37,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(
       { 
+        success: false,
         error: error instanceof Error ? error.message : 'Ошибка обновления заказа'
       },
       { status: 500 }

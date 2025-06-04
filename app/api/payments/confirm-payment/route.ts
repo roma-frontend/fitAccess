@@ -1,4 +1,4 @@
-// app/api/payments/confirm-payment/route.ts (альтернативная версия)
+// app/api/payments/confirm-payment/route.ts (исправленная версия)
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -40,7 +40,23 @@ export async function POST(request: NextRequest) {
 
     const { order } = await updateResponse.json();
 
-    // Формируем чек
+    // ✅ Безопасное получение email с множественными fallback
+    const customerEmail = paymentIntent.receipt_email || 
+                         paymentIntent.metadata?.email ||
+                         order.customerEmail ||
+                         order.memberEmail ||
+                         'customer@fitaccess.ru'; // Более подходящий fallback
+
+    // ✅ Безопасное получение имени
+    const customerName = paymentIntent.metadata?.customerName ||
+                        order.customerName ||
+                        order.memberName ||
+                        'Покупатель';
+
+    // ✅ Безопасное получение userId
+    const userId = order.userId || order.memberId || 'anonymous';
+
+    // Формируем чек с безопасными данными
     const receipt = {
       receiptId: `RCP-${Date.now()}`,
       orderId: order._id,
@@ -49,18 +65,18 @@ export async function POST(request: NextRequest) {
       currency: paymentIntent.currency.toUpperCase(),
       paidAt: new Date().toISOString(),
       customer: {
-        email: paymentIntent.receipt_email || 'customer@example.com',
-        name: 'Покупатель',
-        userId: order.userId,
+        email: customerEmail, // ✅ Гарантированно не null
+        name: customerName,   // ✅ Гарантированно не null
+        userId: userId,       // ✅ Гарантированно не null
       },
       items: order.items?.map((item: any) => ({
-        name: item.productName,
-        quantity: item.quantity,
-        price: item.price,
-        total: item.totalPrice,
+        name: item.productName || 'Товар',
+        quantity: item.quantity || 1,
+        price: item.price || 0,
+        total: item.totalPrice || 0,
       })) || [],
-      pickupType: order.pickupType,
-      notes: order.notes,
+      pickupType: order.pickupType || 'pickup',
+      notes: order.notes || '',
       company: {
         name: 'FitAccess',
         address: 'г. Москва, ул. Примерная, д. 1',
@@ -71,6 +87,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('📧 Receipt generated:', receipt.receiptId);
+    console.log('👤 Customer data:', receipt.customer); // ✅ Добавляем отладку
 
     return NextResponse.json({
       success: true,
