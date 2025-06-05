@@ -1,4 +1,4 @@
-// components/admin/PasswordResetManagement.tsx
+// components/admin/PasswordResetManagement.tsx (исправленная версия)
 "use client";
 
 import { useState, useEffect } from "react";
@@ -25,16 +25,18 @@ export function PasswordResetManagement() {
   >("logs");
   const [isClient, setIsClient] = useState(false);
   
+  // ВСЕГДА вызываем хук, независимо от условий
+  const { cleanup, isLoading } = usePasswordResetCleanup();
+  
   // Проверяем, что компонент загружен на клиенте
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Используем хук только после гидрации
-  const cleanupHook = isClient ? usePasswordResetCleanup() : { cleanup: async () => {}, isLoading: false };
-  const { cleanup, isLoading } = cleanupHook;
-
   const handleCleanup = async () => {
+    // Проверяем isClient перед выполнением действия, а не перед вызовом хука
+    if (!isClient) return;
+    
     try {
       await cleanup();
     } catch (error) {
@@ -200,7 +202,7 @@ export function PasswordResetManagement() {
                 </div>
                 <Button
                   onClick={handleCleanup}
-                  disabled={isLoading}
+                  disabled={isLoading || !isClient}
                   variant="outline"
                 >
                   {isLoading ? (
@@ -219,7 +221,7 @@ export function PasswordResetManagement() {
             </CardContent>
           </Card>
 
-          {/* Остальные настройки остаются без изменений */}
+          {/* Параметры безопасности */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -278,7 +280,7 @@ export function PasswordResetManagement() {
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
                       <span className="font-mono">
-                        {typeof window !== 'undefined' ? 'client' : process.env.NODE_ENV}
+                        {typeof window !== 'undefined' ? 'client' : 'server'}
                       </span>
                     </div>
                   </div>

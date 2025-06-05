@@ -1,9 +1,7 @@
-// components/admin/PasswordResetLogs.tsx (исправленная версия с типами)
+// components/admin/PasswordResetLogs.tsx (версия без прямой зависимости от Convex)
 "use client";
 
-import { useState, useEffect, JSX } from "react";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "@/convex/_generated/api";
+import { useState, useEffect, useMemo, JSX } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +23,10 @@ import {
   Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery } from "convex/react";
-import { Id } from "@/convex/_generated/dataModel";
 
 // Типы
 interface PasswordResetLog {
-  _id: Id<"passwordResetLogs">;
+  _id: string;
   _creationTime: number;
   userId: string;
   userType: "staff" | "member";
@@ -50,23 +46,16 @@ export function PasswordResetLogs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [limit, setLimit] = useState(50);
   const [dateRange, setDateRange] = useState<DateRangeFilter>("all");
+  const [logs, setLogs] = useState<PasswordResetLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const { toast } = useToast();
 
-  // ИСПРАВЛЕНО: Правильное использование useQuery
-  const logsData = useQuery(api.auth.getPasswordResetLogs, {
-    limit,
-    userType: userTypeFilter === "all" ? undefined : userTypeFilter,
-  });
-
-  // Обработка состояния загрузки и данных
-  const isLoading = logsData === undefined;
-  const logs: PasswordResetLog[] = logsData || [];
-
-  // Тестовые данные с правильными типами
-  const mockLogs: PasswordResetLog[] = [
+  // Тестовые данные
+  const mockLogs: PasswordResetLog[] = useMemo(() => [
     {
-      _id: "1" as Id<"passwordResetLogs">,
+      _id: "1",
       _creationTime: Date.now() - 1000 * 60 * 30,
       userId: "user1",
       userType: "member",
@@ -76,7 +65,7 @@ export function PasswordResetLogs() {
       details: "Запрос восстановления пароля",
     },
     {
-      _id: "2" as Id<"passwordResetLogs">,
+      _id: "2",
       _creationTime: Date.now() - 1000 * 60 * 60,
       userId: "user2",
       userType: "staff",
@@ -86,7 +75,7 @@ export function PasswordResetLogs() {
       details: "Пароль успешно изменен",
     },
     {
-      _id: "3" as Id<"passwordResetLogs">,
+      _id: "3",
       _creationTime: Date.now() - 1000 * 60 * 90,
       userId: "user3",
       userType: "member",
@@ -96,7 +85,7 @@ export function PasswordResetLogs() {
       details: "Пользователь не найден",
     },
     {
-      _id: "4" as Id<"passwordResetLogs">,
+      _id: "4",
       _creationTime: Date.now() - 1000 * 60 * 120,
       userId: "user4",
       userType: "staff",
@@ -106,7 +95,7 @@ export function PasswordResetLogs() {
       details: "Токен истек",
     },
     {
-      _id: "5" as Id<"passwordResetLogs">,
+      _id: "5",
       _creationTime: Date.now() - 1000 * 60 * 15,
       userId: "user5",
       userType: "member",
@@ -115,74 +104,105 @@ export function PasswordResetLogs() {
       timestamp: Date.now() - 1000 * 60 * 15,
       details: "Новый запрос восстановления",
     },
-  ];
+  ], []);
 
-  // Используем реальные данные или тестовые как fallback
-  const displayLogs: PasswordResetLog[] = logs.length > 0 ? logs : mockLogs;
+  // Загрузка данных через API
+  const fetchLogs = async () => {
+    setIsLoading(true);
+    setError(null);
 
-  // Показываем уведомление о тестовых данных
-  useEffect(() => {
-    if (!isLoading && logs.length === 0) {
-      console.log("Нет данных из Convex, используются тестовые данные");
+    try {
+      const response = await fetch('/api/admin/password-reset-logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          limit,
+          userType: userTypeFilter === "all" ? undefined : userTypeFilter,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setLogs(data.logs || []);
+      } else {
+        // Если API недоступно, используем тестовые данные
+        console.warn('API недоступно, используются тестовые данные');
+        setLogs(mockLogs);
+      }
+    } catch (error) {
+      console.warn('Ошибка загрузки данных, используются тестовые данные:', error);
+      setLogs(mockLogs);
+      setError('Используются демо-данные');
+    } finally {
+      setIsLoading(false);
     }
-  }, [isLoading, logs.length]);
+  };
 
-  // ИСПРАВЛЕНО: Фильтрация логов с правильной типизацией
-  const filteredLogs = displayLogs
-    .filter((log: PasswordResetLog) => {
-      if (actionFilter !== "all" && log.action !== actionFilter) return false;
-      if (
-        searchTerm &&
-        !log.email.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-        return false;
+  // Загружаем данные при монтировании и изменении фильтров
+  useEffect(() => {
+    fetchLogs();
+  }, [limit, userTypeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-      if (dateRange !== "all") {
-        const now = Date.now();
-        let cutoffTime = 0;
+  // Фильтрация логов
+  const filteredLogs = useMemo(() => {
+    return logs
+      .filter((log: PasswordResetLog) => {
+        if (actionFilter !== "all" && log.action !== actionFilter) return false;
+        if (
+          searchTerm &&
+          !log.email.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+          return false;
 
-        switch (dateRange) {
-          case "today":
-            cutoffTime = now - 24 * 60 * 60 * 1000;
-            break;
-          case "week":
-            cutoffTime = now - 7 * 24 * 60 * 60 * 1000;
-            break;
-          case "month":
-            cutoffTime = now - 30 * 24 * 60 * 60 * 1000;
-            break;
+        if (dateRange !== "all") {
+          const now = Date.now();
+          let cutoffTime = 0;
+
+          switch (dateRange) {
+            case "today":
+              cutoffTime = now - 24 * 60 * 60 * 1000;
+              break;
+            case "week":
+              cutoffTime = now - 7 * 24 * 60 * 60 * 1000;
+              break;
+            case "month":
+              cutoffTime = now - 30 * 24 * 60 * 60 * 1000;
+              break;
+          }
+
+          if (log.timestamp <= cutoffTime) return false;
         }
 
-        if (log.timestamp <= cutoffTime) return false;
-      }
-
-      return true;
-    })
-    .sort((a: PasswordResetLog, b: PasswordResetLog) => b.timestamp - a.timestamp);
-
-  const cleanupMutation = useMutation(api.auth.cleanupExpiredTokens);
+        return true;
+      })
+      .sort((a: PasswordResetLog, b: PasswordResetLog) => b.timestamp - a.timestamp);
+  }, [logs, actionFilter, searchTerm, dateRange]);
 
   const handleCleanup = async (): Promise<void> => {
     try {
-      const result = await cleanupMutation({});
+      const response = await fetch('/api/admin/cleanup-expired-tokens', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      if (result && typeof result === 'object' && 'success' in result) {
-        if (result.success) {
-          toast({
-            title: "Очистка завершена",
-            description: result.message || "Истекшие токены удалены",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Ошибка очистки",
-            description: result.error || "Произошла ошибка при очистке",
-          });
-        }
-      } else {
+      const result = await response.json();
+
+      if (response.ok) {
         toast({
           title: "Очистка завершена",
-          description: "Операция выполнена успешно",
+          description: result.message || "Истекшие токены удалены",
+        });
+        // Перезагружаем данные
+        fetchLogs();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Ошибка очистки",
+          description: result.error || "Произошла ошибка при очистке",
         });
       }
     } catch (error) {
@@ -195,27 +215,7 @@ export function PasswordResetLogs() {
     }
   };
 
-  // Альтернативный способ загрузки данных через HTTP клиент
-  const fetchLogsViaHttp = async (): Promise<PasswordResetLog[] | null> => {
-    try {
-      const convex = new ConvexHttpClient(
-        process.env.NEXT_PUBLIC_CONVEX_URL!
-      );
-      
-      // Используем query метод HTTP клиента
-      const result = useQuery(api.auth.getPasswordResetLogs, {
-        limit,
-        userType: userTypeFilter === "all" ? undefined : userTypeFilter,
-      });
-      
-      return result as PasswordResetLog[];
-    } catch (error) {
-      console.error("Ошибка HTTP запроса:", error);
-      return null;
-    }
-  };
-
-  // Вспомогательные функции с правильной типизацией
+  // Вспомогательные функции
   const formatTimestamp = (timestamp: number): string => {
     return new Date(timestamp).toLocaleString("ru-RU");
   };
@@ -335,8 +335,8 @@ export function PasswordResetLogs() {
     });
   };
 
-  // Статистика с правильной типизацией
-  const stats = {
+  // Статистика
+  const stats = useMemo(() => ({
     total: filteredLogs.length,
     requested: filteredLogs.filter((log: PasswordResetLog) => log.action === "requested").length,
     completed: filteredLogs.filter((log: PasswordResetLog) => log.action === "completed").length,
@@ -344,17 +344,37 @@ export function PasswordResetLogs() {
     expired: filteredLogs.filter((log: PasswordResetLog) => log.action === "expired").length,
     staff: filteredLogs.filter((log: PasswordResetLog) => log.userType === "staff").length,
     members: filteredLogs.filter((log: PasswordResetLog) => log.userType === "member").length,
-  };
+  }), [filteredLogs]);
 
-  const hasFilters: boolean =
+  const hasFilters: boolean = useMemo(() =>
     userTypeFilter !== "all" ||
     actionFilter !== "all" ||
     searchTerm !== "" ||
-    dateRange !== "all";
+    dateRange !== "all",
+    [userTypeFilter, actionFilter, searchTerm, dateRange]
+  );
 
-  // JSX остается тем же, но с правильной типизацией в map функциях
   return (
     <div className="space-y-6">
+      {/* Статус подключения */}
+      {error && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <div>
+                <p className="text-sm font-medium text-yellow-900">
+                  Демо режим
+                </p>
+                <p className="text-xs text-yellow-700">
+                  {error}. Отображаются тестовые данные.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Статистические карточки */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
@@ -374,7 +394,7 @@ export function PasswordResetLogs() {
           </CardContent>
         </Card>
 
-                <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
+        <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-green-200 rounded-lg">
@@ -441,6 +461,11 @@ export function PasswordResetLogs() {
             </CardTitle>
 
             <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={() => fetchLogs()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Обновить
+              </Button>
+
               <Button variant="outline" size="sm" onClick={handleCleanup}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Очистить истекшие
@@ -535,7 +560,7 @@ export function PasswordResetLogs() {
               <div className="flex items-center space-x-2">
                 <Filter className="h-4 w-4 text-blue-600" />
                 <span className="text-sm text-blue-800">
-                  Показано {stats.total} из {displayLogs.length} записей
+                  Показано {stats.total} из {logs.length} записей
                 </span>
               </div>
               <Button
@@ -726,7 +751,7 @@ export function PasswordResetLogs() {
               <span className="text-sm">Синий - запрос отправлен</span>
             </div>
             <div className="flex items-center space-x-2">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-green-600" />
               <span className="text-sm">Зеленый - пароль изменен</span>
             </div>
             <div className="flex items-center space-x-2">
@@ -874,16 +899,16 @@ export function PasswordResetLogs() {
 
       {/* Статус подключения */}
       <Card
-        className={`${logs.length > 0 ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}`}
+        className={`${!error ? "bg-green-50 border-green-200" : "bg-yellow-50 border-yellow-200"}`}
       >
         <CardContent className="p-4">
           <div className="flex items-center space-x-2">
-            {logs.length > 0 ? (
+            {!error ? (
               <>
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <div>
                   <p className="text-sm font-medium text-green-900">
-                    Подключение к Convex активно
+                    API подключение активно
                   </p>
                   <p className="text-xs text-green-700">
                     Данные загружены успешно. Последнее обновление:{" "}
@@ -896,11 +921,10 @@ export function PasswordResetLogs() {
                 <AlertTriangle className="h-4 w-4 text-yellow-600" />
                 <div>
                   <p className="text-sm font-medium text-yellow-900">
-                    Тестовый режим
+                    Демо режим
                   </p>
                   <p className="text-xs text-yellow-700">
-                    Отображаются демо-данные. Проверьте настройки Convex для
-                    получения реальных данных.
+                    API недоступно. Отображаются тестовые данные для демонстрации функциональности.
                   </p>
                 </div>
               </>
@@ -911,5 +935,4 @@ export function PasswordResetLogs() {
     </div>
   );
 }
-
 
