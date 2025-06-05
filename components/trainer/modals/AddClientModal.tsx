@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useTrainer, Client } from '@/contexts/TrainerContext';
+import { useTrainer, type Client } from '@/contexts/TrainerContext';
 import {
   Dialog,
   DialogContent,
@@ -49,8 +49,12 @@ export default function AddClientModal({ isOpen, onClose }: AddClientModalProps)
         progress: 0,
       };
 
-      addClient(clientData);
-      handleClose();
+      const success = await addClient(clientData);
+      if (success) {
+        handleClose();
+      } else {
+        console.error('Не удалось добавить клиента');
+      }
     } catch (error) {
       console.error('Ошибка добавления клиента:', error);
     } finally {

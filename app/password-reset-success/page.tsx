@@ -1,13 +1,14 @@
 // app/password-reset-success/page.tsx
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, ArrowRight } from 'lucide-react';
+import { CheckCircle, ArrowRight, Loader2 } from 'lucide-react';
 
-export default function PasswordResetSuccessPage() {
+// Компонент с логикой, который использует useSearchParams
+function PasswordResetSuccessContent() {
   const [countdown, setCountdown] = useState(5);
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -89,5 +90,28 @@ export default function PasswordResetSuccessPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+// Компонент загрузки
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="text-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-green-600" />
+          <p className="text-gray-600">Загрузка...</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Основной компонент страницы
+export default function PasswordResetSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <PasswordResetSuccessContent />
+    </Suspense>
   );
 }

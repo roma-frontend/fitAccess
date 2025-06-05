@@ -3,8 +3,8 @@
 
 import { useState } from 'react';
 import { useTrainerSchedule } from '@/hooks/useTrainerSchedule';
-import { CalendarView } from '@/components/admin/schedule/CalendarView';
-import { EventsList } from '@/components/admin/schedule/EventsList';
+import CalendarView from '@/components/admin/schedule/CalendarView'; // Default import
+import EventsList from '@/components/admin/schedule/EventsList'; // Default import
 import { EventForm } from '@/components/admin/schedule/EventForm';
 import { EventDetailsModal } from '@/components/admin/schedule/EventDetailsModal';
 import { Card, CardContent } from "@/components/ui/card";
@@ -60,41 +60,46 @@ export default function TrainerSchedule({ trainerId, trainerName }: TrainerSched
     await updateEventStatus(eventId, status);
   };
 
-const handleSubmitEvent = async (data: CreateEventData): Promise<{ success: boolean; id?: string }> => {
-  try {
-    const eventData = {
-      ...data,
-      trainerId,
-      trainerName
-    };
+  // Placeholder function for sending messages
+  const handleSendMessage = (event: ScheduleEvent) => {
+    console.log('Sending message for event:', event);
+    // TODO: Implement message sending functionality
+  };
 
-    if (editingEvent) {
-      await updateEvent(editingEvent._id, eventData);
-      setShowEventForm(false);
-      setEditingEvent(null);
-      
-      return {
-        success: true,
-        id: editingEvent._id
+  const handleSubmitEvent = async (data: CreateEventData): Promise<{ success: boolean; id?: string }> => {
+    try {
+      const eventData = {
+        ...data,
+        trainerId,
+        trainerName
       };
-    } else {
-      const newEvent = await createEvent(eventData);
-      setShowEventForm(false);
-      setEditingEvent(null);
-      
+
+      if (editingEvent) {
+        await updateEvent(editingEvent._id, eventData);
+        setShowEventForm(false);
+        setEditingEvent(null);
+        
+        return {
+          success: true,
+          id: editingEvent._id
+        };
+      } else {
+        const newEvent = await createEvent(eventData);
+        setShowEventForm(false);
+        setEditingEvent(null);
+        
+        return {
+          success: true,
+          id: typeof newEvent === 'string' ? newEvent : undefined
+        };
+      }
+    } catch (error) {
+      console.error("Ошибка сохранения события:", error);
       return {
-        success: true,
-        id: typeof newEvent === 'string' ? newEvent : undefined
+        success: false
       };
     }
-  } catch (error) {
-    console.error("Ошибка сохранения события:", error);
-    return {
-      success: false
-    };
-  }
-};
-
+  };
 
   if (loading) {
     return (
@@ -202,6 +207,7 @@ const handleSubmitEvent = async (data: CreateEventData): Promise<{ success: bool
         onEdit={handleEditEvent}
         onDelete={handleDeleteEvent}
         onStatusChange={handleStatusChange}
+        onSendMessage={handleSendMessage} // Added missing prop
         userRole="trainer"
       />
 
@@ -215,6 +221,7 @@ const handleSubmitEvent = async (data: CreateEventData): Promise<{ success: bool
         onSubmit={handleSubmitEvent}
         trainers={[{ id: trainerId, name: trainerName, role: 'trainer' }]}
         clients={[]} // Здесь должны быть клиенты тренера
+        isApiAvailable={true} // Added missing prop
       />
     </div>
   );

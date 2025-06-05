@@ -220,12 +220,12 @@ export default function ScheduleManagement() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setEditingWorkout(workout.id)}>
+                            <DropdownMenuItem onClick={() => setEditingWorkout(workout.id || null)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Редактировать
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => setDeletingWorkout(workout.id)}
+                              onClick={() => setDeletingWorkout(workout.id || null)}
                               className="text-red-600"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
@@ -243,7 +243,7 @@ export default function ScheduleManagement() {
                       </div>
                     )}
                     
-                                        <Badge className={`${getWorkoutStatusColor(workout.status || '')} text-xs px-2 py-1`}>
+                    <Badge className={`${getWorkoutStatusColor(workout.status || '')} text-xs px-2 py-1`}>
                       {getStatusText(workout.status || '')}
                     </Badge>
                     
@@ -363,4 +363,3 @@ export default function ScheduleManagement() {
     </div>
   );
 }
-

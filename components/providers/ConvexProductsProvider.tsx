@@ -9,7 +9,7 @@ interface ConvexProductsProviderProps {
 }
 
 const ConvexProductsProvider = memo(({ children }: ConvexProductsProviderProps) => {
-  const { products, loading, error, refetch } = useShopProductsAPI();
+  const { products, isLoading, error, refetch } = useShopProductsAPI();
   
   // Получаем функции из store с правильной типизацией
   const setProducts = useProductsStore((state) => state.setProducts);
@@ -18,14 +18,14 @@ const ConvexProductsProvider = memo(({ children }: ConvexProductsProviderProps) 
 
   useEffect(() => {
     console.log('🔄 ConvexProductsProvider: Обновление состояния', {
-      loading,
+      isLoading,
       error,
       productsCount: products?.length || 0,
       hasProducts: products && products.length > 0
     });
 
     // Обновляем состояние в store
-    setLoading(loading);
+    setLoading(isLoading);
     setError(error);
     
     if (products) {
@@ -38,7 +38,7 @@ const ConvexProductsProvider = memo(({ children }: ConvexProductsProviderProps) 
         }, 0);
       }
     }
-  }, [products, loading, error, setProducts, setLoading, setError]);
+  }, [products, isLoading, error, setProducts, setLoading, setError]);
 
   // Добавляем функцию перезагрузки в глобальный объект для отладки
   useEffect(() => {

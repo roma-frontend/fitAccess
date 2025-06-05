@@ -5,6 +5,9 @@ import React, { createContext, useContext, ReactNode } from 'react';
 import { useTrainerDataQuery } from '@/hooks/useTrainerDataQuery';
 import type { Trainer, Member, Client, Workout, Message } from '@/types/trainer';
 
+// Export the Client type
+export type { Client } from '@/types/trainer';
+
 export interface TrainerContextType {
   // Данные
   trainers: Trainer[];
@@ -29,6 +32,11 @@ export interface TrainerContextType {
   deleteWorkout: (id: string) => Promise<boolean>;
   completeWorkout: (id: string) => Promise<boolean>;
   cancelWorkout: (id: string) => Promise<boolean>;
+  
+  // Методы для работы с клиентами
+  addClient: (client: Omit<Client, 'id'>) => Promise<boolean>;
+  updateClient: (id: string, client: Partial<Client>) => Promise<boolean>;
+  deleteClient: (id: string) => Promise<boolean>;
 }
 
 const TrainerContext = createContext<TrainerContextType | null>(null);
@@ -53,7 +61,6 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
     try {
       // TODO: Реализовать API вызов
       console.log('Добавление тренировки:', workout);
-      // Пока просто возвращаем true
       return true;
     } catch (error) {
       console.error('Ошибка добавления тренировки:', error);
@@ -101,6 +108,40 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Методы для работы с клиентами
+  const addClient = async (client: Omit<Client, 'id'>): Promise<boolean> => {
+    try {
+      // TODO: Реализовать API вызов
+      console.log('Добавление клиента:', client);
+      return true;
+    } catch (error) {
+      console.error('Ошибка добавления клиента:', error);
+      return false;
+    }
+  };
+
+  const updateClient = async (id: string, client: Partial<Client>): Promise<boolean> => {
+    try {
+      // TODO: Реализовать API вызов
+      console.log('Обновление клиента:', id, client);
+      return true;
+    } catch (error) {
+      console.error('Ошибка обновления клиента:', error);
+      return false;
+    }
+  };
+
+  const deleteClient = async (id: string): Promise<boolean> => {
+    try {
+      // TODO: Реализовать API вызов
+      console.log('Удаление клиента:', id);
+      return true;
+    } catch (error) {
+      console.error('Ошибка удаления клиента:', error);
+      return false;
+    }
+  };
+
   const value: TrainerContextType = {
     // Данные
     trainers,
@@ -119,12 +160,17 @@ export function TrainerProvider({ children }: { children: ReactNode }) {
     error,
     refetch,
     
-    // Методы
+    // Методы для тренировок
     addWorkout,
     updateWorkout,
     deleteWorkout,
     completeWorkout,
-    cancelWorkout
+    cancelWorkout,
+    
+    // Методы для клиентов
+    addClient,
+    updateClient,
+    deleteClient
   };
 
   return (

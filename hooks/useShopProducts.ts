@@ -62,10 +62,10 @@ function getMockProduct(): ShopProduct {
 
 // Основной хук для получения всех активных продуктов
 export function useShopProducts() {
-  const { products, loading, error } = useShopProductsAPI();
+  const { products, isLoading, error } = useShopProductsAPI();
   
   // Если загрузка - возвращаем undefined
-  if (loading) {
+  if (isLoading) {
     console.log('⏳ useShopProducts: Загрузка через API...');
     return undefined;
   }

@@ -6,8 +6,8 @@ import ProductCard from './ProductCard';
 import { Loader2, Package, AlertCircle } from 'lucide-react';
 
 const ProductGrid = memo(() => {
-  // Получаем данные из API
-  const { products: apiProducts, loading: apiLoading, error: apiError } = useShopProductsAPI();
+  // Получаем данные из API - исправляем destructuring
+  const { products: apiProducts, isLoading: apiLoading, error: apiError } = useShopProductsAPI();
   
   // Получаем состояние из store
   const { 

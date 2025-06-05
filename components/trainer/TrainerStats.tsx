@@ -1,4 +1,4 @@
-// components/trainer/TrainerStats.tsx (новый компонент для статистики)
+// components/trainer/TrainerStats.tsx (исправленная версия)
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,17 +21,25 @@ export default function TrainerStats() {
   const today = new Date().toISOString().split('T')[0];
   const thisWeek = getThisWeekDates();
   
+  // Безопасная фильтрация с проверкой на undefined
   const todayWorkouts = workouts.filter(w => w.date === today).length;
-  const weekWorkouts = workouts.filter(w => thisWeek.includes(w.date)).length;
+  const weekWorkouts = workouts.filter(w => w.date && thisWeek.includes(w.date)).length;
   const completedWorkouts = workouts.filter(w => w.status === 'completed').length;
-  const unreadMessages = messages.filter(m => !m.read && !m.isFromTrainer).length;
+  
+  // Безопасная фильтрация сообщений с проверкой свойств
+  const unreadMessages = messages.filter(m => {
+    // Проверяем наличие свойств с fallback значениями
+    const isRead = 'read' in m ? m.read : false;
+    const isFromTrainer = 'isFromTrainer' in m ? m.isFromTrainer : false;
+    return !isRead && !isFromTrainer;
+  }).length;
 
-  function getThisWeekDates() {
+  function getThisWeekDates(): string[] {
     const today = new Date();
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Понедельник
     
-    const dates = [];
+    const dates: string[] = [];
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + i);
@@ -40,17 +48,24 @@ export default function TrainerStats() {
     return dates;
   }
 
+  // Безопасное получение значений статистики с fallback
+  const safeStats = {
+    totalClients: stats?.totalClients || clients.length || 0,
+    activeClients: stats?.activeClients || clients.filter(c => c.status === 'active').length || 0,
+    avgRating: stats?.avgRating || 0
+  };
+
   const statsData = [
     {
       title: "Всего клиентов",
-      value: stats.totalClients,
+      value: safeStats.totalClients,
       icon: Users,
       color: "from-blue-500 to-blue-600",
       textColor: "text-blue-100"
     },
     {
       title: "Активные клиенты", 
-      value: stats.activeClients,
+      value: safeStats.activeClients,
       icon: Activity,
       color: "from-green-500 to-green-600",
       textColor: "text-green-100"
@@ -64,7 +79,7 @@ export default function TrainerStats() {
     },
     {
       title: "Рейтинг",
-      value: stats.avgRating,
+      value: safeStats.avgRating.toFixed(1),
       icon: Star,
       color: "from-orange-500 to-orange-600",
       textColor: "text-orange-100"

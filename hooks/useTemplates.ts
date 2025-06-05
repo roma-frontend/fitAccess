@@ -1,4 +1,4 @@
-// hooks/useTemplates.ts (исправленная версия с типизацией)
+// hooks/useTemplates.ts (исправленная версия с правильными типами)
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -14,7 +14,7 @@ function isTemplatesApiAvailable() {
   }
 }
 
-// Генерируем тестовые данные для шаблонов
+// Генерируем тестовые данные для шаблонов с правильными типами триггеров
 function generateTestTemplates(): NotificationTemplate[] {
   return [
     {
@@ -30,20 +30,22 @@ function generateTestTemplates(): NotificationTemplate[] {
       createdBy: "admin" as Id<"users">,
       category: "welcome",
       priority: "normal",
+      trigger: "new_member", // Используем разрешенный тип
     },
     {
       _id: "template2" as Id<"notificationTemplates">,
       _creationTime: Date.now() - 86400000,
-      name: "Напоминание о тренировке",
-      description: "Напоминание о предстоящей тренировке",
+      name: "Напоминание о событии",
+      description: "Напоминание о предстоящем событии",
       type: "push",
-      subject: "Напоминание о тренировке",
-      content: "Не забудьте о тренировке сегодня в {{time}}! Ваш тренер: {{trainerName}}.",
-      variables: ["time", "trainerName"],
+      subject: "Напоминание о событии",
+      content: "Не забудьте о событии сегодня в {{time}}! Место: {{location}}.",
+      variables: ["time", "location"],
       isActive: true,
       createdBy: "admin" as Id<"users">,
       category: "reminder",
       priority: "high",
+      trigger: "event_reminder", // Используем разрешенный тип
     },
     {
       _id: "template3" as Id<"notificationTemplates">,
@@ -58,6 +60,37 @@ function generateTestTemplates(): NotificationTemplate[] {
       createdBy: "admin" as Id<"users">,
       category: "urgent",
       priority: "urgent",
+      trigger: "manual", // Используем разрешенный тип
+    },
+    {
+      _id: "template4" as Id<"notificationTemplates">,
+      _creationTime: Date.now() - 259200000,
+      name: "Истечение абонемента",
+      description: "Уведомление об истечении абонемента",
+      type: "email",
+      subject: "Ваш абонемент истекает",
+      content: "Ваш абонемент истекает {{expiryDate}}. Продлите его для продолжения занятий.",
+      variables: ["expiryDate"],
+      isActive: true,
+      createdBy: "admin" as Id<"users">,
+      category: "membership",
+      priority: "high",
+      trigger: "membership_expiry", // Используем разрешенный тип
+    },
+    {
+      _id: "template5" as Id<"notificationTemplates">,
+      _creationTime: Date.now() - 345600000,
+      name: "Напоминание об оплате",
+      description: "Напоминание о необходимости оплаты",
+      type: "sms",
+      subject: "Напоминание об оплате",
+      content: "Напоминаем о необходимости оплаты в размере {{amount}} до {{dueDate}}.",
+      variables: ["amount", "dueDate"],
+      isActive: true,
+      createdBy: "admin" as Id<"users">,
+      category: "payment",
+      priority: "normal",
+      trigger: "payment_due", // Используем разрешенный тип
     },
   ];
 }
@@ -125,6 +158,7 @@ export const useTemplates = () => {
     createdBy: Id<"users">;
     category?: string;
     priority: "low" | "normal" | "high" | "urgent";
+    trigger: "manual" | "event_reminder" | "payment_due" | "membership_expiry" | "new_member"; // Используем только разрешенные типы
   }) => {
     try {
       if (createTemplateMutation) {
@@ -155,6 +189,7 @@ export const useTemplates = () => {
       content?: string;
       variables?: string[];
       isActive?: boolean;
+      trigger?: "manual" | "event_reminder" | "payment_due" | "membership_expiry" | "new_member"; // Используем только разрешенные типы
     }
   ) => {
     try {
@@ -202,6 +237,16 @@ export const useTemplates = () => {
     }
   }, [updateTemplateMutation]);
 
+  // Дополнительные функции для работы с триггерами
+  const getTemplatesByTrigger = useCallback((trigger: "manual" | "event_reminder" | "payment_due" | "membership_expiry" | "new_member") => {
+    return templates.filter(template => template.trigger === trigger && template.isActive);
+  }, [templates]);
+
+  const getAvailableTriggers = useCallback(() => {
+    const triggers = new Set(templates.map(template => template.trigger));
+    return Array.from(triggers);
+  }, [templates]);
+
   return {
     templates: templates as NotificationTemplate[],
     loading: templates === undefined,
@@ -209,6 +254,85 @@ export const useTemplates = () => {
     updateTemplate,
     deleteTemplate,
     toggleTemplate,
+    getTemplatesByTrigger,
+    getAvailableTriggers,
     isApiAvailable,
   };
 };
+
+// Константы для разрешенных триггеров (соответствуют типу NotificationTemplate)
+export const templateTriggers = {
+  MANUAL: "manual",
+  EVENT_REMINDER: "event_reminder",
+  PAYMENT_DUE: "payment_due",
+  MEMBERSHIP_EXPIRY: "membership_expiry",
+  NEW_MEMBER: "new_member",
+} as const;
+
+export const templateCategories = {
+  WELCOME: "welcome",
+  REMINDER: "reminder",
+  PAYMENT: "payment",
+  SYSTEM: "system",
+  URGENT: "urgent",
+  MARKETING: "marketing",
+  MEMBERSHIP: "membership",
+} as const;
+
+export const templatePriorities = {
+  LOW: "low",
+  NORMAL: "normal",
+  HIGH: "high",
+  URGENT: "urgent",
+} as const;
+
+// Функция для получения отображаемого названия триггера
+export function getTriggerDisplayName(trigger: "manual" | "event_reminder" | "payment_due" | "membership_expiry" | "new_member"): string {
+  const names: Record<string, string> = {
+    manual: "Ручная отправка",
+    event_reminder: "Напоминание о событии",
+    payment_due: "Напоминание об оплате",
+    membership_expiry: "Истечение абонемента",
+    new_member: "Новый участник",
+  };
+  return names[trigger] || trigger;
+}
+
+// Функция для валидации переменных в шаблоне
+export function validateTemplateVariables(content: string, variables: string[]): boolean {
+  const variablesInContent = content.match(/\{\{(\w+)\}\}/g) || [];
+  const extractedVariables = variablesInContent.map(v => v.replace(/[{}]/g, ''));
+  
+  return extractedVariables.every(variable => variables.includes(variable));
+}
+
+// Функция для замены переменных в шаблоне
+export function replaceTemplateVariables(
+  template: string, 
+  variables: Record<string, string>
+): string {
+  let result = template;
+  
+  Object.entries(variables).forEach(([key, value]) => {
+    const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+    result = result.replace(regex, value);
+  });
+  
+  return result;
+}
+
+// Функция для получения рекомендуемых переменных для каждого типа триггера
+export function getRecommendedVariables(trigger: "manual" | "event_reminder" | "payment_due" | "membership_expiry" | "new_member"): string[] {
+  const recommendations: Record<string, string[]> = {
+    manual: ["userName", "message"],
+    event_reminder: ["userName", "eventName", "eventDate", "eventTime", "location"],
+    payment_due: ["userName", "amount", "dueDate", "serviceName"],
+    membership_expiry: ["userName", "membershipType", "expiryDate", "renewalLink"],
+    new_member: ["userName", "clubName", "welcomeMessage", "supportContact"],
+  };
+  
+  return recommendations[trigger] || ["userName"];
+}
+
+// Экспорт типов для удобства
+export type { NotificationTemplate };

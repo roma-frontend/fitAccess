@@ -1,7 +1,7 @@
-// components/admin/PasswordResetManagement.tsx (обновленная версия)
+// components/admin/PasswordResetManagement.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { usePasswordResetCleanup } from "@/hooks/usePasswordResetCleanup";
@@ -16,13 +16,23 @@ import {
   CheckCircle,
   Mail,
   BarChart3,
+  Loader2,
 } from "lucide-react";
 
 export function PasswordResetManagement() {
   const [activeTab, setActiveTab] = useState<
     "logs" | "settings" | "notifications"
   >("logs");
-  const { cleanup, isLoading } = usePasswordResetCleanup();
+  const [isClient, setIsClient] = useState(false);
+  
+  // Проверяем, что компонент загружен на клиенте
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Используем хук только после гидрации
+  const cleanupHook = isClient ? usePasswordResetCleanup() : { cleanup: async () => {}, isLoading: false };
+  const { cleanup, isLoading } = cleanupHook;
 
   const handleCleanup = async () => {
     try {
@@ -37,6 +47,20 @@ export function PasswordResetManagement() {
     { id: "notifications", label: "Email", icon: Mail },
     { id: "settings", label: "Настройки", icon: Settings },
   ] as const;
+
+  // Показываем загрузку до полной гидрации
+  if (!isClient) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="text-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Инициализация управления паролями...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -181,7 +205,7 @@ export function PasswordResetManagement() {
                 >
                   {isLoading ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900 mr-2"></div>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Очистка...
                     </>
                   ) : (
@@ -195,7 +219,7 @@ export function PasswordResetManagement() {
             </CardContent>
           </Card>
 
-          {/* Настройки безопасности */}
+          {/* Остальные настройки остаются без изменений */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -234,54 +258,6 @@ export function PasswordResetManagement() {
                     <span className="font-mono text-sm">1 раз в 5 минут</span>
                   </div>
                 </div>
-
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-2 flex items-center">
-                    <BarChart3 className="h-4 w-4 mr-2 text-purple-600" />
-                    Логирование
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-2">
-                    Все действия записываются в журнал:
-                  </p>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span>Запросы восстановления</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span>Смены паролей</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span>Ошибки и истечения</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-medium mb-2 flex items-center">
-                    <Mail className="h-4 w-4 mr-2 text-blue-600" />
-                    Email уведомления
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-2">
-                    Автоматические уведомления:
-                  </p>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span>Письма восстановления</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span>Уведомления о смене</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                      <span>HTML + текстовые версии</span>
-                    </div>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -298,69 +274,19 @@ export function PasswordResetManagement() {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-gray-600">JWT_SECRET:</span>
+                    <span className="text-gray-600">NODE_ENV:</span>
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-mono">Настроен</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">NEXTAUTH_URL:</span>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-mono text-xs">
-                        {process.env.NEXTAUTH_URL || "Не указан"}
+                      <span className="font-mono">
+                        {typeof window !== 'undefined' ? 'client' : process.env.NODE_ENV}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <span className="text-gray-600">CONVEX_URL:</span>
+                    <span className="text-gray-600">Convex:</span>
                     <div className="flex items-center space-x-2">
                       <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-mono">Настроен</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">NODE_ENV:</span>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span className="font-mono">{process.env.NODE_ENV}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 border rounded-lg">
-                <h4 className="font-medium mb-2">Middleware защита</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Публичные маршруты:</span>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span>/reset-password, /forgot-password</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Валидация токенов:</span>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span>Активна</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">
-                      Заголовки безопасности:
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span>Установлены</span>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-600">Перенаправления:</span>
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span>Настроены</span>
+                      <span className="font-mono">Подключен</span>
                     </div>
                   </div>
                 </div>

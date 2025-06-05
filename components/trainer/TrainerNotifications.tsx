@@ -34,26 +34,41 @@ export default function TrainerNotifications() {
 
     // Уведомления о предстоящих тренировках
     const upcomingWorkouts = workouts.filter(w => {
-      const workoutDateTime = new Date(`${w.date}T${w.time}`);
-      const timeDiff = workoutDateTime.getTime() - now.getTime();
-      return timeDiff > 0 && timeDiff <= 60 * 60 * 1000; // В течение часа
+      if (!w.date || !w.time) return false;
+      
+      try {
+        const workoutDateTime = new Date(`${w.date}T${w.time}`);
+        const timeDiff = workoutDateTime.getTime() - now.getTime();
+        return timeDiff > 0 && timeDiff <= 60 * 60 * 1000; // В течение часа
+      } catch (error) {
+        console.warn('Ошибка парсинга даты тренировки:', w);
+        return false;
+      }
     });
 
     upcomingWorkouts.forEach(workout => {
-      newNotifications.push({
-        id: `workout-${workout.id}`,
-        type: 'workout',
-        title: 'Скоро тренировка',
-        message: `Тренировка с ${workout.clientName} в ${workout.time}`,
-        time: new Date().toISOString(),
-        read: false,
-        priority: 'high'
-      });
+      if (workout.id) {
+        newNotifications.push({
+          id: `workout-${workout.id}`,
+          type: 'workout',
+          title: 'Скоро тренировка',
+          message: `Тренировка с ${workout.clientName || 'клиентом'} в ${workout.time}`,
+          time: new Date().toISOString(),
+          read: false,
+          priority: 'high'
+        });
+      }
     });
 
-    // Уведомления о новых сообщениях
-    const unreadMessages = messages.filter(m => !m.read && !m.isFromTrainer);
-        if (unreadMessages.length > 0) {
+    // Уведомления о новых сообщениях (с проверкой наличия свойств)
+    const unreadMessages = messages.filter(m => {
+      // Проверяем наличие свойств с fallback значениями
+      const isRead = 'read' in m ? m.read : false;
+      const isFromTrainer = 'isFromTrainer' in m ? m.isFromTrainer : false;
+      return !isRead && !isFromTrainer;
+    });
+
+    if (unreadMessages.length > 0) {
       newNotifications.push({
         id: 'messages-unread',
         type: 'message',
@@ -217,4 +232,3 @@ export default function TrainerNotifications() {
     </Card>
   );
 }
-

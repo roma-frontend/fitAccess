@@ -1,4 +1,4 @@
-// convex/analytics.ts (финальная универсальная версия)
+// convex/analytics.ts (исправленная версия)
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 import type { QueryCtx } from "./_generated/server";
@@ -12,7 +12,7 @@ function getUserName(user: any): string {
   if (user?.firstName && user?.lastName) {
     return `${user.firstName} ${user.lastName}`;
   }
-  return user?.firstName || user?.lastName || user?.email || `User ${user?._id || 'Unknown'}`;
+  return user?.firstName || user?.lastName || user?.email || user?.name || `User ${user?._id || 'Unknown'}`;
 }
 
 function getOrderTotal(order: any): number {
@@ -31,11 +31,16 @@ function getItemName(item: any): string {
   return item?.productName || item?.title || `Item ${item?.productId || 'Unknown'}`;
 }
 
+// Функция для проверки валидности Convex ID
+function isValidConvexId(id: any): boolean {
+  return typeof id === 'string' && id.length > 20 && id.startsWith('k');
+}
+
 // Вспомогательная функция для безопасного получения продукта
 async function safeGetProduct(ctx: QueryCtx, productId: any) {
   try {
     // Проверяем, является ли productId валидным Convex ID
-    if (typeof productId === 'string' && productId.length > 20) {
+    if (isValidConvexId(productId)) {
       return await ctx.db.get(productId as any);
     }
     
@@ -51,6 +56,19 @@ async function safeGetProduct(ctx: QueryCtx, productId: any) {
     return null;
   } catch (error) {
     console.log(`Error getting product ${productId}:`, error);
+    return null;
+  }
+}
+
+// Функция для безопасного получения пользователя
+async function safeGetUser(ctx: QueryCtx, userId: any) {
+  try {
+    if (isValidConvexId(userId)) {
+      return await ctx.db.get(userId as any);
+    }
+    return null;
+  } catch (error) {
+    console.log(`Error getting user ${userId}:`, error);
     return null;
   }
 }
@@ -468,37 +486,19 @@ async function getRevenueStatsInternal(ctx: QueryCtx, period: string, startDate?
         if (order.items && Array.isArray(order.items)) {
             for (const item of order.items) {
                 if (item.productId) {
-                    try {
-                        // Безопасное получение продукта с проверкой типа
-                        let product = null;
-                        if (typeof item.productId === 'string' && item.productId.length > 20) {
-                            product = await ctx.db.get(item.productId as any);
-                        }
-                        
-                        if (product) {
-                            const productName = getProductName(product);
-                            const itemRevenue = (item.price || 0) * (item.quantity || 1);
+                    // Безопасное получение продукта
+                    const product = await safeGetProduct(ctx, item.productId);
+                    
+                    if (product) {
+                        const productName = getProductName(product);
+                        const itemRevenue = (item.price || 0) * (item.quantity || 1);
 
-                            if (!productRevenue[product._id]) {
-                                productRevenue[product._id] = { name: productName, revenue: 0 };
-                            }
-                            productRevenue[product._id].revenue += itemRevenue;
-                        } else {
-                            // Используем данные из заказа
-                            const productName = getItemName(item);
-                            const itemRevenue = (item.price || 0) * (item.quantity || 1);
-                            
-                            const productKey = String(item.productId);
-                            if (!productRevenue[productKey]) {
-                                productRevenue[productKey] = { name: productName, revenue: 0 };
-                            }
-                            productRevenue[productKey].revenue += itemRevenue;
+                        if (!productRevenue[product._id]) {
+                            productRevenue[product._id] = { name: productName, revenue: 0 };
                         }
-                    } catch (error) {
-                        // Продукт может быть удален
-                        console.log(`Product ${item.productId} not found in revenue calculation`);
-                        
-                        // Используем данные из заказа как fallback
+                        productRevenue[product._id].revenue += itemRevenue;
+                    } else {
+                        // Используем данные из заказа
                         const productName = getItemName(item);
                         const itemRevenue = (item.price || 0) * (item.quantity || 1);
                         
@@ -742,242 +742,220 @@ export const getDashboardAnalytics = query({
             .filter(q => q.gte(q.field("_creationTime"), weekStart))
             .collect();
 
-            const weekRevenue = weekOrders.reduce((sum: number, order: any) =>
-                sum + getOrderTotal(order), 0
-            );
-    
-            // Примерные данные сессий
-            let todaySessions = Math.floor(todayUsers.length * 1.5);
-            let weekSessions = Math.floor(weekUsers.length * 2);
-    
-            try {
-                const sessions = await ctx.db.query("sessions").collect();
-                todaySessions = sessions.filter((s: any) => s._creationTime >= todayStart).length;
-                weekSessions = sessions.filter((s: any) => s._creationTime >= weekStart).length;
-            } catch (error) {
-                // Используем расчетные значения
-            }
-    
-            return {
-                todayStats: {
-                    newUsers: todayUsers.length,
-                    revenue: todayRevenue,
-                    orders: todayOrders.length,
-                    sessions: todaySessions,
-                },
-                weekStats: {
-                    newUsers: weekUsers.length,
-                    revenue: weekRevenue,
-                    orders: weekOrders.length,
-                    sessions: weekSessions,
-                },
-            };
-        },
-    });
-    
-    export const getExportData = query({
-        args: {
-            type: v.string(),
-            startDate: v.optional(v.number()),
-            endDate: v.optional(v.number()),
-            format: v.string(),
-        },
-        handler: async (ctx, args) => {
-            const { type, startDate, endDate, format } = args;
-    
-            const now = Date.now();
-            const periodStart = startDate || (now - 30 * 24 * 60 * 60 * 1000);
-            const periodEnd = endDate || now;
-    
-            let exportData: any = {};
-            let count = 0;
-    
-            switch (type) {
-                case "users":
-                    const users = await ctx.db.query("users").collect();
-                    const filteredUsers = users.filter((user: any) =>
-                        user._creationTime >= periodStart && user._creationTime <= periodEnd
-                    );
-    
-                    exportData = filteredUsers.map((user: any) => ({
-                        id: user._id,
-                        email: user.email || "N/A",
-                        name: getUserName(user),
-                        role: user.role || "member",
-                        isActive: user.isActive,
-                        createdAt: new Date(user._creationTime).toISOString(),
-                        lastLoginAt: user.lastLogin ? new Date(user.lastLogin).toISOString() : null,
-                    }));
-                    count = exportData.length;
-                    break;
-    
-                case "products":
-                    const products = await ctx.db.query("products").collect();
-    
-                    exportData = products.map((product: any) => ({
-                        id: product._id,
-                        name: getProductName(product),
-                        category: product.category || "other",
-                        price: getProductPrice(product),
-                        stock: getProductStock(product),
-                        isActive: product.isActive,
-                        createdAt: new Date(product._creationTime).toISOString(),
-                    }));
-                    count = exportData.length;
-                    break;
-    
-                case "orders":
-                    const orders = await ctx.db.query("orders").collect();
-                    const filteredOrders = orders.filter((order: any) =>
-                        order._creationTime >= periodStart && order._creationTime <= periodEnd
-                    );
-    
-                    exportData = [];
-                    for (const order of filteredOrders) {
-                        let userEmail = "Unknown";
-    
-                        if (order.userId) {
-                            try {
-                                const user = await ctx.db.get(order.userId);
-                                userEmail = user?.email || "Unknown";
-                            } catch (error) {
-                                // Пользователь может быть удален
-                            }
-                        }
-    
-                        exportData.push({
-                            id: order._id,
-                            userId: order.userId || order.memberId || "N/A",
-                            userEmail,
-                            totalAmount: getOrderTotal(order),
-                            status: order.status || "pending",
-                            itemsCount: order.items?.length || 0,
-                            createdAt: new Date(order._creationTime).toISOString(),
-                        });
+        const weekRevenue = weekOrders.reduce((sum: number, order: any) =>
+            sum + getOrderTotal(order), 0
+        );
+
+        // Примерные данные сессий
+        let todaySessions = Math.floor(todayUsers.length * 1.5);
+                let weekSessions = Math.floor(weekUsers.length * 2);
+
+        try {
+            const sessions = await ctx.db.query("sessions").collect();
+            todaySessions = sessions.filter((s: any) => s._creationTime >= todayStart).length;
+            weekSessions = sessions.filter((s: any) => s._creationTime >= weekStart).length;
+        } catch (error) {
+            // Используем расчетные значения
+        }
+
+        return {
+            todayStats: {
+                newUsers: todayUsers.length,
+                revenue: todayRevenue,
+                orders: todayOrders.length,
+                sessions: todaySessions,
+            },
+            weekStats: {
+                newUsers: weekUsers.length,
+                revenue: weekRevenue,
+                orders: weekOrders.length,
+                sessions: weekSessions,
+            },
+        };
+    },
+});
+
+export const getExportData = query({
+    args: {
+        type: v.string(),
+        startDate: v.optional(v.number()),
+        endDate: v.optional(v.number()),
+        format: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const { type, startDate, endDate, format } = args;
+
+        const now = Date.now();
+        const periodStart = startDate || (now - 30 * 24 * 60 * 60 * 1000);
+        const periodEnd = endDate || now;
+
+        let exportData: any = {};
+        let count = 0;
+
+        switch (type) {
+            case "users":
+                const users = await ctx.db.query("users").collect();
+                const filteredUsers = users.filter((user: any) =>
+                    user._creationTime >= periodStart && user._creationTime <= periodEnd
+                );
+
+                exportData = filteredUsers.map((user: any) => ({
+                    id: user._id,
+                    name: getUserName(user),
+                    role: user.role || "member",
+                    isActive: user.isActive,
+                    createdAt: new Date(user._creationTime).toISOString(),
+                    lastLoginAt: user.lastLogin ? new Date(user.lastLogin).toISOString() : null,
+                }));
+                count = exportData.length;
+                break;
+
+            case "products":
+                const products = await ctx.db.query("products").collect();
+
+                exportData = products.map((product: any) => ({
+                    id: product._id,
+                    name: getProductName(product),
+                    category: product.category || "other",
+                    price: getProductPrice(product),
+                    stock: getProductStock(product),
+                    isActive: product.isActive,
+                    createdAt: new Date(product._creationTime).toISOString(),
+                }));
+                count = exportData.length;
+                break;
+
+            case "orders":
+                const orders = await ctx.db.query("orders").collect();
+                const filteredOrders = orders.filter((order: any) =>
+                    order._creationTime >= periodStart && order._creationTime <= periodEnd
+                );
+
+                exportData = [];
+                for (const order of filteredOrders) {
+                    let userName = "Unknown";
+
+                    if (order.userId) {
+                        const user = await safeGetUser(ctx, order.userId);
+                        userName = user ? getUserName(user) : "Unknown";
                     }
-                    count = exportData.length;
-                    break;
-    
-                case "revenue":
-                    const revenueOrders = await ctx.db.query("orders").collect();
-                    const revenueFilteredOrders = revenueOrders.filter((order: any) =>
-                        order._creationTime >= periodStart && order._creationTime <= periodEnd
-                    );
-    
-                    const productRevenue: Record<string, { name: string; revenue: number; orders: number }> = {};
-    
-                    for (const order of revenueFilteredOrders) {
-                        if (order.items && Array.isArray(order.items)) {
-                            for (const item of order.items) {
-                                if (item.productId) {
-                                    try {
-                                        // Безопасное получение продукта
-                                        let product = null;
-                                        if (typeof item.productId === 'string' && item.productId.length > 20) {
-                                            product = await ctx.db.get(item.productId as any);
-                                        }
-                                        
-                                        if (product) {
-                                            const productName = getProductName(product);
-                                            const itemRevenue = (item.price || 0) * (item.quantity || 1);
-    
-                                            if (!productRevenue[product._id]) {
-                                                productRevenue[product._id] = { name: productName, revenue: 0, orders: 0 };
-                                            }
-                                            productRevenue[product._id].revenue += itemRevenue;
-                                            productRevenue[product._id].orders += 1;
-                                        } else {
-                                            // Используем данные из заказа
-                                            const productName = getItemName(item);
-                                            const itemRevenue = (item.price || 0) * (item.quantity || 1);
-                                            
-                                            const productKey = String(item.productId);
-                                            if (!productRevenue[productKey]) {
-                                                productRevenue[productKey] = { name: productName, revenue: 0, orders: 0 };
-                                            }
-                                            productRevenue[productKey].revenue += itemRevenue;
-                                            productRevenue[productKey].orders += 1;
-                                        }
-                                    } catch (error) {
-                                        console.log(`Product ${item.productId} not found in export`);
-                                        
-                                        // Fallback к данным из заказа
-                                        const productName = getItemName(item);
-                                        const itemRevenue = (item.price || 0) * (item.quantity || 1);
-                                        
-                                        const productKey = String(item.productId);
-                                        if (!productRevenue[productKey]) {
-                                            productRevenue[productKey] = { name: productName, revenue: 0, orders: 0 };
-                                        }
-                                        productRevenue[productKey].revenue += itemRevenue;
-                                        productRevenue[productKey].orders += 1;
+
+                    exportData.push({
+                        id: order._id,
+                        userId: order.userId || order.memberId || "N/A",
+                        userName,
+                        totalAmount: getOrderTotal(order),
+                        status: order.status || "pending",
+                        itemsCount: order.items?.length || 0,
+                        createdAt: new Date(order._creationTime).toISOString(),
+                    });
+                }
+                count = exportData.length;
+                break;
+
+            case "revenue":
+                const revenueOrders = await ctx.db.query("orders").collect();
+                const revenueFilteredOrders = revenueOrders.filter((order: any) =>
+                    order._creationTime >= periodStart && order._creationTime <= periodEnd
+                );
+
+                const productRevenue: Record<string, { name: string; revenue: number; orders: number }> = {};
+
+                for (const order of revenueFilteredOrders) {
+                    if (order.items && Array.isArray(order.items)) {
+                        for (const item of order.items) {
+                            if (item.productId) {
+                                // Безопасное получение продукта
+                                const product = await safeGetProduct(ctx, item.productId);
+                                
+                                if (product) {
+                                    const productName = getProductName(product);
+                                    const itemRevenue = (item.price || 0) * (item.quantity || 1);
+
+                                    if (!productRevenue[product._id]) {
+                                        productRevenue[product._id] = { name: productName, revenue: 0, orders: 0 };
                                     }
+                                    productRevenue[product._id].revenue += itemRevenue;
+                                    productRevenue[product._id].orders += 1;
+                                } else {
+                                    // Используем данные из заказа
+                                    const productName = getItemName(item);
+                                    const itemRevenue = (item.price || 0) * (item.quantity || 1);
+                                    
+                                    const productKey = String(item.productId);
+                                    if (!productRevenue[productKey]) {
+                                        productRevenue[productKey] = { name: productName, revenue: 0, orders: 0 };
+                                    }
+                                    productRevenue[productKey].revenue += itemRevenue;
+                                    productRevenue[productKey].orders += 1;
                                 }
                             }
                         }
                     }
-    
-                    exportData = Object.entries(productRevenue).map(([productId, data]) => ({
-                        productId,
-                        productName: data.name,
-                        totalRevenue: data.revenue,
-                        totalOrders: data.orders,
-                        averageOrderValue: data.orders > 0 ? Math.round(data.revenue / data.orders) : 0,
-                    }));
-                    count = exportData.length;
-                    break;
-    
-                case "analytics":
-                case "full":
-                    // Для полного экспорта собираем данные напрямую
-                    const userStatsResult = await getUserStatsInternal(ctx, "month");
-                    const productStatsResult = await getProductStatsInternal(ctx);
-                    const revenueStatsResult = await getRevenueStatsInternal(ctx, "month", periodStart, periodEnd);
-    
-                    // Собираем основную аналитику вручную (без вызова handler)
-                    const analyticsResult = {
-                        users: userStatsResult,
-                        products: productStatsResult,
-                        revenue: revenueStatsResult,
+                }
+
+                exportData = Object.entries(productRevenue).map(([productId, data]) => ({
+                    productId,
+                    productName: data.name,
+                    totalRevenue: data.revenue,
+                    totalOrders: data.orders,
+                    averageOrderValue: data.orders > 0 ? Math.round(data.revenue / data.orders) : 0,
+                }));
+                count = exportData.length;
+                break;
+
+            case "analytics":
+            case "full":
+                // Для полного экспорта собираем данные напрямую
+                const userStatsResult = await getUserStatsInternal(ctx, "month");
+                const productStatsResult = await getProductStatsInternal(ctx);
+                const revenueStatsResult = await getRevenueStatsInternal(ctx, "month", periodStart, periodEnd);
+
+                // Собираем основную аналитику вручную (без вызова handler)
+                const analyticsResult = {
+                    users: userStatsResult,
+                    products: productStatsResult,
+                    revenue: revenueStatsResult,
+                    period: {
+                        start: periodStart,
+                        end: periodEnd,
+                        type: "month"
+                    }
+                };
+
+                exportData = {
+                    analytics: analyticsResult,
+                    userStats: userStatsResult,
+                    productStats: productStatsResult,
+                    revenueStats: revenueStatsResult,
+                    exportMetadata: {
+                        exportType: type,
                         period: {
-                            start: periodStart,
-                            end: periodEnd,
-                            type: "month"
-                        }
-                    };
-    
-                    exportData = {
-                        analytics: analyticsResult,
-                        userStats: userStatsResult,
-                        productStats: productStatsResult,
-                        revenueStats: revenueStatsResult,
-                        exportMetadata: {
-                            exportType: type,
-                            period: {
-                                start: new Date(periodStart).toISOString(),
-                                end: new Date(periodEnd).toISOString(),
-                            },
-                            exportedAt: new Date().toISOString(),
-                        }
-                    };
-                    count = 1;
-                    break;
-    
-                default:
-                    throw new Error(`Неподдерживаемый тип экспорта: ${type}`);
-            }
-    
-            return {
-                type,
-                data: exportData,
-                count,
-                format,
-                period: {
-                    start: new Date(periodStart).toISOString(),
-                    end: new Date(periodEnd).toISOString(),
-                },
-                exportedAt: new Date().toISOString(),
-            };
-        },
-    });
-    
+                            start: new Date(periodStart).toISOString(),
+                            end: new Date(periodEnd).toISOString(),
+                        },
+                        exportedAt: new Date().toISOString(),
+                    }
+                };
+                count = 1;
+                break;
+
+            default:
+                throw new Error(`Неподдерживаемый тип экспорта: ${type}`);
+        }
+
+        return {
+            type,
+            data: exportData,
+            count,
+            format,
+            period: {
+                start: new Date(periodStart).toISOString(),
+                end: new Date(periodEnd).toISOString(),
+            },
+            exportedAt: new Date().toISOString(),
+        };
+    },
+});
+
+

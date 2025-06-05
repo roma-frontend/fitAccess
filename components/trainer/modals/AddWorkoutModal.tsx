@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTrainer } from '@/contexts/TrainerContext';
+import type { Workout } from '@/types/trainer'; // Import the type properly
 
 interface AddWorkoutModalProps {
   isOpen: boolean;
@@ -16,12 +17,15 @@ interface AddWorkoutModalProps {
   selectedDate?: string;
 }
 
+// Define the workout type union
+type WorkoutType = 'personal' | 'group' | 'cardio' | 'strength' | 'yoga' | 'pilates' | 'crossfit';
+
 export default function AddWorkoutModal({ isOpen, onClose, selectedDate }: AddWorkoutModalProps) {
   const { addWorkout } = useTrainer();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     clientName: '',
-    type: '',
+    type: '' as WorkoutType | '',
     date: selectedDate || new Date().toISOString().split('T')[0],
     time: '',
     duration: 60,
@@ -32,13 +36,29 @@ export default function AddWorkoutModal({ isOpen, onClose, selectedDate }: AddWo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that type is selected
+    if (!formData.type) {
+      alert('Пожалуйста, выберите тип тренировки');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const success = await addWorkout({
-        ...formData,
+      const workoutData: Partial<Workout> = {
+        clientName: formData.clientName,
+        type: formData.type as WorkoutType,
+        date: formData.date,
+        time: formData.time,
+        duration: formData.duration,
+        location: formData.location,
+        notes: formData.notes,
+        price: formData.price,
         status: 'scheduled'
-      });
+      };
+
+      const success = await addWorkout(workoutData);
 
       if (success) {
         onClose();
@@ -61,10 +81,17 @@ export default function AddWorkoutModal({ isOpen, onClose, selectedDate }: AddWo
     }
   };
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: keyof typeof formData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleTypeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      type: value as WorkoutType
     }));
   };
 
@@ -89,7 +116,7 @@ export default function AddWorkoutModal({ isOpen, onClose, selectedDate }: AddWo
 
           <div className="space-y-2">
             <Label htmlFor="type">Тип тренировки</Label>
-            <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+            <Select value={formData.type} onValueChange={handleTypeChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Выберите тип тренировки" />
               </SelectTrigger>
@@ -136,7 +163,7 @@ export default function AddWorkoutModal({ isOpen, onClose, selectedDate }: AddWo
                 id="duration"
                 type="number"
                 value={formData.duration}
-                onChange={(e) => handleInputChange('duration', parseInt(e.target.value))}
+                onChange={(e) => handleInputChange('duration', parseInt(e.target.value) || 60)}
                 min="15"
                 max="300"
                 step="15"
@@ -149,7 +176,7 @@ export default function AddWorkoutModal({ isOpen, onClose, selectedDate }: AddWo
                 id="price"
                 type="number"
                 value={formData.price}
-                onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
+                onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
                 min="0"
                 step="100"
               />
@@ -181,7 +208,7 @@ export default function AddWorkoutModal({ isOpen, onClose, selectedDate }: AddWo
             <Button type="button" variant="outline" onClick={onClose}>
               Отмена
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || !formData.type}>
               {isLoading ? 'Добавление...' : 'Добавить'}
             </Button>
           </div>

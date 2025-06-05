@@ -57,6 +57,7 @@ export interface Client {
   totalWorkouts?: number;
   progress?: number;
   lastWorkout?: string;
+  goals?: string[];
   createdAt?: number;
   _creationTime?: number;
 }
