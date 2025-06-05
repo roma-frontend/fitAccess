@@ -23,7 +23,7 @@ export function StatusCards({ userRole }: StatusCardsProps) {
         <div className="flex items-center gap-3">
           <Activity className="h-8 w-8 text-yellow-300" />
           <div>
-            <p className="text-sm text-blue-100">Статус</p>
+            <p className="text-sm text-blue-400">Статус</p>
             <p className="font-semibold">Активен</p>
           </div>
         </div>
@@ -33,7 +33,7 @@ export function StatusCards({ userRole }: StatusCardsProps) {
         <div className="flex items-center gap-3">
           <Clock className="h-8 w-8 text-green-300" />
           <div>
-            <p className="text-sm text-blue-100">Последний вход</p>
+            <p className="text-sm text-blue-400">Последний вход</p>
             <p className="font-semibold">Сегодня</p>
           </div>
         </div>
@@ -43,7 +43,7 @@ export function StatusCards({ userRole }: StatusCardsProps) {
         <div className="flex items-center gap-3">
           <Star className="h-8 w-8 text-purple-300" />
           <div>
-            <p className="text-sm text-blue-100">Уровень доступа</p>
+            <p className="text-sm text-blue-400">Уровень доступа</p>
             <p className="font-semibold">{getAccessLevel()}</p>
           </div>
         </div>
