@@ -1,4 +1,4 @@
-// components/book-trainer/types.ts (обновленная версия)
+// components/book-trainer/types.ts
 export interface Trainer {
   _id: string;
   name: string;
@@ -16,6 +16,7 @@ export interface Trainer {
 }
 
 export interface WorkingHours {
+  [key: string]: DaySchedule | undefined;
   monday?: DaySchedule;
   tuesday?: DaySchedule;
   wednesday?: DaySchedule;

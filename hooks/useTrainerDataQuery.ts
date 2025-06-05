@@ -10,7 +10,7 @@ import type {
   Workout,
   UserBooking,
   Message,
-  TrainerStats,
+  SystemStats,
   MessageStats,
   WorkoutStats,
   MemberStats,
@@ -238,7 +238,7 @@ export function useTrainerDataQuery() {
   }, [safeWorkouts, isLoading]);
 
   // Основная статистика
-  const stats: TrainerStats = useMemo(() => {
+  const stats: SystemStats = useMemo(() => {
     if (isLoading) {
       return {
         activeClients: 0,

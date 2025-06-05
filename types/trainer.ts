@@ -5,20 +5,20 @@ export interface Trainer {
   email: string;
   phone: string;
   specialization: string[];
-  experience?: number; // Сделаем необязательным
-  hourlyRate?: number; // Сделаем необязательным
+  experience?: number;
+  hourlyRate?: number;
   certifications?: string[];
-  bio?: string; // Сделаем необязательным
-  avatar?: string; // Сделаем необязательным
+  bio?: string;
+  avatar?: string;
   rating?: number;
   isActive?: boolean;
-  status?: "active" | "busy" | "inactive" | "vacation"; // Строгая типизация
+  status?: "active" | "busy" | "inactive" | "vacation";
   activeClients?: number;
   totalSessions?: number;
   createdAt?: number;
   _creationTime?: number;
-  totalClients?: number; // Сделаем необязательным
-  monthlyEarnings?: number; // Сделаем необязательным
+  totalClients?: number;
+  monthlyEarnings?: number;
   workingHours?: {
     start: string;
     end: string;

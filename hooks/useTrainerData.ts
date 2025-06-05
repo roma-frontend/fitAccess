@@ -8,7 +8,7 @@ import type {
   Client, 
   Workout, 
   UserBooking,
-  TrainerStats,
+  SystemStats,
   MessageStats,
   WorkoutStats,
   MemberStats,
