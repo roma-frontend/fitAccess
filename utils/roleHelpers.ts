@@ -62,10 +62,10 @@ export const getUserDashboardUrl = (user: User | null): string => {
   const dashboardUrls: Record<string, string> = {
     'admin': '/admin',
     'super-admin': '/admin',
-    'manager': '/manager',
-    'trainer': '/trainer',
-    'client': '/member',
-    'member': '/member',
+    'manager': '/manager-dashboard',
+    'trainer': '/trainer-dashboard',
+    'client': '/member-dashboard',
+    'member': '/member-dashboard',
     'staff': '/staff'
   };
   

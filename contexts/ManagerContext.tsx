@@ -80,24 +80,25 @@ interface ManagerContextType {
   bookings: Booking[];
   loading: boolean;
   refreshData: () => Promise<void>;
+  refreshBookings: () => Promise<void>;
   assignTrainerToClient: (clientId: string, trainerId: string) => Promise<void>;
-  
+
   // CRUD операции для записей
   createBooking: (bookingData: any) => Promise<void>;
   updateBooking: (bookingId: string, updates: any) => Promise<void>;
   deleteBooking: (bookingId: string) => Promise<void>;
-  
+
   // CRUD операции для тренеров
   createTrainer: (trainerData: any) => Promise<void>;
   updateTrainer: (trainerId: string, updates: any) => Promise<void>;
   deleteTrainer: (trainerId: string) => Promise<void>;
   updateTrainerStatus: (trainerId: string, status: string) => Promise<void>;
-  
+
   // Фильтры и поиск
   searchBookings: (query: string) => Booking[];
   searchTrainers: (query: string) => Trainer[];
   getTrainerBookings: (trainerId: string, date?: string) => Booking[];
-  
+
   // Аналитика
   getRevenueData: (period: string) => any;
   getBookingStats: (period: string) => any;
@@ -127,12 +128,62 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
     loadInitialData();
   }, []);
 
+  const refreshBookings = async () => {
+    try {
+      // Здесь будет логика загрузки только записей
+      // Пока используем ту же логику, что и в loadInitialData для записей
+      const mockBookings: Booking[] = [
+        {
+          id: 'booking-1',
+          trainerId: 'trainer-1',
+          trainerName: 'Адам Петров',
+          trainerAvatar: '/avatars/trainer-adam.jpg',
+          clientId: 'client-1',
+          clientName: 'Мария Иванова',
+          clientAvatar: '/avatars/client-maria.jpg',
+          clientPhone: '+7 (999) 111-22-33',
+          date: new Date().toISOString().split('T')[0],
+          time: '14:00',
+          duration: 60,
+          type: 'personal',
+          status: 'scheduled',
+          price: 2500,
+          service: 'Персональная тренировка',
+          notes: 'Работа над силовыми упражнениями'
+        },
+        {
+          id: 'booking-2',
+          trainerId: 'trainer-2',
+          trainerName: 'Елена Смирнова',
+          trainerAvatar: '/avatars/trainer-elena.jpg',
+          clientId: 'client-2',
+          clientName: 'Анна Козлова',
+          clientAvatar: '/avatars/client-anna.jpg',
+          clientPhone: '+7 (999) 222-33-44',
+          date: new Date().toISOString().split('T')[0],
+          time: '15:30',
+          duration: 90,
+          type: 'personal',
+          status: 'completed',
+          price: 3500,
+          service: 'Йога и стретчинг',
+          notes: 'Восстановительная тренировка'
+        }
+      ];
+
+      setBookings(mockBookings);
+    } catch (error) {
+      console.error('Ошибка обновления записей:', error);
+      throw error;
+    }
+  };
+
   const loadInitialData = async () => {
     setLoading(true);
     try {
       // Симуляция загрузки данных
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Мок данные для демонстрации
       const mockStats: ManagerStats = {
         totalTrainers: 12,
@@ -314,17 +365,17 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
         ...bookingData,
         status: 'scheduled' as const
       };
-      
+
       setBookings(prev => [...prev, newBooking]);
-      
+
       // Обновляем статистику
       setStats(prev => ({
         ...prev,
-        todayBookings: bookingData.date === new Date().toISOString().split('T')[0] 
-          ? prev.todayBookings + 1 
+        todayBookings: bookingData.date === new Date().toISOString().split('T')[0]
+          ? prev.todayBookings + 1
           : prev.todayBookings
       }));
-      
+
     } catch (error) {
       console.error('Ошибка создания записи:', error);
       throw error;
@@ -333,9 +384,9 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
 
   const updateBooking = async (bookingId: string, updates: Partial<Booking>) => {
     try {
-      setBookings(prev => 
-        prev.map(booking => 
-          booking.id === bookingId 
+      setBookings(prev =>
+        prev.map(booking =>
+          booking.id === bookingId
             ? { ...booking, ...updates }
             : booking
         )
@@ -368,17 +419,17 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
         joinDate: new Date().toISOString(),
         lastActive: new Date().toISOString()
       };
-      
+
       setTrainers(prev => [...prev, newTrainer]);
-      
+
       setStats(prev => ({
         ...prev,
         totalTrainers: prev.totalTrainers + 1,
-        activeTrainers: trainerData.status === 'active' 
-          ? prev.activeTrainers + 1 
+        activeTrainers: trainerData.status === 'active'
+          ? prev.activeTrainers + 1
           : prev.activeTrainers
       }));
-      
+
     } catch (error) {
       console.error('Ошибка создания тренера:', error);
       throw error;
@@ -387,9 +438,9 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
 
   const updateTrainer = async (trainerId: string, updates: Partial<Trainer>) => {
     try {
-      setTrainers(prev => 
-        prev.map(trainer => 
-          trainer.id === trainerId 
+      setTrainers(prev =>
+        prev.map(trainer =>
+          trainer.id === trainerId
             ? { ...trainer, ...updates }
             : trainer
         )
@@ -403,19 +454,19 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
   const deleteTrainer = async (trainerId: string) => {
     try {
       const trainer = trainers.find(t => t.id === trainerId);
-      
+
       setTrainers(prev => prev.filter(trainer => trainer.id !== trainerId));
-      
+
       if (trainer) {
         setStats(prev => ({
           ...prev,
           totalTrainers: prev.totalTrainers - 1,
-          activeTrainers: trainer.status === 'active' 
-            ? prev.activeTrainers - 1 
+          activeTrainers: trainer.status === 'active'
+            ? prev.activeTrainers - 1
             : prev.activeTrainers
         }));
       }
-      
+
     } catch (error) {
       console.error('Ошибка удаления тренера:', error);
       throw error;
@@ -425,10 +476,10 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
   const updateTrainerStatus = async (trainerId: string, status: string) => {
     try {
       const oldTrainer = trainers.find(t => t.id === trainerId);
-      
-      setTrainers(prev => 
-        prev.map(trainer => 
-          trainer.id === trainerId 
+
+      setTrainers(prev =>
+        prev.map(trainer =>
+          trainer.id === trainerId
             ? { ...trainer, status: status as Trainer['status'] }
             : trainer
         )
@@ -438,15 +489,15 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
       if (oldTrainer) {
         setStats(prev => ({
           ...prev,
-          activeTrainers: 
-            oldTrainer.status !== 'active' && status === 'active' 
+          activeTrainers:
+            oldTrainer.status !== 'active' && status === 'active'
               ? prev.activeTrainers + 1
-            : oldTrainer.status === 'active' && status !== 'active'
-              ? prev.activeTrainers - 1
-            : prev.activeTrainers
+              : oldTrainer.status === 'active' && status !== 'active'
+                ? prev.activeTrainers - 1
+                : prev.activeTrainers
         }));
       }
-      
+
     } catch (error) {
       console.error('Ошибка обновления статуса тренера:', error);
       throw error;
@@ -455,7 +506,7 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
 
   const assignTrainerToClient = async (clientId: string, trainerId: string) => {
     try {
-      setClients(prev => prev.map(client => 
+      setClients(prev => prev.map(client =>
         client.id === clientId ? { ...client, assignedTrainer: trainerId } : client
       ));
     } catch (error) {
@@ -467,9 +518,9 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
   // Методы поиска и фильтрации
   const searchBookings = (query: string): Booking[] => {
     if (!query.trim()) return bookings;
-    
+
     const lowercaseQuery = query.toLowerCase();
-    return bookings.filter(booking => 
+    return bookings.filter(booking =>
       booking.clientName.toLowerCase().includes(lowercaseQuery) ||
       booking.trainerName.toLowerCase().includes(lowercaseQuery) ||
       booking.service.toLowerCase().includes(lowercaseQuery) ||
@@ -479,16 +530,16 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
 
   const searchTrainers = (query: string): Trainer[] => {
     if (!query.trim()) return trainers;
-    
+
     const lowercaseQuery = query.toLowerCase();
-    return trainers.filter(trainer => 
+    return trainers.filter(trainer =>
       trainer.name.toLowerCase().includes(lowercaseQuery) ||
       trainer.email.toLowerCase().includes(lowercaseQuery) ||
       trainer.phone.toLowerCase().includes(lowercaseQuery) ||
-      trainer.specialization.some(spec => 
+      trainer.specialization.some(spec =>
         spec.toLowerCase().includes(lowercaseQuery)
       ) ||
-      trainer.certifications.some(cert => 
+      trainer.certifications.some(cert =>
         cert.toLowerCase().includes(lowercaseQuery)
       )
     );
@@ -506,7 +557,7 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
   const getRevenueData = (period: string) => {
     const now = new Date();
     let startDate: Date;
-    
+
     switch (period) {
       case 'week':
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -561,7 +612,7 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
   const getBookingStats = (period: string) => {
     const now = new Date();
     let startDate: Date;
-    
+
     switch (period) {
       case 'today':
         startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -622,7 +673,7 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
   };
 
   const getTrainerPerformance = (trainerId?: string) => {
-    const targetTrainers = trainerId 
+    const targetTrainers = trainerId
       ? trainers.filter(t => t.id === trainerId)
       : trainers;
 
@@ -631,16 +682,16 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
       const completedBookings = trainerBookings.filter(b => b.status === 'completed');
       const cancelledBookings = trainerBookings.filter(b => b.status === 'cancelled');
       const noShowBookings = trainerBookings.filter(b => b.status === 'no-show');
-      
+
       const revenue = completedBookings.reduce((sum, b) => sum + b.price, 0);
       const averagePrice = completedBookings.length > 0
         ? revenue / completedBookings.length
         : 0;
-      
-      const completionRate = trainerBookings.length > 0 
-        ? (completedBookings.length / trainerBookings.length) * 100 
+
+      const completionRate = trainerBookings.length > 0
+        ? (completedBookings.length / trainerBookings.length) * 100
         : 0;
-      
+
       const cancellationRate = trainerBookings.length > 0
         ? (cancelledBookings.length / trainerBookings.length) * 100
         : 0;
@@ -694,15 +745,15 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
   const calculateTrend = (dataByDay: Record<string, number>): 'up' | 'down' | 'stable' => {
     const values = Object.values(dataByDay);
     if (values.length < 2) return 'stable';
-    
+
     const firstHalf = values.slice(0, Math.floor(values.length / 2));
     const secondHalf = values.slice(Math.floor(values.length / 2));
-    
+
     const firstAvg = firstHalf.reduce((sum, val) => sum + val, 0) / firstHalf.length;
     const secondAvg = secondHalf.reduce((sum, val) => sum + val, 0) / secondHalf.length;
-    
+
     const difference = ((secondAvg - firstAvg) / firstAvg) * 100;
-    
+
     if (difference > 5) return 'up';
     if (difference < -5) return 'down';
     return 'stable';
@@ -712,7 +763,7 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
     // Формула эффективности: (завершаемость * 0.4) + (рейтинг * 20 * 0.3) + (доход/1000 * 0.3)
     const normalizedRating = (rating / 5) * 100; // Приводим рейтинг к 100-балльной шкале
     const normalizedRevenue = Math.min((revenue / 100000) * 100, 100); // Нормализуем доход
-    
+
     return (completionRate * 0.4) + (normalizedRating * 0.3) + (normalizedRevenue * 0.3);
   };
 
@@ -723,24 +774,25 @@ export function ManagerProvider({ children }: { children: React.ReactNode }) {
     bookings,
     loading,
     refreshData,
+    refreshBookings,
     assignTrainerToClient,
-    
+
     // CRUD операции для записей
     createBooking,
     updateBooking,
     deleteBooking,
-    
+
     // CRUD операции для тренеров
     createTrainer,
     updateTrainer,
     deleteTrainer,
     updateTrainerStatus,
-    
+
     // Фильтры и поиск
     searchBookings,
     searchTrainers,
     getTrainerBookings,
-    
+
     // Аналитика
     getRevenueData,
     getBookingStats,
