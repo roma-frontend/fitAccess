@@ -1,9 +1,9 @@
-// hooks/useAuth.ts (обновленная версия с токеном)
+// hooks/useAuth.ts (исправленная версия)
 "use client";
 
 import React, { useState, useEffect, ReactNode } from 'react';
 import { User } from '@/lib/simple-auth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 // Обновленный интерфейс для совместимости с главной страницей
 export interface AuthStatus {
@@ -19,7 +19,7 @@ export interface AuthStatus {
 
 interface AuthContextType {
   user: User | null;
-  token: string | null; // Добавляем токен
+  token: string | null;
   loading: boolean;
   authStatus: AuthStatus | null;
   login: (email: string, password: string) => Promise<boolean>;
@@ -67,73 +67,95 @@ const AuthContext = React.createContext<AuthContextType | null>(null);
 // Провайдер контекста аутентификации
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null); // Добавляем состояние токена
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   // Синхронизируем authStatus с user
   useEffect(() => {
     const newAuthStatus = userToAuthStatus(user);
     setAuthStatus(newAuthStatus);
+    console.log('🔄 AuthProvider: authStatus обновлен:', newAuthStatus);
   }, [user]);
 
   // Проверка текущей сессии при загрузке
   useEffect(() => {
+    console.log('🚀 AuthProvider: инициализация, проверяем сессию...');
     checkSession();
   }, []);
 
-  // Загружаем токен из localStorage при инициализации
+  // Проверяем авторизацию при изменении маршрута (особенно при переходе на главную)
   useEffect(() => {
-    const savedToken = localStorage.getItem('auth_token');
-    if (savedToken) {
-      setToken(savedToken);
+    if (pathname === '/') {
+      console.log('🏠 AuthProvider: переход на главную, проверяем авторизацию...');
+      checkSession();
     }
-  }, []);
+  }, [pathname]);
 
   const checkSession = async (): Promise<void> => {
     try {
-      // Проверяем токен из localStorage
-      const savedToken = localStorage.getItem('auth_token');
+      console.log('🔍 AuthProvider: проверяем сессию через /api/auth/check...');
       
-      const response = await fetch('/api/auth/session', {
+      // ИСПРАВЛЕНО: используем правильный endpoint
+      const response = await fetch('/api/auth/check', {
         method: 'GET',
         credentials: 'include',
-        headers: savedToken ? {
-          'Authorization': `Bearer ${savedToken}`
-        } : {}
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
+
+      console.log('🔍 AuthProvider: статус ответа:', response.status);
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.user) {
-          setUser(data.user);
+        console.log('🔍 AuthProvider: данные от API:', data);
+        
+        if (data.authenticated && data.user) {
+          console.log('✅ AuthProvider: пользователь авторизован:', data.user);
+          setUser({
+            id: data.user.id,
+            role: data.user.role,
+            email: data.user.email,
+            name: data.user.name
+          });
           
-          // Если есть токен в ответе, сохраняем его
+          // Сохраняем токен если есть
           if (data.token) {
             setToken(data.token);
             localStorage.setItem('auth_token', data.token);
-          } else if (savedToken) {
-            setToken(savedToken);
           }
+        } else {
+          console.log('❌ AuthProvider: пользователь не авторизован');
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('auth_token');
         }
       } else {
-        // Если сессия недействительна, очищаем токен
+        console.log('❌ AuthProvider: ошибка ответа от API:', response.status);
+        setUser(null);
         setToken(null);
         localStorage.removeItem('auth_token');
       }
     } catch (error) {
-      console.error('Ошибка проверки сессии:', error);
+      console.error('❌ AuthProvider: ошибка проверки сессии:', error);
+      setUser(null);
       setToken(null);
       localStorage.removeItem('auth_token');
     } finally {
       setLoading(false);
+      console.log('🏁 AuthProvider: проверка сессии завершена');
     }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
+      console.log('🔐 AuthProvider: попытка входа для:', email);
       
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -145,8 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       const data = await response.json();
+      console.log('🔐 AuthProvider: результат входа:', data);
 
       if (data.success && data.user) {
+        console.log('✅ AuthProvider: вход успешен:', data.user);
         setUser(data.user);
         
         // Сохраняем токен если он есть
@@ -160,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       return false;
     } catch (error) {
-      console.error('Ошибка входа:', error);
+      console.error('❌ AuthProvider: ошибка входа:', error);
       return false;
     } finally {
       setLoading(false);
@@ -170,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
+      console.log('🚪 AuthProvider: выполняем выход...');
       
       // Сначала очищаем состояние
       setUser(null);
@@ -188,38 +213,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   
       if (response.ok) {
+        console.log('✅ AuthProvider: выход успешен');
         // Очищаем локальное хранилище
         localStorage.clear();
         sessionStorage.clear();
         
-        // Используем router вместо window.location
-        router.push('/');
-        router.refresh(); // Принудительно обновляем страницу
+        // Принудительно перенаправляем на главную
+        window.location.href = '/';
       }
     } catch (error) {
-      console.error('Ошибка выхода:', error);
+      console.error('❌ AuthProvider: ошибка выхода:', error);
       setUser(null);
       setToken(null);
       setAuthStatus({ authenticated: false });
       localStorage.removeItem('auth_token');
-      router.push('/');
+      window.location.href = '/';
     } finally {
       setLoading(false);
     }
   };
 
   const refreshUser = async (): Promise<void> => {
+    console.log('🔄 AuthProvider: принудительное обновление пользователя...');
     await checkSession();
   };
 
   // Функция для ручного обновления authStatus (для совместимости)
   const updateAuthStatus = (status: AuthStatus | null): void => {
+    console.log('🔄 AuthProvider: ручное обновление authStatus:', status);
     setAuthStatus(status);
   };
 
   const value: AuthContextType = {
     user,
-    token, // Добавляем токен в контекст
+    token,
     loading,
     authStatus,
     login,

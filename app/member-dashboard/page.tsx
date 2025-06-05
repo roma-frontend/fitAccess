@@ -1,8 +1,9 @@
-// app/member-dashboard/page.tsx - финальная версия
+// app/member-dashboard/page.tsx - исправленная версия (в стиле admin)
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import MemberHeader from "@/components/member/MemberHeader";
 import QuickActions from "@/components/member/QuickActions";
 import MemberProgress from "@/components/member/MemberProgress";
@@ -19,16 +20,9 @@ import {
   AlertCircle,
   TrendingUp,
   Heart,
-  Zap
+  Zap,
+  Home,
 } from "lucide-react";
-
-interface UserData {
-  id: string;
-  email: string;
-  role: string;
-  name?: string;
-  avatar?: string;
-}
 
 interface Workout {
   id: string;
@@ -49,11 +43,8 @@ interface Workout {
 
 export default function MemberDashboard() {
   const router = useRouter();
-  const [user, setUser] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [authChecked, setAuthChecked] = useState(false);
-
+  const { user, loading, logout } = useAuth();
+  
   // Состояния для тренировок
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [workoutsLoading, setWorkoutsLoading] = useState(true);
@@ -64,67 +55,19 @@ export default function MemberDashboard() {
     daysLeft: 15,
   });
 
+  // Загружаем тренировки только если пользователь авторизован
   useEffect(() => {
-    if (authChecked) return;
-    checkAuthAndLoadData();
-  }, [authChecked]);
-
-  useEffect(() => {
-    if (authChecked && user) {
+    if (user && (user.role === "member" || user.role === "client")) {
       fetchWorkouts();
     }
-  }, [authChecked, user]);
-
-  const checkAuthAndLoadData = async () => {
-    try {
-      const response = await fetch("/api/auth/check", {
-        credentials: "include",
-        cache: "no-store",
-      });
-
-      const data = await response.json();
-
-      if (!data.authenticated) {
-        setError("Необходима авторизация");
-        setAuthChecked(true);
-        setLoading(false);
-        setTimeout(() => {
-          window.location.href = "/member-login";
-        }, 2000);
-        return;
-      }
-
-      if (data.user?.role !== "member") {
-        setError(
-          `Доступ запрещен. Ваша роль: ${data.user?.role}. Эта страница только для участников.`
-        );
-        setAuthChecked(true);
-        setLoading(false);
-        setTimeout(() => {
-          if (data.dashboardUrl && data.dashboardUrl !== "/member-dashboard") {
-            window.location.href = data.dashboardUrl;
-          } else {
-            window.location.href = "/";
-          }
-        }, 3000);
-        return;
-      }
-
-      setUser(data.user);
-      setAuthChecked(true);
-    } catch (error) {
-      console.error("MemberDashboard: ошибка проверки авторизации:", error);
-      setError("Ошибка загрузки данных. Проверьте подключение к интернету.");
-      setAuthChecked(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [user]);
 
   const fetchWorkouts = async () => {
     try {
       setWorkoutsLoading(true);
-      const response = await fetch("/api/my-workouts");
+      const response = await fetch("/api/my-workouts", {
+        credentials: "include",
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -158,14 +101,19 @@ export default function MemberDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-      });
-      window.location.href = "/";
+      console.log("🚪 MemberDashboard: выполняем выход через useAuth...");
+      await logout();
     } catch (error) {
-      console.error("Ошибка выхода:", error);
+      console.error("❌ Ошибка выхода:", error);
+      // В случае ошибки принудительно перенаправляем
+      window.location.href = "/";
     }
+  };
+
+  // Функция для перехода на главную (упрощенная)
+  const goToHomePage = () => {
+    console.log("🏠 MemberDashboard: переход на главную страницу...");
+    router.push("/");
   };
 
   const getStatusColor = (status: string) => {
@@ -203,6 +151,7 @@ export default function MemberDashboard() {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 3);
 
+  // Показываем загрузку (как в admin dashboard)
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
@@ -214,7 +163,8 @@ export default function MemberDashboard() {
     );
   }
 
-  if (error || !user) {
+  // Проверяем авторизацию и роль (как в admin dashboard)
+  if (!user || (user.role !== "member" && user.role !== "client")) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
         <Card className="p-8 text-center max-w-md">
@@ -222,10 +172,20 @@ export default function MemberDashboard() {
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
             Проблема с доступом
           </h1>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <Button onClick={() => window.location.href = "/member-login"}>
-            Войти как участник
-          </Button>
+          <p className="text-gray-600 mb-6">
+            {!user 
+              ? "Необходима авторизация" 
+              : `Доступ запрещен. Ваша роль: ${user.role}. Эта страница только для участников.`
+            }
+          </p>
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => router.push("/member-login")}>
+              Войти как участник
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/")}>
+              На главную
+            </Button>
+          </div>
         </Card>
       </div>
     );
@@ -234,27 +194,35 @@ export default function MemberDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       {/* Красивый адаптивный header */}
-      <MemberHeader 
-        user={user} 
-        stats={stats} 
-        onLogout={handleLogout}
-      />
+      <MemberHeader user={user} stats={stats} onLogout={handleLogout} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Приветствие */}
+        {/* Приветствие с кнопкой перехода на главную */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center">
-              <Heart className="h-6 w-6 text-white" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center">
+                <Heart className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
+                  Добро пожаловать, {user.name || user.email.split("@")[0]}! 👋
+                </h1>
+                <p className="text-lg text-gray-600">
+                  Ваш путь к здоровью и отличной форме
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                Добро пожаловать, {user.name || user.email.split('@')[0]}! 👋
-              </h1>
-              <p className="text-lg text-gray-600">
-                Ваш путь к здоровью и отличной форме
-              </p>
-            </div>
+
+            {/* Кнопка перехода на главную */}
+            <Button
+              onClick={goToHomePage}
+              variant="outline"
+              className="flex items-center gap-2 hover:shadow-md transition-all"
+            >
+              <Home className="h-4 w-4" />
+              На главную
+            </Button>
           </div>
         </div>
 
@@ -301,7 +269,9 @@ export default function MemberDashboard() {
                       <div
                         key={workout.id}
                         className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl hover:shadow-md transition-all duration-300 cursor-pointer border border-gray-100"
-                        onClick={() => router.push("/member-dashboard/my-bookings")}
+                        onClick={() =>
+                          router.push("/member-dashboard/my-bookings")
+                        }
                       >
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
@@ -314,11 +284,14 @@ export default function MemberDashboard() {
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               <span className="flex items-center gap-1">
                                 <Calendar className="h-3 w-3" />
-                                {new Date(workout.date).toLocaleDateString("ru-RU", {
-                                  weekday: "short",
-                                  month: "short",
-                                  day: "numeric",
-                                })}
+                                {new Date(workout.date).toLocaleDateString(
+                                  "ru-RU",
+                                  {
+                                    weekday: "short",
+                                    month: "short",
+                                    day: "numeric",
+                                  }
+                                )}
                               </span>
                               <span className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
@@ -357,7 +330,7 @@ export default function MemberDashboard() {
                       Запишитесь на тренировку или программу прямо сейчас
                     </p>
                     <div className="flex gap-3 justify-center">
-                                            <Button onClick={() => router.push("/trainers")}>
+                      <Button onClick={() => router.push("/trainers")}>
                         <User className="h-4 w-4 mr-2" />
                         Записаться к тренеру
                       </Button>
@@ -392,10 +365,12 @@ export default function MemberDashboard() {
                       {upcomingWorkouts[0].type}
                     </h4>
                     <div className="space-y-2 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         <span>
-                          {new Date(upcomingWorkouts[0].date).toLocaleDateString("ru-RU", {
+                          {new Date(
+                            upcomingWorkouts[0].date
+                          ).toLocaleDateString("ru-RU", {
                             weekday: "long",
                             month: "long",
                             day: "numeric",
@@ -419,10 +394,12 @@ export default function MemberDashboard() {
                         </div>
                       )}
                     </div>
-                    <Button 
-                      className="w-full mt-4" 
+                    <Button
+                      className="w-full mt-4"
                       size="sm"
-                      onClick={() => router.push("/member-dashboard/my-bookings")}
+                      onClick={() =>
+                        router.push("/member-dashboard/my-bookings")
+                      }
                     >
                       Подробнее
                     </Button>
@@ -444,7 +421,9 @@ export default function MemberDashboard() {
                   <div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="font-medium">Тренировки в месяце</span>
-                      <span className="text-blue-600 font-bold">{stats.completed}/20</span>
+                      <span className="text-blue-600 font-bold">
+                        {stats.completed}/20
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
                       <div
@@ -455,11 +434,13 @@ export default function MemberDashboard() {
                       ></div>
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="flex justify-between text-sm mb-2">
                       <span className="font-medium">Часы тренировок</span>
-                      <span className="text-green-600 font-bold">{stats.totalHours}/40</span>
+                      <span className="text-green-600 font-bold">
+                        {stats.totalHours}/40
+                      </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3">
                       <div
@@ -471,8 +452,8 @@ export default function MemberDashboard() {
                     </div>
                   </div>
 
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     className="w-full"
                     onClick={() => router.push("/member-dashboard/progress")}
                   >
@@ -492,14 +473,38 @@ export default function MemberDashboard() {
                   Отличная работа! 💪
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Вы уже выполнили {Math.round((stats.completed / 20) * 100)}% месячной цели
+                  Вы уже выполнили {Math.round((stats.completed / 20) * 100)}%
+                  месячной цели
                 </p>
-                <Button 
+                <Button
                   size="sm"
                   className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                   onClick={() => router.push("/trainers")}
                 >
                   Продолжить тренировки
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Дополнительная кнопка для перехода на главную */}
+            <Card className="shadow-lg bg-gradient-to-br from-blue-50 to-green-50 border-blue-200 border-0">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Home className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">
+                  Главная страница
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Вернуться на главную страницу сайта
+                </p>
+                <Button
+                  onClick={goToHomePage}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Home className="h-4 w-4 mr-2" />
+                  Перейти на главную
                 </Button>
               </CardContent>
             </Card>
@@ -527,21 +532,27 @@ export default function MemberDashboard() {
                   <Target className="h-4 w-4 text-blue-600" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Регулярность</h4>
-                  <p className="text-gray-600">Занимайтесь минимум 3 раза в неделю</p>
+                  <h4 className="font-medium text-gray-900 mb-1">
+                    Регулярность
+                  </h4>
+                  <p className="text-gray-600">
+                    Занимайтесь минимум 3 раза в неделю
+                  </p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
                 <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <Heart className="h-4 w-4 text-green-600" />
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 mb-1">Питание</h4>
-                  <p className="text-gray-600">Правильное питание - 70% успеха</p>
+                  <p className="text-gray-600">
+                    Правильное питание - 70% успеха
+                  </p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
                 <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <Clock className="h-4 w-4 text-purple-600" />
@@ -551,7 +562,7 @@ export default function MemberDashboard() {
                   <p className="text-gray-600">Давайте мышцам восстановиться</p>
                 </div>
               </div>
-              
+
               <div className="flex items-start gap-3 p-3 bg-white/50 rounded-lg">
                 <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <TrendingUp className="h-4 w-4 text-orange-600" />
@@ -568,3 +579,4 @@ export default function MemberDashboard() {
     </div>
   );
 }
+
