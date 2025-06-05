@@ -186,7 +186,9 @@ export default defineSchema({
       v.literal("user"),
       v.literal("member"),
       v.literal("trainer"),
-      v.literal("admin")
+      v.literal("admin"),
+      v.literal("manager"),
+    v.literal("super-admin")
     ),
     type: v.union(
       v.literal("system"),

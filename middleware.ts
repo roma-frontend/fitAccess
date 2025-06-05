@@ -40,7 +40,7 @@ const publicRoutes = [
   '/test-shop',
   '/debug-auth-status',
   '/test-calendar-sync',
-  // Добавляем маршруты восстановления пароля
+  '/shop',
   '/reset-password',
   '/forgot-password',
   '/password-reset-success'
@@ -51,7 +51,6 @@ const memberRoutes = [
   '/member-profile',
   '/member-visits',
   '/group-classes',
-  '/shop',
   '/qr-code',
   '/setup-face-recognition',
   '/my-bookings',

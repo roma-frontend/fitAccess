@@ -3,6 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useShopStore } from '@/stores/shopStore';
+import { useAuth } from '@/hooks/useAuth'; // Добавляем импорт
 import OrderConfirmation from '@/components/OrderConfirmation';
 import { ArrowLeft, Home, LayoutDashboard, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import PaymentView from '@/components/shop/Payment/PaymentView';
 export default function ShopPage() {
   const router = useRouter();
   const { orderStep, setOrderStep } = useShopStore();
+  const { user } = useAuth(); // Получаем данные пользователя
 
   const handleBackToShop = () => {
     setOrderStep('shop');
@@ -22,8 +24,35 @@ export default function ShopPage() {
     router.push('/');
   };
 
+  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ - динамический переход в дашборд
   const handleGoDashboard = () => {
-    router.push('/member-dashboard');
+    if (!user?.role) {
+      // Fallback если роль не определена
+      router.push('/member-dashboard');
+      return;
+    }
+
+    // Определяем дашборд на основе роли
+    const normalizedRole = user.role.replace(/_/g, '-').toLowerCase();
+    
+    switch (normalizedRole) {
+      case 'super-admin':
+      case 'admin':
+        router.push('/admin');
+        break;
+      case 'manager':
+        router.push('/manager-dashboard');
+        break;
+      case 'trainer':
+        router.push('/trainer-dashboard');
+        break;
+      case 'member':
+        router.push('/member-dashboard');
+        break;
+      default:
+        // Fallback для неизвестных ролей
+        router.push('/member-dashboard');
+    }
   };
 
   const getStepTitle = () => {
@@ -49,6 +78,27 @@ export default function ShopPage() {
         return 'Ваш заказ успешно оформлен';
       default:
         return '';
+    }
+  };
+
+  // ✅ ДИНАМИЧЕСКИЙ ТЕКСТ КНОПКИ ДАШБОРДА
+  const getDashboardButtonText = () => {
+    if (!user?.role) return 'Дашборд';
+    
+    const normalizedRole = user.role.replace(/_/g, '-').toLowerCase();
+    
+    switch (normalizedRole) {
+      case 'super-admin':
+      case 'admin':
+        return 'Админ-панель';
+      case 'manager':
+        return 'Менеджер';
+      case 'trainer':
+        return 'Тренер';
+      case 'member':
+        return 'Мой кабинет';
+      default:
+        return 'Дашборд';
     }
   };
 
@@ -101,14 +151,16 @@ export default function ShopPage() {
                 <span className="hidden sm:inline">Главная</span>
               </Button>
               
-              {/* Кнопка "Дашборд" */}
+              {/* ✅ УЛУЧШЕННАЯ КНОПКА ДАШБОРДА */}
               <Button 
                 variant="outline" 
                 onClick={handleGoDashboard}
                 className="flex items-center gap-2 hover:bg-green-50 hover:border-green-200"
+                title={`Перейти в ${getDashboardButtonText().toLowerCase()}`}
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden sm:inline">Дашборд</span>
+                <span className="hidden sm:inline">{getDashboardButtonText()}</span>
+                <span className="sm:hidden">Дашборд</span>
               </Button>
             </div>
           </div>
@@ -122,7 +174,7 @@ export default function ShopPage() {
         </div>
       </div>
 
-      {/* Индикатор прогресса для шагов заказа */}
+      {/* Остальной код остается без изменений */}
       {orderStep !== 'shop' && (
         <div className="bg-white border-b">
           <div className="max-w-7xl mx-auto px-4 py-4">

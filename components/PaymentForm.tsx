@@ -58,10 +58,12 @@ function CheckoutForm({
       return;
     }
     
-    if (authData.user.role !== 'member') {
-      setError('Покупки доступны только участникам фитнес-центра.');
+    const allowedRoles = ['member', 'admin', 'super-admin', 'manager', 'trainer'];
+    if (!allowedRoles.includes(authData.user.role)) {
+      setError('У вас нет прав для совершения покупок.');
       return;
     }
+    
   } catch (error) {
     console.error('Ошибка проверки авторизации:', error);
     setError('Ошибка проверки авторизации');

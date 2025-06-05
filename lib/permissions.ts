@@ -1,27 +1,28 @@
 // lib/permissions.ts
 export type UserRole = 'super-admin' | 'admin' | 'manager' | 'trainer' | 'member' | 'client';
 
-export type Resource = 
-  | 'users' 
-  | 'trainers' 
-  | 'clients' 
-  | 'schedule' 
-  | 'analytics' 
-  | 'notifications' 
-  | 'settings' 
-  | 'billing' 
-  | 'reports' 
-  | 'system';
+export type Resource =
+  | 'users'
+  | 'trainers'
+  | 'clients'
+  | 'schedule'
+  | 'analytics'
+  | 'notifications'
+  | 'settings'
+  | 'billing'
+  | 'reports'
+  | 'system'
+  | 'shop';
 
-export type Action = 
-  | 'create' 
-  | 'read' 
-  | 'update' 
-  | 'delete' 
-  | 'export' 
-  | 'import' 
-  | 'manage' 
-  | 'maintenance' 
+export type Action =
+  | 'create'
+  | 'read'
+  | 'update'
+  | 'delete'
+  | 'export'
+  | 'import'
+  | 'manage'
+  | 'maintenance'
   | 'write'
   | 'restore'
   | 'backup';
@@ -38,7 +39,8 @@ export const permissions: Record<UserRole, Record<Resource, Action[]>> = {
     settings: ['create', 'read', 'update', 'delete', 'manage', 'export', 'import', 'write'],
     billing: ['create', 'read', 'update', 'delete', 'export', 'import', 'manage', 'write'],
     reports: ['create', 'read', 'export', 'import', 'manage', 'write'],
-    system: ['maintenance', 'manage', 'export', 'import', 'write', 'backup'] 
+    system: ['maintenance', 'manage', 'export', 'import', 'write', 'backup'],
+    shop: ['create', 'read', 'update', 'delete', 'manage', 'export', 'import', 'write']
   },
   admin: {
     users: ['create', 'read', 'update', 'delete', 'export', 'import', 'write'],
@@ -50,7 +52,8 @@ export const permissions: Record<UserRole, Record<Resource, Action[]>> = {
     settings: ['read', 'update', 'export', 'import', 'write'],
     billing: ['read', 'update', 'export', 'import', 'write'],
     reports: ['create', 'read', 'export', 'import', 'write'],
-    system: ['maintenance', 'export', 'import', 'write', 'backup']
+    system: ['maintenance', 'export', 'import', 'write', 'backup'],
+    shop: ['create', 'read', 'update', 'delete', 'export', 'import', 'write']
   },
   manager: {
     users: ['read', 'export'],
@@ -62,7 +65,8 @@ export const permissions: Record<UserRole, Record<Resource, Action[]>> = {
     settings: ['read', 'export'],
     billing: ['read', 'export'],
     reports: ['read', 'export', 'write'],
-    system: ['export']
+    system: ['export'],
+    shop: ['read', 'update', 'export', 'write']
   },
   trainer: {
     users: [],
@@ -74,7 +78,8 @@ export const permissions: Record<UserRole, Record<Resource, Action[]>> = {
     settings: ['read'],
     billing: [],
     reports: ['read', 'export'],
-    system: []
+    system: [],
+    shop: ['read', 'export']
   },
   member: {
     users: [],
@@ -86,7 +91,8 @@ export const permissions: Record<UserRole, Record<Resource, Action[]>> = {
     settings: ['read', 'export'],
     billing: ['read', 'export'],
     reports: [],
-    system: []
+    system: [],
+    shop: ['read', 'export']
   },
   client: {
     users: [],
@@ -98,7 +104,8 @@ export const permissions: Record<UserRole, Record<Resource, Action[]>> = {
     settings: ['read', 'export'],
     billing: ['read', 'export'],
     reports: [],
-    system: []
+    system: [],
+    shop: ['read', 'export']
   }
 };
 
@@ -109,13 +116,13 @@ export const hasPermission = (
   action: Action
 ): boolean => {
   if (!userRole) return false;
-  
+
   const rolePermissions = permissions[userRole];
   if (!rolePermissions) return false;
-  
+
   const resourcePermissions = rolePermissions[resource];
   if (!resourcePermissions) return false;
-  
+
   return resourcePermissions.includes(action);
 };
 
@@ -131,12 +138,12 @@ export const canAccessObject = (
   if (userRole === 'super-admin' || userRole === 'admin') {
     return hasPermission(userRole, resource, action);
   }
-  
+
   // Менеджеры имеют доступ к большинству ресурсов
   if (userRole === 'manager') {
     return hasPermission(userRole, resource, action);
   }
-  
+
   // Тренеры могут работать только со своими объектами
   if (userRole === 'trainer') {
     if (!ownerId || userId !== ownerId) {
@@ -144,7 +151,7 @@ export const canAccessObject = (
     }
     return hasPermission(userRole, resource, action);
   }
-  
+
   // Клиенты могут работать только со своими объектами
   if (userRole === 'client' || userRole === 'member') {
     if (!ownerId || userId !== ownerId) {
@@ -152,7 +159,7 @@ export const canAccessObject = (
     }
     return hasPermission(userRole, resource, action);
   }
-  
+
   return false;
 };
 
@@ -222,8 +229,8 @@ export const filterDataByPermissions = <T extends Record<string, any>>(
   // Базовая фильтрация по уровню доступа
   if (userRole === 'trainer') {
     // Тренеры видят только свои данные
-    return data.filter(item => 
-      item.trainerId === userRole || 
+    return data.filter(item =>
+      item.trainerId === userRole ||
       item.id === userRole ||
       item.createdBy === userRole
     );
@@ -738,7 +745,7 @@ export const getRolePermissions = (userRole: UserRole): Record<Resource, Action[
 // ✅ ПОЛУЧЕНИЕ ВСЕХ ДОСТУПНЫХ РЕСУРСОВ ДЛЯ РОЛИ
 export const getAccessibleResources = (userRole: UserRole | undefined): Resource[] => {
   if (!userRole) return [];
-  
+
   const rolePermissions = permissions[userRole];
   return Object.keys(rolePermissions).filter(
     resource => rolePermissions[resource as Resource].length > 0
@@ -748,9 +755,38 @@ export const getAccessibleResources = (userRole: UserRole | undefined): Resource
 // ✅ ПОЛУЧЕНИЕ ВСЕХ ДОСТУПНЫХ ДЕЙСТВИЙ ДЛЯ РЕСУРСА
 export const getResourceActions = (userRole: UserRole | undefined, resource: Resource): Action[] => {
   if (!userRole) return [];
-  
+
   const rolePermissions = permissions[userRole];
   return rolePermissions[resource] || [];
+};
+
+// ✅ УПРАВЛЕНИЕ МАГАЗИНОМ
+export const canAccessShop = (userRole: UserRole | undefined): boolean => {
+  return hasPermission(userRole, 'shop', 'read');
+};
+
+export const canManageShop = (userRole: UserRole | undefined): boolean => {
+  return hasPermission(userRole, 'shop', 'manage');
+};
+
+export const canCreateShopItems = (userRole: UserRole | undefined): boolean => {
+  return hasPermission(userRole, 'shop', 'create');
+};
+
+export const canUpdateShopItems = (userRole: UserRole | undefined): boolean => {
+  return hasPermission(userRole, 'shop', 'update');
+};
+
+export const canDeleteShopItems = (userRole: UserRole | undefined): boolean => {
+  return hasPermission(userRole, 'shop', 'delete');
+};
+
+export const canViewShop = (userRole: UserRole | undefined): boolean => {
+  return hasPermission(userRole, 'shop', 'read');
+};
+
+export const canPurchaseFromShop = (userRole: UserRole | undefined): boolean => {
+  return userRole !== undefined; // Все авторизованные пользователи могут покупать
 };
 
 // ✅ ПРОВЕРКА ДОСТУПА К КОНКРЕТНОМУ МАРШРУТУ
@@ -771,7 +807,10 @@ export const canAccessRoute = (userRole: UserRole | undefined, route: string): b
     '/schedule': () => canViewSchedule(userRole),
     '/analytics': () => canViewAnalytics(userRole),
     '/profile': () => userRole !== undefined,
-    '/notifications': () => canViewNotifications(userRole)
+    '/notifications': () => canViewNotifications(userRole),
+    '/shop': () => canAccessShop(userRole),
+    '/shop/manage': () => canManageShop(userRole),
+    '/shop/admin': () => canManageShop(userRole),
   };
 
   const checkFunction = routePermissions[route];
@@ -788,7 +827,7 @@ export const getAccessLevel = (userRole: UserRole | undefined): number => {
     'member': 30,
     'client': 20
   };
-  
+
   return userRole ? levels[userRole] : 0;
 };
 
@@ -813,16 +852,16 @@ export const canManageUser = (
   targetUserRole: UserRole | undefined
 ): boolean => {
   if (!userRole || !targetUserRole) return false;
-  
+
   // Супер-админы могут управлять всеми
   if (isSuperAdmin(userRole)) return true;
-  
+
   // Админы могут управлять всеми кроме супер-админов
   if (isAdmin(userRole) && !isSuperAdmin(targetUserRole)) return true;
-  
+
   // Менеджеры могут управлять тренерами и клиентами
   if (isManager(userRole) && (isTrainer(targetUserRole) || isClient(targetUserRole))) return true;
-  
+
   return false;
 };
 
@@ -832,16 +871,16 @@ export const canManageRole = (
   targetRole: UserRole
 ): boolean => {
   if (!userRole) return false;
-  
+
   // Супер-админы могут назначать любые роли
   if (isSuperAdmin(userRole)) return true;
-  
+
   // Админы могут назначать все роли кроме супер-админа
   if (isAdmin(userRole) && targetRole !== 'super-admin') return true;
-  
+
   // Менеджеры могут назначать роли тренера, клиента и участника
   if (isManager(userRole) && (targetRole === 'trainer' || targetRole === 'client' || targetRole === 'member')) return true;
-  
+
   return false;
 };
 
@@ -851,16 +890,16 @@ export const canCreateUserWithRole = (
   targetRole: UserRole
 ): boolean => {
   if (!userRole) return false;
-  
+
   // Супер-админы могут создавать всех
   if (isSuperAdmin(userRole)) return true;
-  
+
   // Админы могут создавать всех кроме супер-админов
   if (isAdmin(userRole) && targetRole !== 'super-admin') return true;
-  
+
   // Менеджеры могут создавать тренеров и клиентов
   if (isManager(userRole) && (targetRole === 'trainer' || targetRole === 'client' || targetRole === 'member')) return true;
-  
+
   return false;
 };
 
@@ -871,31 +910,31 @@ export const canChangeUserRole = (
   newTargetRole: UserRole
 ): boolean => {
   if (!userRole) return false;
-  
+
   // Проверяем, может ли пользователь управлять текущей ролью
   if (!canManageUser(userRole, currentTargetRole)) return false;
-  
+
   // Проверяем, может ли пользователь создать новую роль
   if (!canCreateUserWithRole(userRole, newTargetRole)) return false;
-  
+
   return true;
 };
 
 // ✅ ПОЛУЧЕНИЕ СПИСКА РОЛЕЙ, КОТОРЫЕ МОЖЕТ СОЗДАВАТЬ ПОЛЬЗОВАТЕЛЬ
 export const getCreatableRoles = (userRole: UserRole | undefined): UserRole[] => {
   if (!userRole) return [];
-  
+
   const allRoles: UserRole[] = ['super-admin', 'admin', 'manager', 'trainer', 'member', 'client'];
-  
+
   return allRoles.filter(role => canCreateUserWithRole(userRole, role));
 };
 
 // ✅ ПОЛУЧЕНИЕ СПИСКА РОЛЕЙ, КОТОРЫМИ МОЖЕТ УПРАВЛЯТЬ ПОЛЬЗОВАТЕЛЬ
 export const getManageableRoles = (userRole: UserRole | undefined): UserRole[] => {
   if (!userRole) return [];
-  
+
   const allRoles: UserRole[] = ['super-admin', 'admin', 'manager', 'trainer', 'member', 'client'];
-  
+
   return allRoles.filter(role => canManageUser(userRole, role));
 };
 
@@ -920,13 +959,13 @@ export const canDeleteUser = (
 ): boolean => {
   // Удаление пользователей - более серьезная операция
   if (!userRole || !targetUserRole) return false;
-  
+
   // Супер-админы могут удалять всех кроме других супер-админов
   if (isSuperAdmin(userRole) && !isSuperAdmin(targetUserRole)) return true;
-  
+
   // Админы могут удалять менеджеров, тренеров и клиентов
   if (isAdmin(userRole) && !isAdmin(targetUserRole)) return true;
-  
+
   return false;
 };
 
@@ -1115,7 +1154,7 @@ export const canPerformBulkUserOperations = (
   targetRoles: UserRole[]
 ): boolean => {
   if (!userRole) return false;
-  
+
   // Проверяем, может ли пользователь управлять всеми целевыми ролями
   return targetRoles.every(targetRole => canManageUser(userRole, targetRole));
 };
@@ -1125,8 +1164,8 @@ export const canAccessMultipleResources = (
   resources: Resource[]
 ): boolean => {
   if (!userRole) return false;
-  
-  return resources.every(resource => 
+
+  return resources.every(resource =>
     hasPermission(userRole, resource, 'read')
   );
 };
@@ -1138,10 +1177,10 @@ export const canAccessDuringBusinessHours = (
 ): boolean => {
   // Бизнес-часы: 8:00 - 22:00
   const isBusinessHours = currentHour >= 8 && currentHour <= 22;
-  
+
   if (isStaff(userRole)) return true; // Персонал может работать в любое время
   if (isBusinessHours) return true; // В бизнес-часы все могут работать
-  
+
   return false;
 };
 
@@ -1150,7 +1189,7 @@ export const canPerformMaintenanceOperations = (
   isMaintenanceWindow: boolean
 ): boolean => {
   if (!isMaintenanceWindow && !isSuperAdmin(userRole)) return false;
-  
+
   return canPerformMaintenance(userRole);
 };
 
@@ -1161,7 +1200,7 @@ export const canAccessFromLocation = (
 ): boolean => {
   // Супер-админы могут работать откуда угодно
   if (isSuperAdmin(userRole)) return true;
-  
+
   // Остальные только из разрешенных локаций
   return isAllowedLocation;
 };
@@ -1229,55 +1268,61 @@ export const getPagePermissions = (userRole: UserRole | undefined) => {
     // Основные страницы
     dashboard: userRole !== undefined,
     profile: userRole !== undefined,
-    
+
+    // Страницы магазина
+    shop: canAccessShop(userRole),
+    shopManagement: canManageShop(userRole),
+    shopAdmin: canManageShop(userRole),
+    shopPurchase: canPurchaseFromShop(userRole),
+
     // Административные страницы
     adminDashboard: canAccessAdminPanel(userRole),
     userManagement: canViewUsers(userRole),
     trainerManagement: canViewTrainers(userRole),
     clientManagement: canViewClients(userRole),
-    
+
     // Управленческие страницы
     managerDashboard: canAccessManagerPanel(userRole),
     analytics: canViewAnalytics(userRole),
     reports: canViewReports(userRole),
     billing: canViewBilling(userRole),
-    
+
     // Тренерские страницы
     trainerDashboard: canAccessTrainerPanel(userRole),
     schedule: canViewSchedule(userRole),
     clientList: canViewClients(userRole),
-    
+
     // Клиентские страницы
     clientDashboard: canAccessClientPanel(userRole),
     bookingSessions: canViewSchedule(userRole),
     myTrainer: canViewTrainers(userRole),
-    
-        // Системные страницы
+
+    // Системные страницы
     systemSettings: canViewSettings(userRole),
     systemMaintenance: canPerformMaintenance(userRole),
     systemLogs: canAccessSystemLogs(userRole),
     systemBackup: canCreateBackup(userRole),
-    
+
     // Специальные страницы
     apiDocumentation: canAccessAPIDocumentation(userRole),
     developerTools: canAccessDeveloperTools(userRole),
     betaFeatures: canUseBetaFeatures(userRole),
-    
+
     // Финансовые страницы
     financialReports: canViewFinancialReports(userRole),
     paymentProcessing: canProcessPayments(userRole),
     pricingManagement: canModifyPricing(userRole),
-    
+
     // Коммуникационные страницы
     messaging: canSendDirectMessages(userRole),
     notifications: canViewNotifications(userRole),
     broadcasts: canBroadcastMessages(userRole),
-    
+
     // Аналитические страницы
     performanceAnalytics: canViewPerformanceReports(userRole),
     usageAnalytics: canViewUsageReports(userRole),
     securityAnalytics: canViewSecurityReports(userRole),
-    
+
     // Интеграционные страницы
     apiManagement: canManageIntegrations(userRole),
     webhookConfiguration: canConfigureWebhooks(userRole),
@@ -1294,48 +1339,48 @@ export const getActionPermissions = (userRole: UserRole | undefined) => {
     deleteUser: canDeleteUsers(userRole),
     resetPassword: (targetRole: UserRole) => canResetUserPassword(userRole, targetRole),
     changeRole: (currentRole: UserRole, newRole: UserRole) => canChangeUserRole(userRole, currentRole, newRole),
-    
+
     // Действия с тренерами
     createTrainer: canCreateTrainers(userRole),
     editTrainer: canUpdateTrainers(userRole),
     deleteTrainer: canDeleteTrainers(userRole),
     assignClients: canUpdateTrainers(userRole),
-    
+
     // Действия с клиентами
     createClient: canCreateClients(userRole),
     editClient: canUpdateClients(userRole),
     deleteClient: canDeleteClients(userRole),
     assignTrainer: canUpdateClients(userRole),
-    
+
     // Действия с расписанием
     createSession: canCreateSchedule(userRole),
     editSession: canUpdateSchedule(userRole),
     cancelSession: canDeleteSchedule(userRole),
     rescheduleSession: canUpdateSchedule(userRole),
     bulkScheduleOperations: canPerformBulkOperations(userRole),
-    
+
     // Финансовые действия
     processPayment: canProcessPayments(userRole),
     refundPayment: canRefundPayments(userRole),
     modifyPricing: canModifyPricing(userRole),
     viewFinancials: canViewFinancials(userRole),
-    
+
     // Системные действия
     backupSystem: canCreateBackup(userRole),
     restoreSystem: canRestoreBackup(userRole),
     maintainSystem: canPerformMaintenance(userRole),
     configureSystem: canModifySystemSettings(userRole),
-    
+
     // Коммуникационные действия
     sendMessage: canSendDirectMessages(userRole),
     broadcastMessage: canBroadcastMessages(userRole),
     moderateContent: canModerateMessages(userRole),
-    
+
     // Аналитические действия
     viewAnalytics: canViewAnalytics(userRole),
     exportData: canExportAnalytics(userRole),
     configureReports: canManageReports(userRole),
-    
+
     // Интеграционные действия
     createAPIKey: canCreateAPIKeys(userRole),
     configureWebhook: canConfigureWebhooks(userRole),
@@ -1366,7 +1411,7 @@ export const validateFormPermissions = (
   }
 
   const allowed = hasPermission(userRole, permission.resource, permission.requiredAction);
-  
+
   return {
     allowed,
     message: allowed ? undefined : `Недостаточно прав для ${action} в ${formType}`
@@ -1442,6 +1487,16 @@ export const validateAPIAccess = (
       'PUT': () => canPerformMaintenance(userRole),
       'PATCH': () => canPerformMaintenance(userRole),
       'DELETE': () => canPerformMaintenance(userRole)
+    },
+    '/api/shop': {
+      'GET': () => canViewShop(userRole),
+      'POST': () => canCreateShopItems(userRole),
+      'PUT': () => canUpdateShopItems(userRole),
+      'PATCH': () => canUpdateShopItems(userRole),
+      'DELETE': () => canDeleteShopItems(userRole)
+    },
+    '/api/shop/purchase': {
+      'POST': () => canPurchaseFromShop(userRole)
     }
   };
 
@@ -1456,7 +1511,7 @@ export const validateAPIAccess = (
   }
 
   const allowed = permissionCheck();
-  
+
   return {
     allowed,
     message: allowed ? undefined : `Недостаточно прав для ${method} ${endpoint}`
@@ -1564,7 +1619,7 @@ export const validateFileAccess = (
   }
 
   const allowed = permissionCheck();
-  
+
   return {
     allowed,
     message: allowed ? undefined : `Недостаточно прав для ${operation} файлов типа ${fileType}`
@@ -1589,7 +1644,7 @@ export const validateTimeBasedAccess = (
     canAccessNow: userRole !== undefined,
     canAccessDuringBusinessHours: canAccessDuringBusinessHours(userRole, hour),
     canAccessDuringMaintenance: canAccessDuringMaintenance(userRole),
-    nextAllowedAccess: !isBusinessHours && !isStaff(userRole) 
+    nextAllowedAccess: !isBusinessHours && !isStaff(userRole)
       ? new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate() + 1, 8, 0, 0)
       : undefined
   };
@@ -1616,7 +1671,7 @@ export const validateComplexAccess = (
   warnings?: string[];
 } => {
   const warnings: string[] = [];
-  
+
   // Базовая проверка разрешений
   if (!hasPermission(userRole, context.resource, context.action)) {
     return {
@@ -1762,8 +1817,8 @@ export const validateSecurityCompliance = (
       violations.push('Супер-админы должны использовать двухфакторную аутентификацию');
     }
 
-    if (context.lastPasswordChange && 
-        (Date.now() - context.lastPasswordChange.getTime()) > 30 * 24 * 60 * 60 * 1000) {
+    if (context.lastPasswordChange &&
+      (Date.now() - context.lastPasswordChange.getTime()) > 30 * 24 * 60 * 60 * 1000) {
       violations.push('Пароль супер-админа должен меняться каждые 30 дней');
     }
 
@@ -1774,8 +1829,8 @@ export const validateSecurityCompliance = (
 
   // Проверки для админов
   if (isAdmin(userRole)) {
-    if (context.lastPasswordChange && 
-        (Date.now() - context.lastPasswordChange.getTime()) > 90 * 24 * 60 * 60 * 1000) {
+    if (context.lastPasswordChange &&
+      (Date.now() - context.lastPasswordChange.getTime()) > 90 * 24 * 60 * 60 * 1000) {
       recommendations.push('Рекомендуется сменить пароль (последняя смена более 90 дней назад)');
     }
 
@@ -1912,9 +1967,9 @@ export const validateDataExport = (
 
   // Дополнительные ограничения по формату
   if (format === 'json' && dataType === 'system' && !isSuperAdmin(userRole)) {
-    return { 
-      allowed: false, 
-      restrictions: ['JSON экспорт системных данных только для супер-админов'] 
+    return {
+      allowed: false,
+      restrictions: ['JSON экспорт системных данных только для супер-админов']
     };
   }
 
@@ -1966,9 +2021,9 @@ export const validateDataImport = (
 
   // Дополнительные ограничения по источнику
   if (source === 'database' && !isSuperAdmin(userRole)) {
-    return { 
-      allowed: false, 
-      restrictions: ['Прямой импорт из БД только для супер-админов'] 
+    return {
+      allowed: false,
+      restrictions: ['Прямой импорт из БД только для супер-админов']
     };
   }
 
@@ -2008,7 +2063,7 @@ export default {
   // Основные проверки
   hasPermission,
   canAccessObject,
-  
+
   // Проверки ролей
   isSuperAdmin,
   isAdmin,
@@ -2016,25 +2071,25 @@ export default {
   isTrainer,
   isClient,
   isStaff,
-  
+
   // Проверки ресурсов
   canManageUsers,
   canViewAnalytics,
   canPerformMaintenance,
-  
+
   // Комплексные проверки
   validateComplexAccess,
   validateAPIAccess,
   validateFormPermissions,
   validateDataExport,
   validateDataImport,
-  
+
   // Утилиты
   getPermissionSummary,
   getPagePermissions,
   getActionPermissions,
   checkAllPermissions,
-  
+
   // Безопасность
   getSecurityRecommendations,
   validateSecurityCompliance,
@@ -2042,5 +2097,5 @@ export default {
 };
 
 
-    
+
 

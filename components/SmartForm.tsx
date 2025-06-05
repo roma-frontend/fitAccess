@@ -1,7 +1,8 @@
-// components/SmartForm.tsx (исправленная версия)
+// components/SmartForm.tsx (добавляем недостающий case для role)
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // ✅ Добавляем импорт
 import { ValidatedInput } from './ValidatedInput';
 import { EmailValidator } from './EmailValidator';
 import { PasswordStrengthIndicator } from './PasswordStrengthIndicator';
@@ -12,7 +13,7 @@ import { Loader2, CheckCircle, AlertCircle, Shield } from 'lucide-react';
 
 interface SmartFormProps {
   type: 'login' | 'register' | 'staff-login';
-  onSubmit: (data: any) => Promise<void>;
+  onSubmit: (data: any) => Promise<void>; // ✅ Убеждаемся что тип правильный
   isLoading?: boolean;
 }
 
@@ -120,7 +121,7 @@ export const SmartForm: React.FC<SmartFormProps> = ({
     if (config.fields.includes('confirmPassword') && formData.password !== formData.confirmPassword) return false;
     
     return true;
-  };
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +134,32 @@ export const SmartForm: React.FC<SmartFormProps> = ({
     const fieldValidation = validationStates[fieldName];
 
     switch (fieldName) {
+      // ✅ Добавляем недостающий case для role
+      case 'role':
+        return (
+          <div key={fieldName}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Роль *
+            </label>
+            <Select
+              value={formData[fieldName] || 'admin'}
+              onValueChange={(value) => handleFieldChange(fieldName, value)}
+            >
+              <SelectTrigger className="w-full h-11">
+                <SelectValue placeholder="Выберите роль" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">👑 Администратор</SelectItem>
+                <SelectItem value="super-admin">🔱 Супер Администратор</SelectItem>
+                <SelectItem value="manager">👔 Менеджер</SelectItem>
+                <SelectItem value="trainer">💪 Тренер</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-gray-500 mt-1">
+              Выберите вашу роль в системе
+            </p>
+          </div>
+        );
 
       case 'name':
         return (
@@ -337,25 +364,8 @@ export const SmartForm: React.FC<SmartFormProps> = ({
             </CardContent>
           </Card>
         </div>
-
-        {/* Отладочная информация (только в режиме разработки) */}
-        {/* {process.env.NODE_ENV === 'development' && (
-          <Card className="mt-4 bg-gray-50 border-gray-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xs text-gray-700">🔧 Отладка валидации</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-xs space-y-1">
-                <p>Форма готова: {isFormReady() ? '✅' : '❌'}</p>
-                <p>Email валиден: {emailValid ? '✅' : '❌'}</p>
-                <p>Пароль валиден: {passwordValid ? '✅' : '❌'}</p>
-                <p>Проверка: {isValidating ? '🔄' : '⏸️'}</p>
-                <p>Состояний валидации: {Object.keys(validationStates).length}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )} */}
       </CardContent>
     </Card>
   );
 };
+

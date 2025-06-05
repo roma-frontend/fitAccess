@@ -1,6 +1,7 @@
-// app/api/orders/create/route.ts (убираем проверку товаров)
+// app/api/orders/create/route.ts (исправленная версия)
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from "convex/browser";
+import { canPurchaseFromShop } from '@/lib/permissions'; // Добавляем импорт
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -25,11 +26,11 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Проверяем, что это участник
-    if (authData.user.role !== 'member') {
+    // ✅ ИСПРАВЛЕННАЯ ПРОВЕРКА - используем систему разрешений
+    if (!canPurchaseFromShop(authData.user.role)) {
       console.log('❌ Доступ запрещен для роли:', authData.user.role);
       return NextResponse.json({ 
-        error: 'Заказы могут создавать только участники фитнес-центра' 
+        error: 'У вас нет прав для создания заказов' 
       }, { status: 403 });
     }
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     // Подготавливаем данные товаров для Convex
     const processedItems = items.map((item: any) => ({
-      productId: item.productId ? String(item.productId) : undefined, // Преобразуем в строку
+      productId: item.productId ? String(item.productId) : undefined,
       productName: item.productName,
       quantity: item.quantity,
       price: item.price,
@@ -100,10 +101,13 @@ export async function POST(request: NextRequest) {
 
     // Создаем уведомления (опционально)
     try {
-      // Уведомление для участника
+      // ✅ ИСПРАВЛЕННОЕ ОПРЕДЕЛЕНИЕ ТИПА ПОЛУЧАТЕЛЯ
+      const recipientType = authData.user.role === 'member' ? 'member' : 'admin';
+
+      // Уведомление для пользователя
       await convex.mutation("notifications:create", {
         recipientId: authData.user.id,
-        recipientType: "member",
+        recipientType: recipientType,
         title: "Заказ принят",
         message: `Ваш заказ №${orderNumber} на сумму ${totalAmount} ₽ принят в обработку`,
         type: "order",
@@ -114,7 +118,7 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ Уведомления созданы');
     } catch (error) {
-      console.log('⚠️ Не удалось создать уведомления (возможно, нет API notifications):', error);
+      console.log('⚠️ Не удалось создать уведомления:', error);
     }
 
     return NextResponse.json({
