@@ -17,6 +17,7 @@ import {
 import { memo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trainersData } from "@/lib/trainers-data";
+import TrainersPageHeader from "./_components/TrainersHeader";
 
 const TrainerCard = memo(({ trainer }: { trainer: any }) => {
   const router = useRouter();
@@ -154,25 +155,17 @@ export default function TrainersPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-50 backdrop-blur-sm bg-white/95">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => router.push("/")}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="h-5 w-5" />
-                <span>Назад</span>
-              </button>
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
-                <Dumbbell className="h-5 w-5 text-white" />
-              </div>
-              <h1 className="text-xl font-bold text-gray-900">Наши тренеры</h1>
-            </div>
-          </div>
-        </div>
-      </header>
+      <TrainersPageHeader 
+        totalTrainers={trainersData.length}
+        categoriesCount={categories.length - 1}
+        filteredCount={filteredTrainers.length}
+        averageRating={4.8}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        selectedCategory={selectedCategory}
+        categories={categories}
+        onCategoryChange={setSelectedCategory}
+      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Hero Section */}

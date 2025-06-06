@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { 
   Menu, 
@@ -25,12 +26,30 @@ interface MainHeaderProps {
 
 export default function MainHeader({ authStatus, isLoading }: MainHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const router = useRouter();
+
+  // Обработчик клика по магазину
+  const handleShopClick = (e: React.MouseEvent) => {
+    // Если пользователь не авторизован, перенаправляем на страницу входа
+    if (!authStatus?.authenticated) {
+      e.preventDefault();
+      router.push('/member-login?redirect=' + encodeURIComponent('/shop'));
+      setIsMobileMenuOpen(false);
+    }
+    // Если авторизован, ссылка сработает как обычно
+  };
 
   const navigationItems = [
     { href: "/", label: "Главная", icon: Home },
     { href: "/trainers", label: "Тренеры", icon: Users },
     { href: "/programs", label: "Программы", icon: Calendar },
-    { href: "/shop", label: "Магазин", icon: ShoppingCart },
+    { 
+      href: "/shop", 
+      label: "Магазин", 
+      icon: ShoppingCart,
+      requiresAuth: true,
+      onClick: handleShopClick
+    },
     { href: "/about", label: "О нас", icon: BarChart3 },
   ];
 
@@ -62,10 +81,32 @@ export default function MainHeader({ authStatus, isLoading }: MainHeaderProps) {
           <nav className="hidden md:flex items-center space-x-1">
             {navigationItems.map((item) => {
               const IconComponent = item.icon;
+              
+              // Для элементов, требующих авторизации, используем кнопку вместо ссылки
+              if (item.requiresAuth && !authStatus?.authenticated) {
+                return (
+                  <button
+                    key={item.href}
+                    onClick={item.onClick}
+                    className={combineAnimations(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-white/90 hover:text-white hover:bg-white/10 relative",
+                      ANIMATION_CLASSES.transition.colors
+                    )}
+                    title="Требуется авторизация"
+                  >
+                    <IconComponent className="h-4 w-4" />
+                    <span className="text-sm font-medium">{item.label}</span>
+                    {/* Индикатор, что требуется авторизация */}
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                  </button>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={item.onClick}
                   className={combineAnimations(
                     "flex items-center gap-2 px-4 py-2 rounded-lg text-white/90 hover:text-white hover:bg-white/10",
                     ANIMATION_CLASSES.transition.colors
@@ -128,12 +169,34 @@ export default function MainHeader({ authStatus, isLoading }: MainHeaderProps) {
             <nav className="space-y-2">
               {navigationItems.map((item) => {
                 const IconComponent = item.icon;
+                
+                // Для элементов, требующих авторизации в мобильном меню
+                if (item.requiresAuth && !authStatus?.authenticated) {
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={item.onClick}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white/90 hover:text-white hover:bg-white/10 transition-colors relative"
+                    >
+                      <IconComponent className="h-5 w-5" />
+                      <span className="font-medium">{item.label}</span>
+                      <div className="ml-auto flex items-center gap-2">
+                        <span className="text-xs text-white/60">Требуется вход</span>
+                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />
+                      </div>
+                    </button>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={(e) => {
+                      item.onClick?.(e);
+                      setIsMobileMenuOpen(false);
+                    }}
                     className="flex items-center gap-3 px-4 py-3 rounded-lg text-white/90 hover:text-white hover:bg-white/10 transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <IconComponent className="h-5 w-5" />
                     <span className="font-medium">{item.label}</span>

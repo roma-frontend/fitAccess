@@ -133,7 +133,6 @@ interface TrainerStats {
 }
 
 export default function TrainerProfilePage() {
-  const router = useRouter();
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);

@@ -158,7 +158,16 @@ export const usePermissions = () => {
       isStaff: () => userRole ? ['admin', 'manager', 'trainer'].includes(userRole) : false,
 
       // Проверка на управленческие роли
-      isManagement: () => userRole ? ['admin', 'manager'].includes(userRole) : false
+      isManagement: () => userRole ? ['admin', 'manager'].includes(userRole) : false,
+
+      // НОВЫЕ ФУНКЦИИ ДЛЯ МАГАЗИНА
+      canAccessShop: () => userRole !== undefined, // Все авторизованные пользователи
+      canViewShop: () => userRole !== undefined,
+      canPurchaseFromShop: () => userRole !== undefined,
+      canManageShop: () => hasPermission(userRole, 'shop', 'manage'),
+      canCreateShopItems: () => hasPermission(userRole, 'shop', 'create'),
+      canUpdateShopItems: () => hasPermission(userRole, 'shop', 'update'),
+      canDeleteShopItems: () => hasPermission(userRole, 'shop', 'delete')
     };
   }, [user?.role, user?.id]);
 
@@ -288,6 +297,41 @@ export const useNotificationPermissions = () => {
   };
 };
 
+// НОВЫЙ ХУК ДЛЯ РАЗРЕШЕНИЙ МАГАЗИНА
+export const useShopPermissions = () => {
+  const permissions = usePermissions();
+
+  return {
+    // Базовые разрешения - доступны всем авторизованным пользователям
+    canAccessShop: permissions.canAccessShop,
+    canViewShop: permissions.canViewShop,
+    canPurchaseFromShop: permissions.canPurchaseFromShop,
+    
+    // Административные разрешения - только для персонала с соответствующими правами
+    canManageShop: permissions.canManageShop,
+    canCreateShopItems: permissions.canCreateShopItems,
+    canEditShopItems: permissions.canUpdateShopItems,
+    canDeleteShopItems: permissions.canDeleteShopItems,
+    canExportShopData: () => permissions.can('shop', 'export'),
+    
+    // Дополнительные проверки
+    canViewShopAnalytics: () => permissions.isManagement(),
+    canConfigureShopSettings: () => permissions.isAdmin(),
+    canProcessShopOrders: () => permissions.isStaff(),
+    canRefundShopPurchases: () => permissions.isManagement(),
+    
+    // Проверка доступа к конкретным действиям
+    canViewShopItem: () => permissions.canViewShop(),
+    canBuyShopItem: () => permissions.canPurchaseFromShop(),
+    canEditShopItem: (itemOwnerId?: string) => 
+      permissions.canUpdateShopItems() || 
+      (itemOwnerId && permissions.isOwner(itemOwnerId)),
+    canDeleteShopItem: (itemOwnerId?: string) =>
+      permissions.canDeleteShopItems() ||
+      (itemOwnerId && permissions.isOwner(itemOwnerId) && permissions.isStaff())
+  };
+};
+
 export const usePagePermissions = () => {
   const permissions = usePermissions();
 
@@ -299,7 +343,13 @@ export const usePagePermissions = () => {
     canAccessAnalytics: () => permissions.can('analytics', 'read'),
     canAccessSystemSettings: () => permissions.can('system', 'manage'),
     canAccessReports: () => permissions.can('reports', 'read'),
-    canAccessScheduleManagement: () => permissions.can('schedule', 'manage')
+    canAccessScheduleManagement: () => permissions.can('schedule', 'manage'),
+    
+    // НОВЫЕ РАЗРЕШЕНИЯ ДЛЯ СТРАНИЦ МАГАЗИНА
+    canAccessShopPage: () => permissions.canAccessShop(),
+    canAccessShopManagement: () => permissions.canManageShop(),
+    canAccessShopAnalytics: () => permissions.isManagement(),
+    canAccessShopSettings: () => permissions.isAdmin()
   };
 };
 
@@ -336,4 +386,166 @@ export const useAvailableActions = (resource: Resource) => {
     const actions: Action[] = ['create', 'read', 'update', 'delete', 'export', 'import'];
     return actions.filter(action => permissions.can(resource, action));
   }, [resource, permissions]);
+};
+
+// НОВЫЙ ХУК ДЛЯ КОМПЛЕКСНОЙ ПРОВЕРКИ ДОСТУПА К МАГАЗИНУ
+export const useShopAccess = () => {
+  const permissions = usePermissions();
+  const shopPermissions = useShopPermissions();
+
+  return useMemo(() => ({
+    // Основные проверки доступа
+    hasShopAccess: shopPermissions.canAccessShop(),
+    hasShopManagementAccess: shopPermissions.canManageShop(),
+    
+    // Проверки для конкретных действий
+    canBrowseShop: shopPermissions.canViewShop(),
+    canMakePurchases: shopPermissions.canPurchaseFromShop(),
+    canManageInventory: shopPermissions.canManageShop(),
+    canViewSalesData: shopPermissions.canViewShopAnalytics(),
+    
+    // Роль-специфичные возможности
+    shopCapabilities: {
+      // Для всех авторизованных пользователей
+      browse: shopPermissions.canViewShop(),
+      purchase: shopPermissions.canPurchaseFromShop(),
+      
+      // Для персонала
+      addItems: shopPermissions.canCreateShopItems(),
+      editItems: shopPermissions.canEditShopItems(),
+      deleteItems: shopPermissions.canDeleteShopItems(),
+      processOrders: shopPermissions.canProcessShopOrders(),
+      
+      // Для менеджмента
+      viewAnalytics: shopPermissions.canViewShopAnalytics(),
+      refundOrders: shopPermissions.canRefundShopPurchases(),
+      
+      // Для админов
+      configureSettings: shopPermissions.canConfigureShopSettings(),
+      exportData: shopPermissions.canExportShopData()
+    },
+    
+    // Получение доступных действий для текущего пользователя
+    getAvailableShopActions: () => {
+      const actions = [];
+      
+      if (shopPermissions.canViewShop()) actions.push('view');
+      if (shopPermissions.canPurchaseFromShop()) actions.push('purchase');
+      if (shopPermissions.canCreateShopItems()) actions.push('create');
+      if (shopPermissions.canEditShopItems()) actions.push('edit');
+      if (shopPermissions.canDeleteShopItems()) actions.push('delete');
+      if (shopPermissions.canManageShop()) actions.push('manage');
+      if (shopPermissions.canExportShopData()) actions.push('export');
+      
+      return actions;
+    },
+    
+    // Проверка доступа к конкретному элементу магазина
+    canAccessShopItem: (itemId: string, ownerId?: string) => ({
+      view: shopPermissions.canViewShopItem(),
+      purchase: shopPermissions.canBuyShopItem(),
+      edit: shopPermissions.canEditShopItem(ownerId),
+      delete: shopPermissions.canDeleteShopItem(ownerId)
+    }),
+    
+    // Получение уровня доступа к магазину
+    getShopAccessLevel: () => {
+      if (permissions.isAdmin()) return 'admin';
+      if (permissions.isManagement()) return 'manager';
+      if (permissions.isStaff()) return 'staff';
+      if (permissions.currentRole) return 'user';
+      return 'none';
+    }
+  }), [permissions, shopPermissions]);
+};
+
+// НОВЫЙ ХУК ДЛЯ НАВИГАЦИИ ПО МАГАЗИНУ
+export const useShopNavigation = () => {
+  const shopAccess = useShopAccess();
+  const permissions = usePermissions();
+
+  return useMemo(() => ({
+    // Доступные разделы магазина
+    availableSections: {
+      catalog: shopAccess.canBrowseShop,
+      cart: shopAccess.canMakePurchases,
+      orders: shopAccess.canMakePurchases,
+      management: shopAccess.hasShopManagementAccess,
+      analytics: shopAccess.shopCapabilities.viewAnalytics,
+      settings: shopAccess.shopCapabilities.configureSettings
+    },
+    
+    // Генерация навигационного меню
+    getShopMenuItems: () => {
+      const menuItems = [];
+      
+      if (shopAccess.canBrowseShop) {
+        menuItems.push({
+          label: 'Каталог',
+          path: '/shop',
+          icon: 'catalog',
+          access: 'all'
+        });
+      }
+      
+      if (shopAccess.canMakePurchases) {
+        menuItems.push({
+          label: 'Корзина',
+          path: '/shop/cart',
+          icon: 'cart',
+          access: 'user'
+        });
+        
+        menuItems.push({
+          label: 'Мои заказы',
+          path: '/shop/orders',
+          icon: 'orders',
+          access: 'user'
+        });
+      }
+      
+      if (shopAccess.hasShopManagementAccess) {
+        menuItems.push({
+          label: 'Управление товарами',
+          path: '/shop/manage',
+          icon: 'manage',
+          access: 'staff'
+        });
+      }
+      
+      if (shopAccess.shopCapabilities.viewAnalytics) {
+        menuItems.push({
+          label: 'Аналитика продаж',
+          path: '/shop/analytics',
+          icon: 'analytics',
+          access: 'manager'
+        });
+      }
+      
+      if (shopAccess.shopCapabilities.configureSettings) {
+        menuItems.push({
+          label: 'Настройки магазина',
+          path: '/shop/settings',
+          icon: 'settings',
+          access: 'admin'
+        });
+      }
+      
+      return menuItems;
+    },
+    
+    // Проверка доступа к конкретному маршруту магазина
+    canAccessShopRoute: (route: string) => {
+      const routePermissions: Record<string, boolean> = {
+        '/shop': shopAccess.canBrowseShop,
+        '/shop/cart': shopAccess.canMakePurchases,
+        '/shop/orders': shopAccess.canMakePurchases,
+        '/shop/manage': shopAccess.hasShopManagementAccess,
+        '/shop/analytics': shopAccess.shopCapabilities.viewAnalytics,
+        '/shop/settings': shopAccess.shopCapabilities.configureSettings
+      };
+      
+      return routePermissions[route] || false;
+    }
+  }), [shopAccess, permissions]);
 };

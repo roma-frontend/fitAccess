@@ -1,4 +1,4 @@
-// middleware.ts (обновленная версия с поддержкой восстановления пароля)
+// middleware.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 const publicRoutes = [
@@ -40,7 +40,6 @@ const publicRoutes = [
   '/test-shop',
   '/debug-auth-status',
   '/test-calendar-sync',
-  '/shop',
   '/reset-password',
   '/forgot-password',
   '/password-reset-success',
@@ -64,6 +63,11 @@ const staffRoutes = [
   '/staff-dashboard',
   '/trainer-dashboard',
   '/manager-dashboard'
+];
+
+// ОБНОВЛЕНО: Маршруты магазина доступны всем авторизованным пользователям
+const shopRoutes = [
+  '/shop'
 ];
 
 const loginPages = ['/member-login', '/staff-login', '/login'];
@@ -90,6 +94,13 @@ const isStaffRoute = (pathname: string): boolean => {
   return staffRoutes.some(route => {
     return pathname === route || pathname.startsWith(route + '/');
   });
+};
+
+// НОВАЯ ФУНКЦИЯ: Проверка маршрутов магазина
+const isShopRoute = (pathname: string): boolean => {
+  return shopRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
 };
 
 const isPasswordResetRoute = (pathname: string): boolean => {
@@ -342,6 +353,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(dashboardUrl, request.url));
   }
 
+  // НОВАЯ ПРОВЕРКА: Маршруты магазина - доступны всем авторизованным пользователям
+  if (isShopRoute(pathname)) {
+    console.log(`🛒 Middleware: маршрут магазина ${pathname}`);
+    
+    if (!auth) {
+      console.log(`❌ Middleware: нет авторизации для ${pathname}, перенаправляем на главную`);
+      console.log(`🏁 === MIDDLEWARE END - ПЕРЕНАПРАВЛЕНИЕ ===\n`);
+      return NextResponse.redirect(new URL('/?redirect=' + encodeURIComponent(pathname), request.url));
+    }
+
+    console.log(`✅ Middleware: доступ разрешен для ${auth.user.email} (${auth.user.role}) на ${pathname}`);
+    console.log(`🏁 === MIDDLEWARE END - МАГАЗИН РАЗРЕШЕН ===\n`);
+    return NextResponse.next();
+  }
+
   // Проверяем маршруты участников
   if (isMemberRoute(pathname)) {
     console.log(`👤 Middleware: маршрут участника ${pathname}`);
@@ -370,7 +396,7 @@ export async function middleware(request: NextRequest) {
     
     if (!auth) {
       console.log(`❌ Middleware: нет авторизации для ${pathname}, перенаправляем на /staff-login`);
-            console.log(`🏁 === MIDDLEWARE END - ПЕРЕНАПРАВЛЕНИЕ ===\n`);
+      console.log(`🏁 === MIDDLEWARE END - ПЕРЕНАПРАВЛЕНИЕ ===\n`);
       return NextResponse.redirect(new URL('/staff-login?redirect=' + encodeURIComponent(pathname), request.url));
     }
     

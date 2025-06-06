@@ -208,7 +208,6 @@ export const canManageUsers = (userRole: UserRole | undefined): boolean => {
   return hasPermission(userRole, 'users', 'manage');
 };
 
-
 // ✅ ФИЛЬТРАЦИЯ ДАННЫХ ПО ПРАВАМ
 export const filterDataByPermissions = <T extends Record<string, any>>(
   data: T[],
@@ -760,9 +759,10 @@ export const getResourceActions = (userRole: UserRole | undefined, resource: Res
   return rolePermissions[resource] || [];
 };
 
-// ✅ УПРАВЛЕНИЕ МАГАЗИНОМ
+// ✅ УПРАВЛЕНИЕ МАГАЗИНОМ - ОБНОВЛЕННЫЕ ФУНКЦИИ
 export const canAccessShop = (userRole: UserRole | undefined): boolean => {
-  return hasPermission(userRole, 'shop', 'read');
+  // Все авторизованные пользователи могут заходить в магазин
+  return userRole !== undefined;
 };
 
 export const canManageShop = (userRole: UserRole | undefined): boolean => {
@@ -782,14 +782,16 @@ export const canDeleteShopItems = (userRole: UserRole | undefined): boolean => {
 };
 
 export const canViewShop = (userRole: UserRole | undefined): boolean => {
-  return hasPermission(userRole, 'shop', 'read');
+  // Все авторизованные пользователи могут просматривать магазин
+  return userRole !== undefined;
 };
 
 export const canPurchaseFromShop = (userRole: UserRole | undefined): boolean => {
-  return userRole !== undefined; // Все авторизованные пользователи могут покупать
+  // Все авторизованные пользователи могут покупать в магазине
+  return userRole !== undefined;
 };
 
-// ✅ ПРОВЕРКА ДОСТУПА К КОНКРЕТНОМУ МАРШРУТУ
+// ✅ ПРОВЕРКА ДОСТУПА К КОНКРЕТНОМУ МАРШРУТУ - ОБНОВЛЕННАЯ
 export const canAccessRoute = (userRole: UserRole | undefined, route: string): boolean => {
   const routePermissions: Record<string, () => boolean> = {
     '/admin': () => canAccessAdminPanel(userRole),
@@ -808,7 +810,7 @@ export const canAccessRoute = (userRole: UserRole | undefined, route: string): b
     '/analytics': () => canViewAnalytics(userRole),
     '/profile': () => userRole !== undefined,
     '/notifications': () => canViewNotifications(userRole),
-    '/shop': () => canAccessShop(userRole),
+    '/shop': () => userRole !== undefined, // Все авторизованные пользователи
     '/shop/manage': () => canManageShop(userRole),
     '/shop/admin': () => canManageShop(userRole),
   };
@@ -864,7 +866,6 @@ export const canManageUser = (
 
   return false;
 };
-
 
 export const canManageRole = (
   userRole: UserRole | undefined,
@@ -1262,18 +1263,18 @@ export const getPermissionSummary = (userRole: UserRole | undefined): {
   };
 };
 
-// ✅ ПРОВЕРКА ДОСТУПА К КОНКРЕТНЫМ СТРАНИЦАМ ПРИЛОЖЕНИЯ
+// ✅ ПРОВЕРКА ДОСТУПА К КОНКРЕТНЫМ СТРАНИЦАМ ПРИЛОЖЕНИЯ - ОБНОВЛЕННАЯ
 export const getPagePermissions = (userRole: UserRole | undefined) => {
   return {
     // Основные страницы
     dashboard: userRole !== undefined,
     profile: userRole !== undefined,
 
-    // Страницы магазина
-    shop: canAccessShop(userRole),
+    // Страницы магазина - ОБНОВЛЕНО: доступны всем авторизованным пользователям
+    shop: userRole !== undefined,
     shopManagement: canManageShop(userRole),
     shopAdmin: canManageShop(userRole),
-    shopPurchase: canPurchaseFromShop(userRole),
+    shopPurchase: userRole !== undefined,
 
     // Административные страницы
     adminDashboard: canAccessAdminPanel(userRole),
@@ -1384,7 +1385,15 @@ export const getActionPermissions = (userRole: UserRole | undefined) => {
     // Интеграционные действия
     createAPIKey: canCreateAPIKeys(userRole),
     configureWebhook: canConfigureWebhooks(userRole),
-    manageIntegrations: canManageIntegrations(userRole)
+    manageIntegrations: canManageIntegrations(userRole),
+
+    // Действия с магазином - ОБНОВЛЕНО
+    viewShop: userRole !== undefined,
+    purchaseFromShop: userRole !== undefined,
+    manageShopItems: canManageShop(userRole),
+    createShopItems: canCreateShopItems(userRole),
+    editShopItems: canUpdateShopItems(userRole),
+    deleteShopItems: canDeleteShopItems(userRole)
   };
 };
 
@@ -1402,7 +1411,8 @@ export const validateFormPermissions = (
     settingsForm: { resource: 'settings', requiredAction: action },
     billingForm: { resource: 'billing', requiredAction: action },
     reportForm: { resource: 'reports', requiredAction: action },
-    systemForm: { resource: 'system', requiredAction: 'maintenance' }
+    systemForm: { resource: 'system', requiredAction: 'maintenance' },
+    shopForm: { resource: 'shop', requiredAction: action }
   };
 
   const permission = formPermissions[formType];
@@ -1418,7 +1428,7 @@ export const validateFormPermissions = (
   };
 };
 
-// ✅ ПРОВЕРКА ДОСТУПА К API ЭНДПОИНТАМ
+// ✅ ПРОВЕРКА ДОСТУПА К API ЭНДПОИНТАМ - ОБНОВЛЕННАЯ
 export const validateAPIAccess = (
   userRole: UserRole | undefined,
   endpoint: string,
@@ -1489,14 +1499,14 @@ export const validateAPIAccess = (
       'DELETE': () => canPerformMaintenance(userRole)
     },
     '/api/shop': {
-      'GET': () => canViewShop(userRole),
+      'GET': () => userRole !== undefined, // Все авторизованные могут просматривать
       'POST': () => canCreateShopItems(userRole),
       'PUT': () => canUpdateShopItems(userRole),
       'PATCH': () => canUpdateShopItems(userRole),
       'DELETE': () => canDeleteShopItems(userRole)
     },
     '/api/shop/purchase': {
-      'POST': () => canPurchaseFromShop(userRole)
+      'POST': () => userRole !== undefined // Все авторизованные могут покупать
     }
   };
 
@@ -1578,7 +1588,6 @@ export const validateUserCreationData = (
   };
 };
 
-
 // ✅ ПРОВЕРКА ДОСТУПА К ФАЙЛАМ И МЕДИА
 export const validateFileAccess = (
   userRole: UserRole | undefined,
@@ -1618,7 +1627,7 @@ export const validateFileAccess = (
     return { allowed: false, message: 'Операция не поддерживается' };
   }
 
-  const allowed = permissionCheck();
+    const allowed = permissionCheck();
 
   return {
     allowed,
@@ -2077,6 +2086,15 @@ export default {
   canViewAnalytics,
   canPerformMaintenance,
 
+  // Магазин - ОБНОВЛЕНО
+  canAccessShop,
+  canViewShop,
+  canPurchaseFromShop,
+  canManageShop,
+  canCreateShopItems,
+  canUpdateShopItems,
+  canDeleteShopItems,
+
   // Комплексные проверки
   validateComplexAccess,
   validateAPIAccess,
@@ -2095,7 +2113,5 @@ export default {
   validateSecurityCompliance,
   getRoleLimitations
 };
-
-
 
 
