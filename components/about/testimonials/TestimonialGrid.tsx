@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import Image from "next/image";
+import { useMemo, useCallback } from "react";
 
 interface TestimonialGridProps {
   testimonials: any[];
@@ -21,7 +22,9 @@ export function TestimonialGrid({
   isInView,
   isMounted
 }: TestimonialGridProps) {
-  const containerVariants = {
+  
+  // Мемоизируем варианты анимации
+  const containerVariants = useMemo(() => ({
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -30,27 +33,30 @@ export function TestimonialGrid({
         delayChildren: 1.4
       }
     }
-  };
+  }), []);
 
-  const itemVariants = {
+  const itemVariants = useMemo(() => ({
     hidden: { 
       opacity: 0, 
       y: 50,
       scale: 0.8,
-      rotateY: -15
     },
     visible: { 
       opacity: 1, 
       y: 0,
       scale: 1,
-      rotateY: 0,
       transition: {
         type: "spring",
         stiffness: 300,
         damping: 20
       }
     }
-  };
+  }), []);
+
+  // Мемоизируем обработчик клика
+  const handleCardClick = useCallback((index: number) => {
+    onChange(index);
+  }, [onChange]);
 
   return (
     <motion.div
@@ -66,173 +72,76 @@ export function TestimonialGrid({
           <motion.div
             key={testimonial.id}
             variants={itemVariants}
-            className="cursor-pointer group perspective-1000"
-            onClick={() => onChange(index)}
-            whileHover={isMounted ? { 
-              y: -10,
-              rotateY: 5,
-              transition: { type: "spring", stiffness: 300, damping: 20 }
-            } : {}}
-            whileTap={isMounted ? { scale: 0.95 } : {}}
+            className="cursor-pointer group"
+            onClick={() => handleCardClick(index)}
           >
             <Card 
-              className={`h-full shadow-lg transition-all duration-500 border-2 relative overflow-hidden transform-gpu ${
+              className={`h-full shadow-lg transition-all duration-300 border-2 relative overflow-hidden ${
                 isActive 
                   ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-white shadow-blue-200 shadow-xl' 
                   : 'border-transparent bg-white hover:shadow-xl'
               }`}
-              style={{ transformStyle: "preserve-3d" }}
             >
-              {/* Active Glow Effect - только после монтирования */}
-              {isActive && isMounted && (
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-purple-400/10 rounded-lg"
-                  animate={{
-                    opacity: [0.5, 0.8, 0.5],
-                    scale: [1, 1.02, 1],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                />
-              )}
-
               <CardContent className="p-6 text-center relative z-10">
-                {/* Avatar with Enhanced Animation */}
-                <motion.div 
-                  className="relative w-16 h-16 mx-auto mb-4"
-                  animate={isMounted ? {
-                    scale: isActive ? 1.1 : 1,
-                    rotate: isActive ? [0, 5, -5, 0] : 0,
-                  } : {}}
-                  transition={{ duration: 0.5 }}
-                >
-                  {/* Pulse Ring for Active - только после монтирования */}
-                  {isActive && isMounted && (
-                    <motion.div
-                      className="absolute inset-0 bg-blue-400/30 rounded-full"
-                      animate={{
-                        scale: [1, 1.3, 1],
-                        opacity: [0.5, 0, 0.5],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    />
-                  )}
-                  
+                {/* Avatar */}
+                <div className="relative w-16 h-16 mx-auto mb-4">
                   <Image
                     src={testimonial.image}
                     alt={testimonial.name}
-                                        width={64}
+                    width={64}
                     height={64}
                     className="w-full h-full object-cover rounded-full relative z-10 border-2 border-white shadow-lg"
+                    loading="lazy" // Ленивая загрузка для неактивных карточек
                   />
                   
                   {/* Status Indicator */}
-                  <motion.div
+                  <div
                     className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white ${
                       isActive ? 'bg-green-500' : 'bg-gray-400'
                     }`}
-                    animate={isMounted ? {
-                      scale: isActive ? [1, 1.2, 1] : 1,
-                    } : {}}
-                    transition={{
-                      duration: 1,
-                      repeat: isActive && isMounted ? Infinity : 0,
-                    }}
                   />
-                </motion.div>
+                </div>
                 
-                {/* Name with Color Animation */}
-                <motion.h3 
-                  className={`font-bold mb-1 transition-colors duration-300 ${
-                    isActive ? 'text-blue-600' : 'text-gray-900'
-                  }`}
-                  animate={isMounted ? {
-                    scale: isActive ? 1.05 : 1,
-                  } : {}}
-                  transition={{ duration: 0.3 }}
-                >
+                {/* Name */}
+                <h3 className={`font-bold mb-1 transition-colors duration-300 ${
+                  isActive ? 'text-blue-600' : 'text-gray-900'
+                }`}>
                   {testimonial.name}
-                </motion.h3>
+                </h3>
                 
-                <motion.p 
-                  className="text-gray-600 text-sm mb-3"
-                  animate={isMounted ? {
-                    opacity: isActive ? 1 : 0.8,
-                  } : {}}
-                  transition={{ duration: 0.3 }}
-                >
+                <p className="text-gray-600 text-sm mb-3">
                   {testimonial.role}
-                </motion.p>
+                </p>
                 
-                {/* Animated Stars */}
-                <motion.div 
-                  className="flex justify-center gap-1 mb-3"
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
+                {/* Stars */}
+                <div className="flex justify-center gap-1 mb-3">
                   {[...Array(testimonial.rating)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ 
-                        duration: 0.3, 
-                        delay: 0.3 + i * 0.1,
-                        type: "spring",
-                        stiffness: 300
-                      }}
-                      whileHover={isMounted ? { scale: 1.2, rotate: 15 } : {}}
-                    >
-                      <Star className={`h-4 w-4 fill-current transition-colors duration-300 ${
-                        isActive ? 'text-yellow-400' : 'text-yellow-400'
-                      }`} />
-                    </motion.div>
+                    <Star 
+                      key={i} 
+                      className="h-4 w-4 text-yellow-400 fill-current" 
+                    />
                   ))}
-                </motion.div>
+                </div>
 
-                {/* Text with Gradient on Active */}
-                <motion.p 
-                  className={`text-sm line-clamp-3 leading-relaxed transition-all duration-300 ${
-                    isActive 
-                      ? 'text-gray-800 font-medium' 
-                      : 'text-gray-700'
-                  }`}
-                  animate={isMounted ? {
-                    opacity: isActive ? 1 : 0.9,
-                  } : {}}
-                  transition={{ duration: 0.3 }}
-                >
+                {/* Text */}
+                <p className={`text-sm line-clamp-3 leading-relaxed transition-all duration-300 ${
+                  isActive 
+                    ? 'text-gray-800 font-medium' 
+                    : 'text-gray-700'
+                }`}>
                   {testimonial.text}
-                </motion.p>
+                </p>
 
                 {/* Achievement Badge */}
-                <motion.div
+                <div
                   className={`mt-3 text-xs px-3 py-1 rounded-full transition-all duration-300 ${
                     isActive 
                       ? 'bg-blue-100 text-blue-700 border border-blue-200' 
                       : 'bg-gray-100 text-gray-600'
                   }`}
-                  animate={isMounted ? {
-                    scale: isActive ? 1.05 : 1,
-                  } : {}}
-                  transition={{ duration: 0.3 }}
                 >
                   {testimonial.achievement}
-                </motion.div>
-
-                {/* Hover Overlay */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  initial={false}
-                />
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -241,4 +150,3 @@ export function TestimonialGrid({
     </motion.div>
   );
 }
-

@@ -1,5 +1,5 @@
 // components/about/facilities/useAutoplay.ts
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 interface UseAutoplayProps {
   isPlaying: boolean;
@@ -9,9 +9,33 @@ interface UseAutoplayProps {
 
 export function useAutoplay({ isPlaying, onNext, delay = 5000 }: UseAutoplayProps) {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isPlayingRef = useRef(isPlaying);
+
+  // Обновляем ref при изменении isPlaying
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
+  const pause = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  const resume = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    
+    if (!intervalRef.current && isPlayingRef.current) {
+      intervalRef.current = setInterval(() => {
+        onNext();
+      }, delay);
+    }
+  }, [onNext, delay]);
 
   useEffect(() => {
-    // Проверяем, что мы на клиенте
     if (typeof window === 'undefined') return;
 
     if (isPlaying) {
@@ -19,10 +43,7 @@ export function useAutoplay({ isPlaying, onNext, delay = 5000 }: UseAutoplayProp
         onNext();
       }, delay);
     } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      pause();
     }
 
     return () => {
@@ -30,26 +51,7 @@ export function useAutoplay({ isPlaying, onNext, delay = 5000 }: UseAutoplayProp
         clearInterval(intervalRef.current);
       }
     };
-  }, [isPlaying, onNext, delay]);
-
-  const pause = () => {
-    if (typeof window === 'undefined') return;
-    
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  };
-
-  const resume = () => {
-    if (typeof window === 'undefined') return;
-    
-    if (!intervalRef.current) {
-      intervalRef.current = setInterval(() => {
-        onNext();
-      }, delay);
-    }
-  };
+  }, [isPlaying, onNext, delay, pause]);
 
   return { pause, resume };
 }

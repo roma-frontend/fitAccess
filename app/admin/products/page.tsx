@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Package, AlertCircle, TrendingUp, BarChart3 } from 'lucide-react';
@@ -12,6 +11,7 @@ import { ProductsHeader } from '@/components/admin/products/ProductsHeader';
 import { useProducts } from '@/hooks/useProducts';
 import { useRouter } from 'next/navigation';
 import type { Product, ProductFormData } from '@/types/product';
+import { ProductsPageSkeleton } from '@/components/admin/products/skeletons/ProductsPageSkeleton';
 
 export default function ProductsPage() {
   const { 
@@ -108,6 +108,10 @@ export default function ProductsPage() {
     outOfStock: products.filter(p => p.inStock === 0).length,
     popular: products.filter(p => p.isPopular).length,
   };
+
+  if (isLoading && products.length === 0) {
+    return <ProductsPageSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">

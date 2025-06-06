@@ -24,7 +24,6 @@ export default function ShopPage() {
     router.push('/');
   };
 
-  // ✅ ИСПРАВЛЕННАЯ ФУНКЦИЯ - динамический переход в дашборд
   const handleGoDashboard = () => {
     if (!user?.role) {
       // Fallback если роль не определена

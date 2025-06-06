@@ -10,15 +10,40 @@ interface CallToActionProps {
 }
 
 export function CallToAction({ isInView, isMounted }: CallToActionProps) {
-  // Генерируем фиксированные позиции для частиц
+  // Мемоизируем фиксированные позиции для частиц
   const particles = useMemo(() => {
-    return Array.from({ length: 20 }, (_, i) => ({
+    return Array.from({ length: 12 }, (_, i) => ({ // Уменьшили количество с 20 до 12
       id: i,
-      left: (i * 5.26) % 100, // Фиксированные позиции вместо Math.random()
-      top: (i * 7.89) % 100,
-      delay: i * 0.15,
+      left: (i * 8.33) % 100, // Более равномерное распределение
+      top: (i * 11.11) % 100,
+      delay: i * 0.2,
     }));
   }, []);
+
+  // Мемоизируем рендер частиц
+  const particlesRender = useMemo(() => {
+    if (!isMounted) return null;
+    
+    return particles.map((particle) => (
+      <motion.div
+        key={particle.id}
+        className="absolute w-2 h-2 bg-white rounded-full"
+        style={{
+          left: `${particle.left}%`,
+          top: `${particle.top}%`,
+        }}
+        animate={{
+          scale: [0, 1, 0],
+          opacity: [0, 1, 0],
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          delay: particle.delay,
+        }}
+      />
+    ));
+  }, [isMounted, particles]);
 
   return (
     <motion.div
@@ -27,35 +52,11 @@ export function CallToAction({ isInView, isMounted }: CallToActionProps) {
       transition={{ duration: 0.8, delay: 2 }}
       className="text-center mt-16"
     >
-      <motion.div
-        className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-8 text-white relative overflow-hidden"
-        whileHover={isMounted ? { scale: 1.02 } : {}}
-        transition={{ duration: 0.3 }}
-      >
-        {/* Background Pattern - только после монтирования */}
-        {isMounted && (
-          <div className="absolute inset-0 opacity-20">
-            {particles.map((particle) => (
-              <motion.div
-                key={particle.id}
-                className="absolute w-2 h-2 bg-white rounded-full"
-                style={{
-                  left: `${particle.left}%`,
-                  top: `${particle.top}%`,
-                }}
-                animate={{
-                  scale: [0, 1, 0],
-                  opacity: [0, 1, 0],
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  delay: particle.delay,
-                }}
-              />
-            ))}
-          </div>
-        )}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-8 text-white relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          {particlesRender}
+        </div>
 
         <div className="relative z-10">
           <motion.h3
@@ -81,13 +82,11 @@ export function CallToAction({ isInView, isMounted }: CallToActionProps) {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={isInView ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.6, delay: 2.6, type: "spring" }}
-            whileHover={isMounted ? { scale: 1.05, y: -2 } : {}}
-            whileTap={isMounted ? { scale: 0.95 } : {}}
           >
             Начать тренировки
           </motion.button>
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

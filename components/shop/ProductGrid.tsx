@@ -1,12 +1,13 @@
-// Обновите ProductGrid.tsx
+// Обновленный ProductGrid.tsx
 import React, { memo, useEffect } from 'react';
 import { useShopProductsAPI } from '@/hooks/useShopProductsAPI';
 import { useProductsStore } from '@/stores/productsStore';
 import ProductCard from './ProductCard';
-import { Loader2, Package, AlertCircle } from 'lucide-react';
+import ProductSkeleton from '@/components/ui/ProductSkeleton';
+import { Package, AlertCircle } from 'lucide-react';
 
 const ProductGrid = memo(() => {
-  // Получаем данные из API - исправляем destructuring
+  // Получаем данные из API
   const { products: apiProducts, isLoading: apiLoading, error: apiError } = useShopProductsAPI();
   
   // Получаем состояние из store
@@ -38,25 +39,28 @@ const ProductGrid = memo(() => {
   const loading = apiLoading || storeLoading;
   const error = apiError || storeError;
 
-  // Остальная логика остается той же...
+  // Показываем красивый скелетон вместо лоадера
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
-          <p className="text-gray-600">Загружаем продукты...</p>
-        </div>
-      </div>
-    );
+    return <ProductSkeleton count={6} />;
   }
 
   if (error) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <AlertCircle className="h-8 w-8 mx-auto mb-4 text-red-500" />
-          <p className="text-red-600 mb-2">Ошибка загрузки продуктов</p>
-          <p className="text-gray-600 text-sm">{error}</p>
+        <div className="text-center max-w-md mx-auto">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Ошибка загрузки продуктов
+          </h3>
+          <p className="text-gray-600 text-sm mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Попробовать снова
+          </button>
         </div>
       </div>
     );
@@ -65,9 +69,11 @@ const ProductGrid = memo(() => {
   if (filteredProducts.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <Package className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+        <div className="text-center max-w-md mx-auto">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <Package className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
             Продукты не найдены
           </h3>
           <p className="text-gray-600">

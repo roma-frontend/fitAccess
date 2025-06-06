@@ -26,7 +26,7 @@ export default function HeroSection({ authStatus, onDashboardRedirect }: HeroSec
           )}>
             <Sparkles className="h-6 w-6 text-white" />
           </div>
-          <div className="text-left">
+          <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900">
               {authStatus?.authenticated ? (
                 <>

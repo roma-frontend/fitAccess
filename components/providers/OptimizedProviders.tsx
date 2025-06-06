@@ -44,7 +44,8 @@ const PAGES_WITHOUT_LOADER = [
     '/admin/members',
     '/admin/trainers',
     '/admin/schedules',
-    '/shop'
+    '/shop',
+    '/manager-dashboard'
 ];
 
 // Защищенные маршруты (где всегда нужны провайдеры)
@@ -114,6 +115,10 @@ export const OptimizedProviders = memo(({ children }: OptimizedProvidersProps) =
     const { authStatus, loading } = useAuth();
     const { isAdmin, isSuperAdmin, isTrainer } = useRole();
 
+    // Состояние для отслеживания готовности
+    const [isReady, setIsReady] = useState(false);
+    const [hasInitialized, setHasInitialized] = useState(false);
+
     // 🔍 ДОБАВЛЯЕМ ОСНОВНОЕ ЛОГИРОВАНИЕ
     console.log('🔍 OptimizedProviders Debug:', {
         pathname,
@@ -123,12 +128,10 @@ export const OptimizedProviders = memo(({ children }: OptimizedProvidersProps) =
         isAdmin,
         isSuperAdmin,
         isTrainer,
-        isProtected: isProtectedRoute(pathname || '')
+        isProtected: isProtectedRoute(pathname || ''),
+        isReady,
+        hasInitialized
     });
-
-    // Состояние для контроля лоадера
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
-    const [showLoader, setShowLoader] = useState(false);
 
     // Проверяем, нужен ли лоадер
     const needsLoader = useMemo(() => {
@@ -137,40 +140,41 @@ export const OptimizedProviders = memo(({ children }: OptimizedProvidersProps) =
         return result;
     }, [pathname]);
 
-    // Логика лоадера - минимальное время показа
+    // Определяем когда система готова к работе
     useEffect(() => {
-        if (needsLoader) {
-            console.log('⏱️ Запускаем таймер лоадера на 1500ms');
-            const timer = setTimeout(() => {
-                console.log('⏱️ Таймер лоадера завершен');
-                setIsInitialLoading(false);
-            }, 500);
-            return () => clearTimeout(timer);
-        } else {
-            console.log('⏱️ Лоадер не нужен, сразу завершаем');
-            setIsInitialLoading(false);
-        }
-    }, [needsLoader]);
+        console.log('🔄 Проверяем готовность системы:', {
+            loading,
+            authStatus: authStatus?.authenticated,
+            pathname,
+            needsLoader,
+            hasInitialized
+        });
 
-    // Управляем показом лоадера
-    useEffect(() => {
+        // Для страниц с лоадером ждем завершения загрузки авторизации
         if (needsLoader) {
-            const shouldShow = loading || isInitialLoading;
-            console.log('🔄 Обновляем showLoader:', shouldShow, { loading, isInitialLoading });
-            setShowLoader(shouldShow);
+            if (!loading && authStatus !== null) {
+                console.log('✅ Система готова (авторизация завершена)');
+                setIsReady(true);
+                setHasInitialized(true);
+            } else {
+                console.log('⏳ Ждем завершения авторизации...');
+                setIsReady(false);
+            }
         } else {
-            console.log('🔄 Лоадер не нужен, устанавливаем false');
-            setShowLoader(false);
+            // Для страниц без лоадера сразу готовы
+            console.log('✅ Система готова (лоадер не нужен)');
+            setIsReady(true);
+            setHasInitialized(true);
         }
-    }, [loading, isInitialLoading, needsLoader]);
+    }, [loading, authStatus, needsLoader, pathname]);
 
     // Определяем нужные провайдеры
     const providersConfig = useMemo(() => {
         console.log('🎯 Определяем конфигурацию провайдеров...');
 
-        // Если показываем лоадер, минимальные провайдеры
-        if (showLoader) {
-            console.log('🔄 Показываем лоадер, минимальные провайдеры');
+        // Если система не готова и нужен лоадер, минимальные провайдеры
+        if (!isReady && needsLoader) {
+            console.log('🔄 Система не готова, показываем лоадер');
             return { needsBase: false, needsAdmin: false, needsTrainer: false };
         }
 
@@ -192,18 +196,23 @@ export const OptimizedProviders = memo(({ children }: OptimizedProvidersProps) =
                 isManagerRoute,
                 isMemberRoute,
                 isStaffRoute,
-                loading,
                 authStatus: authStatus?.authenticated
             });
 
             // Базовые провайдеры для всех защищенных маршрутов
             const needsBase = true;
 
-            // Админские провайдеры для админских маршрутов (независимо от роли пока загружается)
+            // Админские провайдеры для админских маршрутов
             const needsAdmin = isAdminRoute;
 
             // Тренерские провайдеры для тренерских маршрутов
             const needsTrainer = isTrainerRoute;
+
+            console.log('🔒 Конфигурация для защищенного маршрута:', {
+                needsBase,
+                needsAdmin,
+                needsTrainer
+            });
 
             return { needsBase, needsAdmin, needsTrainer };
         }
@@ -212,11 +221,13 @@ export const OptimizedProviders = memo(({ children }: OptimizedProvidersProps) =
         console.log('🌐 Публичная страница, провайдеры не нужны');
         return { needsBase: false, needsAdmin: false, needsTrainer: false };
 
-    }, [pathname, authStatus, showLoader, isAdmin, isSuperAdmin, isTrainer, loading]);
+    }, [pathname, authStatus, isReady, needsLoader, isAdmin, isSuperAdmin, isTrainer]);
 
-    // Показываем лоадер
-    if (showLoader) {
-        console.log('🎬 Рендерим лоадер');
+    // Показываем лоадер если система не готова и лоадер нужен
+    const shouldShowLoaderNow = !isReady && needsLoader;
+
+    if (shouldShowLoaderNow) {
+        console.log('🎬 Рендерим лоадер (система не готова)');
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-green-50 relative overflow-hidden">
                 {/* Статичный фон */}
@@ -238,12 +249,12 @@ export const OptimizedProviders = memo(({ children }: OptimizedProvidersProps) =
                         text="FitFlow Pro"
                         showProgress={true}
                         motivationalTexts={[
-                            "Подготавливаем админ-панель...",
-                            "Загружаем данные системы...",
+                            "Инициализируем систему...",
+                            "Проверяем авторизацию...",
+                            "Загружаем конфигурацию...",
+                            "Подготавливаем интерфейс...",
                             "Настраиваем права доступа...",
-                            "Синхронизируем информацию...",
-                            "Подключаем модули управления...",
-                            "Почти готово! Финальная настройка..."
+                            "Финальная подготовка..."
                         ]}
                         className="drop-shadow-2xl"
                     />
@@ -253,22 +264,24 @@ export const OptimizedProviders = memo(({ children }: OptimizedProvidersProps) =
                         <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                                <span>Система управления</span>
+                                <span>Авторизация</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse animation-delay-500" />
-                                <span>Аналитика данных</span>
+                                <span>Конфигурация</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-purple-500 rounded-full animate-pulse animation-delay-1000" />
-                                <span>Безопасность</span>
+                                <span>Интерфейс</span>
                             </div>
                         </div>
 
-                        {/* Версия и статус */}
+                        {/* Статус загрузки */}
                         <div className="text-xs text-gray-400 space-y-1">
-                            <p>FitFlow Pro v2.0 • Панель администрирования</p>
-                            <p className="animate-pulse">🔒 Защищенное соединение • ⚡ Высокая производительность</p>
+                            <p>FitFlow Pro v2.0 • Система управления фитнесом</p>
+                            <p className="animate-pulse">
+                                {loading ? '🔄 Проверяем авторизацию...' : '⚡ Подготавливаем интерфейс...'}
+                            </p>
                         </div>
                     </div>
                 </div>

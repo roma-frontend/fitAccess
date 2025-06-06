@@ -3,7 +3,7 @@
 
 import { motion } from "framer-motion";
 import { useInView } from "framer-motion";
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { TestimonialSlider } from "./testimonials/TestimonialSlider";
 import { TestimonialGrid } from "./testimonials/TestimonialGrid";
 import { TestimonialStats } from "./testimonials/TestimonialStats";
@@ -20,7 +20,9 @@ export function AboutTestimonials() {
   const [isAutoplayActive, setIsAutoplayActive] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Исправляем hydration проблему
+  // Мемоизируем данные отзывов
+  const memoizedTestimonials = useMemo(() => testimonialsData, []);
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -31,29 +33,32 @@ export function AboutTestimonials() {
     setIsTransitioning(true);
     setCurrentTestimonial(newIndex);
     
-    setTimeout(() => {
+    // Используем requestAnimationFrame для лучшей производительности
+    const timeoutId = setTimeout(() => {
       setIsTransitioning(false);
     }, 600);
+
+    return () => clearTimeout(timeoutId);
   }, [isTransitioning, currentTestimonial]);
 
   const nextTestimonial = useCallback(() => {
-    const newIndex = (currentTestimonial + 1) % testimonialsData.length;
+    const newIndex = (currentTestimonial + 1) % memoizedTestimonials.length;
     handleTestimonialChange(newIndex);
-  }, [currentTestimonial, handleTestimonialChange]);
+  }, [currentTestimonial, handleTestimonialChange, memoizedTestimonials.length]);
 
   const prevTestimonial = useCallback(() => {
-    const newIndex = (currentTestimonial - 1 + testimonialsData.length) % testimonialsData.length;
+    const newIndex = (currentTestimonial - 1 + memoizedTestimonials.length) % memoizedTestimonials.length;
     handleTestimonialChange(newIndex);
-  }, [currentTestimonial, handleTestimonialChange]);
+  }, [currentTestimonial, handleTestimonialChange, memoizedTestimonials.length]);
 
-  // Автоплей
+  // Автоплей с оптимизацией
   const { pause, resume } = useAutoplay({
     isPlaying: isAutoplayActive && isInView && isMounted,
     onNext: nextTestimonial,
     delay: 5000
   });
 
-  // Свайп жесты только после монтирования
+  // Свайп жесты
   useSwipeGesture({
     onSwipeLeft: nextTestimonial,
     onSwipeRight: prevTestimonial,
@@ -61,82 +66,97 @@ export function AboutTestimonials() {
     enabled: isMounted
   });
 
-  const handleMouseEnter = () => {
+  // Оптимизированные обработчики мыши
+  const handleMouseEnter = useCallback(() => {
     if (!isMounted) return;
     setIsAutoplayActive(false);
     pause();
-  };
+  }, [isMounted, pause]);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     if (!isMounted) return;
     setIsAutoplayActive(true);
     resume();
-  };
+  }, [isMounted, resume]);
 
-  // Клавиатурная навигация
+  // Клавиатурная навигация с debounce
   useEffect(() => {
     if (!isMounted) return;
     
+    let timeoutId: NodeJS.Timeout;
+    
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') {
-        prevTestimonial();
-      } else if (e.key === 'ArrowRight') {
-        nextTestimonial();
-      }
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (e.key === 'ArrowLeft') {
+          prevTestimonial();
+        } else if (e.key === 'ArrowRight') {
+          nextTestimonial();
+        }
+      }, 100);
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(timeoutId);
+    };
   }, [nextTestimonial, prevTestimonial, isMounted]);
+
+  // Мемоизированные фоновые декорации
+  const backgroundDecorations = useMemo(() => {
+    if (!isMounted) return null;
+
+    return (
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <motion.div
+          className="absolute top-20 left-10 w-32 h-32 bg-blue-400 rounded-full"
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 180, 360],
+            x: [0, 50, 0],
+            y: [0, -30, 0]
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+        <motion.div
+          className="absolute bottom-20 right-10 w-24 h-24 bg-purple-400 rounded-full"
+          animate={{
+            scale: [1, 1.3, 1],
+            rotate: [360, 180, 0],
+            x: [0, -40, 0],
+            y: [0, 40, 0]
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "linear"
+          }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/4 w-16 h-16 bg-green-400 rounded-full"
+          animate={{
+            scale: [1, 1.1, 1],
+            opacity: [0.3, 0.6, 0.3],
+            rotate: [0, 360]
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      </div>
+    );
+  }, [isMounted]);
 
   return (
     <section className="py-24 bg-gradient-to-br from-blue-50 to-purple-50 relative overflow-hidden">
-      {/* Background Decorations - только после монтирования */}
-      {isMounted && (
-        <div className="absolute inset-0 opacity-5">
-          <motion.div
-            className="absolute top-20 left-10 w-32 h-32 bg-blue-400 rounded-full"
-            animate={{
-              scale: [1, 1.2, 1],
-              rotate: [0, 180, 360],
-              x: [0, 50, 0],
-              y: [0, -30, 0]
-            }}
-            transition={{
-              duration: 20,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-          />
-          <motion.div
-            className="absolute bottom-20 right-10 w-24 h-24 bg-purple-400 rounded-full"
-            animate={{
-              scale: [1, 1.3, 1],
-              rotate: [360, 180, 0],
-              x: [0, -40, 0],
-              y: [0, 40, 0]
-            }}
-            transition={{
-              duration: 15,
-              repeat: Infinity,
-              ease: "linear"
-            }}
-          />
-          <motion.div
-            className="absolute top-1/2 left-1/4 w-16 h-16 bg-green-400 rounded-full"
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.3, 0.6, 0.3],
-              rotate: [0, 360]
-            }}
-            transition={{
-              duration: 10,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-        </div>
-      )}
+      {backgroundDecorations}
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Header */}
@@ -155,9 +175,7 @@ export function AboutTestimonials() {
           >
             {isMounted && (
               <motion.span
-                animate={{
-                  rotate: [0, 360]
-                }}
+                animate={{ rotate: [0, 360] }}
                 transition={{
                   duration: 3,
                   repeat: Infinity,
@@ -177,25 +195,9 @@ export function AboutTestimonials() {
             animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            {isMounted ? (
-              <motion.span
-                animate={{
-                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
-                }}
-                transition={{
-                  duration: 3,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 bg-clip-text text-transparent bg-[length:200%_auto]"
-              >
-                Истории наших клиентов
-              </motion.span>
-            ) : (
-              <span className="text-blue-600">
-                Истории наших клиентов
-              </span>
-            )}
+            <span className="text-blue-600">
+              Истории наших клиентов
+            </span>
           </motion.h2>
           
           <motion.p 
@@ -215,7 +217,7 @@ export function AboutTestimonials() {
           className="touch-pan-y"
         >
           <TestimonialSlider
-            testimonials={testimonialsData}
+            testimonials={memoizedTestimonials}
             currentTestimonial={currentTestimonial}
             isTransitioning={isTransitioning}
             onNext={nextTestimonial}
@@ -228,7 +230,7 @@ export function AboutTestimonials() {
 
         {/* Testimonial Grid */}
         <TestimonialGrid
-          testimonials={testimonialsData}
+          testimonials={memoizedTestimonials}
           currentTestimonial={currentTestimonial}
           onChange={handleTestimonialChange}
           isInView={isInView}

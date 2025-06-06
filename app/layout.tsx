@@ -5,6 +5,7 @@ import { ConvexClientProvider } from "@/components/providers/convex-provider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OptimizedProviders } from "@/components/providers/OptimizedProviders";
+import { LoaderManager } from "@/components/layout/LoaderManager";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
@@ -28,19 +29,17 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               <OptimizedProviders>
-                {/* Основная структура с футером */}
+                {/* Основная структура - всегда одинаковая */}
                 <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900 transition-colors duration-300">
                   {/* Основной контент */}
                   <main className="flex-1">
                     {children}
                   </main>
                   
-                  {/* Плавный переход к футеру */}
-                  <div className="h-16 bg-gradient-to-b from-transparent to-gray-900/5"></div>
-                  
                   {/* Футер всегда внизу */}
                   <Footer />
                 </div>
+                
                 <Toaster />
               </OptimizedProviders>
             </AuthProvider>

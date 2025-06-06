@@ -1,3 +1,4 @@
+// Обновленный ShopView.tsx
 "use client";
 
 import React from 'react';
@@ -5,9 +6,18 @@ import ProductsFilters from '@/components/ProductsFilters';
 import CartButton from '@/components/CartButton';
 import ProductGrid from './ProductGrid';
 import Cart from '../products/Cart';
+import ShopSkeleton from '@/components/ui/ShopSkeleton';
 import { ShoppingBag, Sparkles } from 'lucide-react';
+import { useShopProductsAPI } from '@/hooks/useShopProductsAPI';
 
 export default function ShopView() {
+  const { isLoading } = useShopProductsAPI();
+
+  // Показываем полный скелетон страницы при первоначальной загрузке
+  if (isLoading) {
+    return <ShopSkeleton />;
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4">
       {/* Улучшенный заголовок */}
@@ -43,7 +53,7 @@ export default function ShopView() {
 
       {/* Основной контент */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Фильтры */}
+                {/* Фильтры */}
         <div className="lg:col-span-1">
           <div className="sticky top-32">
             <ProductsFilters />
@@ -61,3 +71,4 @@ export default function ShopView() {
     </div>
   );
 }
+
