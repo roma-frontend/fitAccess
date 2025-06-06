@@ -533,6 +533,304 @@
   overflow: hidden;
 }
 
+/* globals.css - добавить эти стили */
+
+/* Плавные переходы для слайдера */
+.facility-slider {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.facility-slide {
+  will-change: transform, opacity, filter;
+  backface-visibility: hidden;
+}
+
+.facility-slide img {
+  will-change: transform, filter;
+  transition: filter 0.3s ease-out;
+}
+
+/* Оптимизация для мобильных устройств */
+@media (max-width: 768px) {
+  .facility-slider {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/* Плавные переходы для индикаторов */
+.slide-indicator {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, background-color;
+}
+
+.slide-indicator:hover {
+  transform: scale(1.2);
+}
+
+/* Анимация загрузки изображений */
+.image-loading {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Улучшенные тени для карточек */
+.facility-card {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, box-shadow;
+}
+
+.facility-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(59, 130, 246, 0.1);
+}
+
+/* Плавные градиенты */
+.gradient-smooth {
+  background-size: 200% 200%;
+  animation: gradient-flow 3s ease infinite;
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Оптимизация для устройств с низкой производительностью */
+@media (prefers-reduced-motion: reduce) {
+  .facility-slider,
+  .facility-slide,
+  .facility-card {
+    transition: opacity 0.2s ease !important;
+    will-change: opacity !important;
+    transform: none !important;
+  }
+  
+  .gradient-smooth {
+    animation: none !important;
+  }
+}
+
+/* Улучшенная прокрутка */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Предотвращение layout shift */
+.prevent-layout-shift {
+  contain: layout style paint;
+}
+
+/* Улучшенные переходы для отзывов */
+.testimonial-slider {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.testimonial-slide {
+  will-change: transform, opacity, filter;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* 3D эффекты для карточек */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-gpu {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* Плавные градиенты для текста */
+.gradient-text {
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #3b82f6);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradient-shift 1s ease-in-out infinite;
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Улучшенные тени для 3D эффекта */
+.shadow-3d {
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.1),
+    0 1px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.shadow-3d:hover {
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.15),
+    0 5px 15px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Анимация для чисел */
+.number-animation {
+  font-variant-numeric: tabular-nums;
+  transition: all 0.2s ease;
+}
+
+/* Touch оптимизация */
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
+/* Улучшенная прокрутка для мобильных */
+@media (max-width: 768px) {
+  .testimonial-slider {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+  
+  .testimonial-slide {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+}
+
+/* Accessibility улучшения */
+@media (prefers-reduced-motion: reduce) {
+  .testimonial-slider,
+  .testimonial-slide,
+  .gradient-text {
+    animation: none !important;
+    transition: opacity 0.2s ease !important;
+  }
+  
+  .transform-gpu {
+    transform: none !important;
+  }
+}
+
+/* Улучшенный focus для accessibility */
+.testimonial-card:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+/* Плавные переходы для индикаторов */
+.testimonial-indicator {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.testimonial-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.2s;
+}
+
+.testimonial-indicator:hover::before {
+  left: 100%;
+}
+
+/* Предотвращение hydration mismatch */
+.client-only {
+  opacity: 0;
+}
+
+.client-only.mounted {
+  opacity: 1;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* Фиксированные позиции для частиц */
+.particle-1 { left: 5.26%; top: 7.89%; }
+.particle-2 { left: 10.52%; top: 15.78%; }
+.particle-3 { left: 15.78%; top: 23.67%; }
+.particle-4 { left: 21.04%; top: 31.56%; }
+.particle-5 { left: 26.30%; top: 39.45%; }
+.particle-6 { left: 31.56%; top: 47.34%; }
+
+/* Стабильные анимации */
+.stable-animation {
+  animation-fill-mode: both;
+  animation-play-state: running;
+}
+
+/* Предотвращение layout shift */
+.testimonial-container {
+  min-height: 400px;
+  contain: layout style paint;
+}
+
+.testimonial-grid {
+  min-height: 300px;
+  contain: layout style;
+}
+
+.stats-container {
+  min-height: 200px;
+  contain: layout style;
+}
+
+/* Оптимизация для SSR */
+@media (prefers-reduced-motion: no-preference) {
+  .client-animation {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .client-animation.mounted {
+    animation-duration: revert !important;
+    animation-iteration-count: revert !important;
+    transition-duration: revert !important;
+  }
+}
+
+/* Fallback для браузеров без поддержки backdrop-filter */
+@supports not (backdrop-filter: blur(8px)) {
+  .backdrop-blur-sm {
+    background-color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+
 /* ===== FITNESS THEME UTILITIES ===== */
 .fitness-pink { color: hsl(var(--fitness-pink)); }
 .fitness-blue { color: hsl(var(--fitness-blue)); }
