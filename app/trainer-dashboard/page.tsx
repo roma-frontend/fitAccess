@@ -85,17 +85,6 @@ function DashboardContent() {
     );
   }
 
-  // Показываем загрузку если данные еще не загружены
-  if (isLoading) {
-    return (
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="p-6 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Загрузка панели тренера...</p>
-        </div>
-      </main>
-    );
-  }
 
   // Основной контент дашборда
   return (

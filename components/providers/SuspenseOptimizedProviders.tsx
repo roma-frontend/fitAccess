@@ -2,7 +2,6 @@
 "use client";
 
 import { Suspense, lazy } from 'react';
-import { OptimizedProviders } from './OptimizedProviders';
 import FitnessLoader from '@/components/ui/FitnessLoader';
 
 // Ленивая загрузка тяжелых провайдеров
