@@ -20,7 +20,7 @@ export default function HomePage() {
   const { handleDashboardRedirect } = useNavigation();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
       {/* Header */}
       <MainHeader
         authStatus={authStatus}
@@ -33,9 +33,9 @@ export default function HomePage() {
         {/* Контейнер для основного контента с padding */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           {/* Hero Section */}
-          <HeroSection 
-            authStatus={authStatus} 
-            onDashboardRedirect={handleDashboardRedirect} 
+          <HeroSection
+            authStatus={authStatus}
+            onDashboardRedirect={handleDashboardRedirect}
           />
 
           {/* Features Section */}
@@ -60,30 +60,21 @@ export default function HomePage() {
           <FAQSection />
 
           {/* Quick Actions Section */}
-          <QuickActionsSection 
-            authStatus={authStatus} 
-            onDashboardRedirect={handleDashboardRedirect} 
+          <QuickActionsSection
+            authStatus={authStatus}
+            onDashboardRedirect={handleDashboardRedirect}
           />
 
           {/* Developer Panel - показываем только админам и супер-админам */}
           <DeveloperPanel authStatus={authStatus} />
 
           {/* CTA Section */}
-          <CTASection 
-            authStatus={authStatus} 
-            onDashboardRedirect={handleDashboardRedirect} 
+          <CTASection
+            authStatus={authStatus}
+            onDashboardRedirect={handleDashboardRedirect}
           />
         </div>
-
-        {/* Футер без контейнера - полная ширина */}
-        <div className="relative">
-          {/* Плавный переход от основного контента к футеру */}
-          <div className="h-16 bg-gradient-to-b from-transparent to-gray-900/5"></div>
-          
-          {/* Футер на полную ширину */}
-          <Footer />
-        </div>
       </div>
-    </div>
+    </main>
   );
 }
