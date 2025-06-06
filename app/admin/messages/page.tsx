@@ -2,18 +2,6 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import { Badge } from "@/components/ui/badge";
-import {
-  MessageSquare,
-  Plus,
-  RefreshCw,
-  Download,
-} from "lucide-react";
-import {
-  AdminSecondHeader,
-  MobileActionGroup,
-  ResponsiveButton,
-} from "@/components/admin/users/AdminSecondHeader";
 
 // Импорты хуков
 import { useMessages } from "@/hooks/useMessages";
@@ -29,6 +17,7 @@ import { MessageViewer } from "@/components/messages/MessageViewer";
 import { NewMessageModal } from "@/components/messages/NewMessageModal";
 import { MessageHeader } from "@/components/messages/MessageHeader";
 import { SimpleToast } from "@/components/ui/SimpleToast"; 
+import { MessagesPageSkeleton } from "@/components/messages/MessagesPageSkeleton";
 
 // Определяем правильный тип для нового сообщения
 interface NewMessageState {
@@ -245,7 +234,7 @@ export default function MessagesPage() {
   });
 
   if (messagesLoading) {
-    return <LoadingSpinner />;
+    return <MessagesPageSkeleton />;
   }
 
   return (

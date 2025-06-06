@@ -22,6 +22,7 @@ import { WeeklyCalendar } from "@/components/admin/dashboard/WeeklyCalendar";
 import { ProgressTracker } from "@/components/admin/dashboard/ProgressTracker";
 import { DashboardFooter } from "@/components/admin/dashboard/DashboardFooter";
 import { useState } from "react";
+import { AdminDashboardSkeleton } from "@/components/admin/AdminDashboardSkeleton";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -94,16 +95,7 @@ export default function AdminDashboard() {
 
   // Показываем загрузку если пользователь не загружен
   if (!user || !userRole) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="flex items-center justify-center min-h-[calc(100vh-80px)]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Загрузка...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <AdminDashboardSkeleton />;
   }
 
   return (

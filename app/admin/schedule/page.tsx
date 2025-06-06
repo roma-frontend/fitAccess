@@ -14,6 +14,7 @@ import { ScheduleEvent, ScheduleStats } from "@/hooks/useSchedule";
 import { SchedulePageHeader } from "@/components/admin/schedule/SchedulePage/SchedulePageHeader";
 import { ScheduleNotifications } from "@/components/admin/schedule/SchedulePage/ScheduleNotifications";
 import { ScheduleStats as ScheduleStatsComponent } from "@/components/admin/schedule/ScheduleStats";
+import { SchedulePageSkeleton } from "@/components/admin/schedule/SchedulePageSkeleton";
 
 // ТОЛЬКО те динамические импорты, которые реально используются
 const ScheduleTabsContainer = dynamic(
@@ -113,16 +114,7 @@ const SchedulePage = memo(function SchedulePage() {
 
   // Показываем загрузку только при первоначальной загрузке
   if (!events && !trainers) {
-    return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Загрузка расписания...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <SchedulePageSkeleton />;
   }
 
   // Создаем полный объект статистики с гарантированными полями
