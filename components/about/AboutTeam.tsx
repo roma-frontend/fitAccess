@@ -6,12 +6,14 @@ import { useInView } from "framer-motion";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Star, Award, Users, ArrowRight } from "lucide-react";
+import { Star, Award, Users, ArrowRight, Router } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 export function AboutTeam() {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: "-100px" });
+  const router = useRouter()
 
   const teamMembers = [
     {
@@ -151,6 +153,7 @@ export function AboutTeam() {
         >
           <Button
             size="lg"
+            onClick={() => router.push("/trainers")}
             className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white px-8 py-4 text-lg font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
           >
             Познакомиться с тренерами
