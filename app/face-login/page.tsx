@@ -21,7 +21,7 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import QRScanner from "@/components/QRScanner"; // Правильный импорт
+import QRScanner from "@/components/QRScanner";
 
 export default function FaceLoginPage() {
   const [activeMethod, setActiveMethod] = useState<"email" | "face" | "qr">(
@@ -241,6 +241,28 @@ export default function FaceLoginPage() {
     }
   };
 
+  // Условный рендеринг для development режима
+  if (process.env.NODE_ENV !== 'development') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Функция недоступна</h2>
+              <p className="text-gray-600 mb-4">
+                Эта функция доступна только в режиме разработки.
+              </p>
+              <Button asChild>
+                <a href="/">Вернуться на главную</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl shadow-xl">
@@ -296,7 +318,7 @@ export default function FaceLoginPage() {
               }}
               className="flex flex-col h-16"
             >
-                            <QrCode className="h-5 w-5 mb-1" />
+              <QrCode className="h-5 w-5 mb-1" />
               <span className="text-xs">QR-код</span>
             </Button>
           </div>
@@ -509,4 +531,3 @@ export default function FaceLoginPage() {
     </div>
   );
 }
-

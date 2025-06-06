@@ -21,7 +21,7 @@ export default function CreateAdminPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         variant: "destructive",
@@ -77,135 +77,138 @@ export default function CreateAdminPage() {
     }
   };
 
-  if (success) {
+  if (process.env.NODE_ENV !== 'development') {
+
+    if (success) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Администратор создан!
+              </h2>
+
+              <p className="text-gray-600 mb-6">
+                Теперь вы можете войти в систему используя созданные учетные данные.
+              </p>
+
+              <div className="space-y-3">
+                <Button
+                  onClick={() => window.location.href = '/staff-login'}
+                  className="w-full"
+                >
+                  Войти в систему
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.href = '/'}
+                  className="w-full"
+                >
+                  На главную
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
-          <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+          <CardHeader className="text-center">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="h-6 w-6 text-blue-600" />
             </div>
-            
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Администратор создан!
-            </h2>
-            
-            <p className="text-gray-600 mb-6">
-              Теперь вы можете войти в систему используя созданные учетные данные.
-            </p>
+            <CardTitle className="text-2xl">Создание администратора</CardTitle>
+            <CardDescription>
+              Создайте учетную запись администратора для управления системой
+            </CardDescription>
+          </CardHeader>
 
-            <div className="space-y-3">
-              <Button 
-                onClick={() => window.location.href = '/staff-login'}
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Имя
+                </label>
+                <Input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Введите имя"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="admin@fitclub.com"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Пароль
+                </label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Минимум 6 символов"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Подтвердите пароль
+                </label>
+                <Input
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  placeholder="Повторите пароль"
+                  required
+                />
+              </div>
+
+              <Button
+                type="submit"
                 className="w-full"
+                disabled={loading}
               >
-                Войти в систему
+                {loading ? "Создание..." : "Создать администратора"}
               </Button>
-              <Button 
-                variant="outline"
-                onClick={() => window.location.href = '/'}
-                className="w-full"
-              >
-                На главную
-              </Button>
+            </form>
+
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium mb-1">Важно:</p>
+                  <ul className="space-y-1">
+                    <li>• Запомните или запишите данные для входа</li>
+                    <li>• Используйте надежный пароль</li>
+                    <li>• Эта страница доступна только для первоначальной настройки</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
     );
   }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <UserPlus className="h-6 w-6 text-blue-600" />
-          </div>
-          <CardTitle className="text-2xl">Создание администратора</CardTitle>
-          <CardDescription>
-            Создайте учетную запись администратора для управления системой
-          </CardDescription>
-        </CardHeader>
-        
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Имя
-              </label>
-              <Input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                placeholder="Введите имя"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                placeholder="admin@fitclub.com"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Пароль
-              </label>
-              <Input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData({...formData, password: e.target.value})}
-                placeholder="Минимум 6 символов"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Подтвердите пароль
-              </label>
-              <Input
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                placeholder="Повторите пароль"
-                required
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={loading}
-            >
-              {loading ? "Создание..." : "Создать администратора"}
-            </Button>
-          </form>
-
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium mb-1">Важно:</p>
-                <ul className="space-y-1">
-                  <li>• Запомните или запишите данные для входа</li>
-                  <li>• Используйте надежный пароль</li>
-                  <li>• Эта страница доступна только для первоначальной настройки</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
 }

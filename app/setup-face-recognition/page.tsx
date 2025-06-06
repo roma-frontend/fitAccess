@@ -165,148 +165,151 @@ export default function SetupFaceRecognitionPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <Card>
-          <CardHeader className="text-center">
-            <Camera className="h-12 w-12 mx-auto mb-4 text-blue-600" />
-            <CardTitle>Настройка распознавания лиц</CardTitle>
-            <CardDescription>
-              Настройте вход по лицу для быстрого доступа к системе
-            </CardDescription>
-          </CardHeader>
+  if (process.env.NODE_ENV !== 'development') {
 
-          <CardContent className="space-y-6">
-            {saved && (
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-800">
-                    Настройка завершена!
-                  </p>
-                  <p className="text-sm text-green-700">
-                    Теперь вы можете использовать вход по лицу
-                  </p>
+    return (
+      <div className="min-h-screen bg-gray-50 p-8">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader className="text-center">
+              <Camera className="h-12 w-12 mx-auto mb-4 text-blue-600" />
+              <CardTitle>Настройка распознавания лиц</CardTitle>
+              <CardDescription>
+                Настройте вход по лицу для быстрого доступа к системе
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              {saved && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-800">
+                      Настройка завершена!
+                    </p>
+                    <p className="text-sm text-green-700">
+                      Теперь вы можете использовать вход по лицу
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {!cameraActive && !saved && (
-              <div className="text-center">
-                <Button onClick={startCamera} disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Подключаем камеру...
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="h-4 w-4 mr-2" />
-                      Включить камеру
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {cameraActive && (
-              <div className="space-y-4">
-                <div className="relative mx-auto w-fit">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="rounded-lg border-2 border-gray-300"
-                    style={{ maxWidth: "400px", width: "100%" }}
-                  />
-                  <canvas ref={canvasRef} className="hidden" />
+              {!cameraActive && !saved && (
+                <div className="text-center">
+                  <Button onClick={startCamera} disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Подключаем камеру...
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="h-4 w-4 mr-2" />
+                        Включить камеру
+                      </>
+                    )}
+                  </Button>
                 </div>
+              )}
 
-                <div className="text-center space-y-4">
-                  <div className="flex gap-2 justify-center">
-                    <Button onClick={captureFace} disabled={loading}>
-                      {loading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Обрабатываем...
-                        </>
-                      ) : (
-                        <>
-                          <Camera className="h-4 w-4 mr-2" />
-                          Захватить лицо
-                        </>
-                      )}
-                    </Button>
-
-                    <Button onClick={stopCamera} variant="outline">
-                      Остановить
-                    </Button>
+              {cameraActive && (
+                <div className="space-y-4">
+                  <div className="relative mx-auto w-fit">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      className="rounded-lg border-2 border-gray-300"
+                      style={{ maxWidth: "400px", width: "100%" }}
+                    />
+                    <canvas ref={canvasRef} className="hidden" />
                   </div>
 
-                  {faceDescriptor && (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-green-800 font-medium">
-                          ✅ Лицо успешно обработано!
-                        </p>
-                        <p className="text-sm text-green-700">
-                          Дескриптор создан ({faceDescriptor.length} точек)
-                        </p>
-                      </div>
-
-                      <Button onClick={saveFaceDescriptor} disabled={loading}>
+                  <div className="text-center space-y-4">
+                    <div className="flex gap-2 justify-center">
+                      <Button onClick={captureFace} disabled={loading}>
                         {loading ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Сохраняем...
+                            Обрабатываем...
                           </>
                         ) : (
                           <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Сохранить настройки
+                            <Camera className="h-4 w-4 mr-2" />
+                            Захватить лицо
                           </>
                         )}
                       </Button>
+
+                      <Button onClick={stopCamera} variant="outline">
+                        Остановить
+                      </Button>
                     </div>
-                  )}
+
+                    {faceDescriptor && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-green-800 font-medium">
+                            ✅ Лицо успешно обработано!
+                          </p>
+                          <p className="text-sm text-green-700">
+                            Дескриптор создан ({faceDescriptor.length} точек)
+                          </p>
+                        </div>
+
+                        <Button onClick={saveFaceDescriptor} disabled={loading}>
+                          {loading ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Сохраняем...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-4 w-4 mr-2" />
+                              Сохранить настройки
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Инструкции */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-blue-800 mb-2">📋 Инструкции:</h4>
-              <ol className="text-sm text-blue-700 space-y-1">
-                <li>
-                  1. Включите камеру и убедитесь что ваше лицо хорошо видно
-                </li>
-                <li>2. Расположите лицо по центру кадра</li>
-                <li>3. Нажмите "Захватить лицо" для создания дескриптора</li>
-                <li>4. Сохраните настройки для активации входа по лицу</li>
-              </ol>
-            </div>
-
-            {/* Навигация */}
-            <div className="flex gap-4 justify-center pt-4">
-              <a
-                href="/member-dashboard"
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                ← Вернуться в кабинет
-              </a>
-              {saved && (
-                <a
-                  href="/face-login"
-                  className="px-4 py-2 border border-green-600 text-green-600 rounded hover:bg-green-50 transition-colors"
-                >
-                  Тест входа по лицу
-                </a>
               )}
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Инструкции */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="font-medium text-blue-800 mb-2">📋 Инструкции:</h4>
+                <ol className="text-sm text-blue-700 space-y-1">
+                  <li>
+                    1. Включите камеру и убедитесь что ваше лицо хорошо видно
+                  </li>
+                  <li>2. Расположите лицо по центру кадра</li>
+                  <li>3. Нажмите "Захватить лицо" для создания дескриптора</li>
+                  <li>4. Сохраните настройки для активации входа по лицу</li>
+                </ol>
+              </div>
+
+              {/* Навигация */}
+              <div className="flex gap-4 justify-center pt-4">
+                <a
+                  href="/member-dashboard"
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  ← Вернуться в кабинет
+                </a>
+                {saved && (
+                  <a
+                    href="/face-login"
+                    className="px-4 py-2 border border-green-600 text-green-600 rounded hover:bg-green-50 transition-colors"
+                  >
+                    Тест входа по лицу
+                  </a>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
