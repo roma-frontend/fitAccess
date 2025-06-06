@@ -1,4 +1,3 @@
-// app/about/page.tsx
 import { Metadata } from "next";
 import { AboutHero } from "@/components/about/AboutHero";
 import { AboutMission } from "@/components/about/AboutMission";
@@ -10,6 +9,7 @@ import { AboutFacilities } from "@/components/about/AboutFacilities";
 import { AboutTestimonials } from "@/components/about/AboutTestimonials";
 import { AboutCTA } from "@/components/about/AboutCTA";
 import { AboutContact } from "@/components/about/AboutContact";
+import { BackToHomeButton } from "@/components/ui/BackToHomeButton"; // Добавьте этот импорт
 
 export const metadata: Metadata = {
   title: "О нас - FitAccess",
@@ -20,6 +20,9 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white">
+      {/* Кнопка возврата на главную */}
+      <BackToHomeButton />
+      
       {/* Hero Section */}
       <AboutHero />
       
