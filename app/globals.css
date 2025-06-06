@@ -123,6 +123,7 @@
 /* ===== GLOBAL STYLES ===== */
 * {
   box-sizing: border-box;
+  scroll-behavior: smooth;
 }
 
 html {
@@ -133,6 +134,117 @@ html {
   html {
     scroll-behavior: auto;
   }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .touch-optimized-button {
+    padding: 12px 16px;
+    font-size: 16px; /* Предотвращает zoom на iOS */
+  }
+}
+
+/* Адаптивные переходы */
+@media (prefers-reduced-motion: no-preference) {
+  .adaptive-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adaptive-transition {
+    transition: none;
+  }
+}
+
+/* Адаптивные размеры для мобильных устройств */
+@media (max-width: 640px) {
+  .mobile-optimized {
+    font-size: 16px; /* Предотвращает zoom */
+    line-height: 1.5;
+  }
+  
+  .mobile-container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .mobile-spacing {
+    margin-bottom: 16px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-optimized {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  
+  .tablet-container {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  
+  .tablet-spacing {
+    margin-bottom: 20px;
+  }
+}
+
+/* Адаптивные размеры для десктопа */
+@media (min-width: 1025px) {
+  .desktop-optimized {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  
+  .desktop-container {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  
+  .desktop-spacing {
+    margin-bottom: 24px;
+  }
+}
+
+/* Улучшенная видимость фокуса */
+.focus-visible:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Адаптивные тени */
+@media (max-width: 640px) {
+  .adaptive-shadow {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+}
+
+@media (min-width: 641px) {
+  .adaptive-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Оптимизация производительности */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Адаптивная типографика */
+.responsive-text {
+  font-size: clamp(0.875rem, 2.5vw, 1.125rem);
+  line-height: clamp(1.25rem, 3.5vw, 1.75rem);
+}
+
+.responsive-heading {
+  font-size: clamp(1.25rem, 4vw, 2rem);
+  line-height: clamp(1.75rem, 5vw, 2.5rem);
 }
 
 /* ===== KEYFRAME ANIMATIONS ===== */
@@ -617,6 +729,69 @@ html {
   100% {
     transform: translateX(100%);
   }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+/* Touch target для мобильных устройств */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Улучшенные переходы */
+.transition-colors-fast {
+  transition: color 150ms ease-in-out, background-color 150ms ease-in-out, border-color 150ms ease-in-out;
+}
+
+/* Адаптивные тени */
+@media (max-width: 640px) {
+  .adaptive-shadow {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+}
+
+@media (min-width: 641px) {
+  .adaptive-shadow {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+}
+
+/* Плавные градиенты */
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
 }
 
 .animate-shimmer {
@@ -2502,6 +2677,52 @@ a:focus {
     --text-primary: #f9fafb;
     --text-secondary: #d1d5db;
     --border-color: #4b5563;
+  }
+}
+
+
+/* Улучшенная прокрутка для мобильных устройств */
+@media (max-width: 768px) {
+  .scroll-smooth {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Адаптивные переходы */
+@media (prefers-reduced-motion: no-preference) {
+  .responsive-transition {
+    transition: all 0.2s ease-in-out;
+  }
+}
+
+/* Оптимизация для сенсорных экранов */
+@media (hover: none) and (pointer: coarse) {
+  .touch-optimized {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Адаптивные размеры шрифтов */
+@media (max-width: 640px) {
+  .text-responsive-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .text-responsive-md {
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+}
+
+@media (min-width: 1025px) {
+  .text-responsive-lg {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
   }
 }
 

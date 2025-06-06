@@ -1,141 +1,263 @@
-// app/admin/settings/components/SettingsOperationSkeletons.tsx
+// components/admin/settings/components/SettingsOperationSkeletons.tsx
 "use client";
 
 import React from 'react';
+import { createPortal } from 'react-dom';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { 
+  Loader2, 
+  Download, 
+  Upload, 
+  RotateCcw, 
+  CheckCircle,
+  Settings,
+  Database
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-// Скелетон для операций загрузки/сохранения
-export const SettingsOperationSkeleton = React.memo(({ operation }: { operation: string }) => {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
-        <div className="text-center space-y-4">
-          <div className="w-12 h-12 bg-blue-500 rounded-full mx-auto flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">{operation}</h3>
-            <p className="text-sm text-gray-600">Пожалуйста, подождите...</p>
-          </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full">
-            <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '60%' }}></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
+interface SettingsOperationSkeletonProps {
+  operation: string;
+  isMobile?: boolean;
+  progress?: number;
+  className?: string;
+}
 
-// Скелетон для импорта настроек
-export const SettingsImportSkeleton = React.memo(() => {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-blue-500 rounded-full mx-auto flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">Импорт настроек</h3>
-            <p className="text-sm text-gray-600">Загружаем и применяем конфигурацию...</p>
-          </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full">
-            <div className="h-full bg-blue-500 rounded-full animate-pulse" style={{ width: '45%' }}></div>
-          </div>
-          <p className="text-xs text-gray-500">Проверка файла конфигурации</p>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-// Скелетон для экспорта настроек
-export const SettingsExportSkeleton = React.memo(() => {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-green-500 rounded-full mx-auto flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">Экспорт настроек</h3>
-            <p className="text-sm text-gray-600">Подготавливаем файл конфигурации...</p>
-          </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full">
-            <div className="h-full bg-green-500 rounded-full animate-pulse" style={{ width: '75%' }}></div>
-          </div>
-          <p className="text-xs text-gray-500">Сборка данных для экспорта</p>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-// Скелетон для сброса настроек
-export const SettingsResetSkeleton = React.memo(() => {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-red-500 rounded-full mx-auto flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">Сброс настроек</h3>
-            <p className="text-sm text-gray-600">Восстанавливаем значения по умолчанию...</p>
-          </div>
-          <div className="w-full h-2 bg-gray-200 rounded-full">
-            <div className="h-full bg-red-500 rounded-full animate-pulse" style={{ width: '30%' }}></div>
-          </div>
-          <p className="text-xs text-gray-500">Очистка пользовательских настроек</p>
-        </div>
-      </div>
-    </div>
-  );
-});
-
-// Скелетон для валидации настроек
-export const SettingsValidationSkeleton = React.memo(() => {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-        <div className="text-center space-y-4">
-          <div className="w-16 h-16 bg-yellow-500 rounded-full mx-auto flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold text-gray-900">Валидация настроек</h3>
-            <p className="text-sm text-gray-600">Проверяем корректность конфигурации...</p>
+export const SettingsOperationSkeleton = ({
+  operation,
+  isMobile = false,
+  progress,
+  className
+}: SettingsOperationSkeletonProps) => {
+  const content = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <Card className={cn(
+        "w-full max-w-sm mx-4 shadow-xl border-0",
+        className
+      )}>
+        <CardContent className={cn(
+          "flex flex-col items-center space-y-4 text-center",
+          isMobile ? "p-6" : "p-8"
+        )}>
+          <div className="relative">
+            <Loader2 className={cn(
+              "animate-spin text-blue-600",
+              isMobile ? "h-8 w-8" : "h-10 w-10"
+            )} />
+            <div className="absolute inset-0 rounded-full border-2 border-blue-200 animate-pulse" />
           </div>
           
-          {/* Progress steps */}
-          <div className="space-y-2 text-left">
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-700">Проверка синтаксиса</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-700">Валидация значений</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 bg-gray-300 rounded-full"></div>
-              <span className="text-sm text-gray-500">Проверка зависимостей</span>
-            </div>
+          <div className="space-y-2">
+            <h3 className={cn(
+              "font-semibold text-gray-900",
+              isMobile ? "text-base" : "text-lg"
+            )}>
+              {operation}
+            </h3>
+            
+            <p className={cn(
+              "text-gray-600",
+              isMobile ? "text-sm" : "text-base"
+            )}>
+              Пожалуйста, подождите...
+            </p>
           </div>
-          
-          <div className="w-full h-2 bg-gray-200 rounded-full">
-            <div className="h-full bg-yellow-500 rounded-full animate-pulse" style={{ width: '50%' }}></div>
-          </div>
-        </div>
-      </div>
+
+          {progress !== undefined && (
+            <div className="w-full space-y-2">
+              <Progress value={progress} className="h-2" />
+              <p className="text-xs text-gray-500">{progress}%</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
-});
 
-// Display names
-SettingsOperationSkeleton.displayName = 'SettingsOperationSkeleton';
-SettingsImportSkeleton.displayName = 'SettingsImportSkeleton';
-SettingsExportSkeleton.displayName = 'SettingsExportSkeleton';
-SettingsResetSkeleton.displayName = 'SettingsResetSkeleton';
-SettingsValidationSkeleton.displayName = 'SettingsValidationSkeleton';
+  return typeof window !== 'undefined' ? createPortal(content, document.body) : null;
+};
+
+interface SpecificOperationSkeletonProps {
+  isMobile?: boolean;
+  className?: string;
+}
+
+export const SettingsExportSkeleton = ({ 
+  isMobile = false, 
+  className 
+}: SpecificOperationSkeletonProps) => {
+  const content = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <Card className={cn(
+        "w-full max-w-sm mx-4 shadow-xl border-0",
+        className
+      )}>
+        <CardContent className={cn(
+          "flex flex-col items-center space-y-4 text-center",
+          isMobile ? "p-6" : "p-8"
+        )}>
+          <div className="relative">
+            <Download className={cn(
+              "text-green-600 animate-bounce",
+              isMobile ? "h-8 w-8" : "h-10 w-10"
+            )} />
+            <div className="absolute -inset-2 rounded-full border-2 border-green-200 animate-ping" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className={cn(
+              "font-semibold text-gray-900",
+              isMobile ? "text-base" : "text-lg"
+            )}>
+              Экспорт настроек
+            </h3>
+            
+            <p className={cn(
+              "text-gray-600",
+              isMobile ? "text-sm" : "text-base"
+            )}>
+              Подготовка файла для скачивания...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return typeof window !== 'undefined' ? createPortal(content, document.body) : null;
+};
+
+export const SettingsImportSkeleton = ({ 
+  isMobile = false, 
+  className 
+}: SpecificOperationSkeletonProps) => {
+  const content = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <Card className={cn(
+        "w-full max-w-sm mx-4 shadow-xl border-0",
+        className
+      )}>
+        <CardContent className={cn(
+          "flex flex-col items-center space-y-4 text-center",
+          isMobile ? "p-6" : "p-8"
+        )}>
+          <div className="relative">
+            <Upload className={cn(
+              "text-blue-600 animate-pulse",
+              isMobile ? "h-8 w-8" : "h-10 w-10"
+            )} />
+            <div className="absolute -inset-2 rounded-full border-2 border-blue-200 animate-spin" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className={cn(
+              "font-semibold text-gray-900",
+              isMobile ? "text-base" : "text-lg"
+            )}>
+              Импорт настроек
+            </h3>
+            
+            <p className={cn(
+              "text-gray-600",
+              isMobile ? "text-sm" : "text-base"
+            )}>
+              Обработка загруженного файла...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return typeof window !== 'undefined' ? createPortal(content, document.body) : null;
+};
+
+export const SettingsResetSkeleton = ({ 
+  isMobile = false, 
+  className 
+}: SpecificOperationSkeletonProps) => {
+  const content = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <Card className={cn(
+        "w-full max-w-sm mx-4 shadow-xl border-0",
+        className
+      )}>
+        <CardContent className={cn(
+          "flex flex-col items-center space-y-4 text-center",
+          isMobile ? "p-6" : "p-8"
+        )}>
+          <div className="relative">
+            <RotateCcw className={cn(
+              "text-orange-600 animate-spin",
+              isMobile ? "h-8 w-8" : "h-10 w-10"
+            )} />
+            <div className="absolute -inset-2 rounded-full border-2 border-orange-200 animate-pulse" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className={cn(
+              "font-semibold text-gray-900",
+              isMobile ? "text-base" : "text-lg"
+            )}>
+              Сброс настроек
+            </h3>
+            
+            <p className={cn(
+              "text-gray-600",
+              isMobile ? "text-sm" : "text-base"
+            )}>
+              Восстановление значений по умолчанию...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return typeof window !== 'undefined' ? createPortal(content, document.body) : null;
+};
+
+export const SettingsValidationSkeleton = ({ 
+  isMobile = false, 
+  className 
+}: SpecificOperationSkeletonProps) => {
+  const content = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <Card className={cn(
+        "w-full max-w-sm mx-4 shadow-xl border-0",
+        className
+      )}>
+        <CardContent className={cn(
+          "flex flex-col items-center space-y-4 text-center",
+          isMobile ? "p-6" : "p-8"
+        )}>
+          <div className="relative">
+            <CheckCircle className={cn(
+              "text-purple-600 animate-pulse",
+              isMobile ? "h-8 w-8" : "h-10 w-10"
+            )} />
+            <div className="absolute -inset-2 rounded-full border-2 border-purple-200 animate-ping" />
+          </div>
+          
+          <div className="space-y-2">
+            <h3 className={cn(
+              "font-semibold text-gray-900",
+              isMobile ? "text-base" : "text-lg"
+            )}>
+              Проверка настроек
+            </h3>
+            
+            <p className={cn(
+              "text-gray-600",
+              isMobile ? "text-sm" : "text-base"
+            )}>
+              Валидация конфигурации...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  return typeof window !== 'undefined' ? createPortal(content, document.body) : null;
+};

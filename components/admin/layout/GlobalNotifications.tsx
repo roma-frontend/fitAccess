@@ -19,7 +19,7 @@ export function GlobalNotifications({
     <>
       {/* Уведомление об успешном обновлении */}
       {lastSync && (
-        <div className="fixed bottom-8 right-4 z-50 animate-fade-in">
+        <div className="fixed bottom-8 left-4 z-50 animate-fade-in">
           <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg shadow-lg text-sm border border-green-200">
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4" />

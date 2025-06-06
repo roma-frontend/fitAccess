@@ -1,11 +1,17 @@
-// Обновленный SettingsHeader.tsx с использованием DropdownMenu
+// components/admin/settings/components/SettingsHeader.tsx
 "use client";
 
 import React, { useState } from 'react';
 import { 
   ArrowLeft, 
+  MoreVertical, 
   Save, 
+  Download, 
+  Upload, 
+  RotateCcw,
   Settings,
+  Bell,
+  HelpCircle,
   CheckCircle,
   AlertTriangle,
   Smartphone,
@@ -13,8 +19,6 @@ import {
   Monitor
 } from 'lucide-react';
 import { MobileSettingsNavigation } from './MobileSettingsNavigation';
-import { SettingsHeaderActions } from './SettingsHeaderActions';
-import { SettingsStatusIndicator } from './SettingsStatusIndicator';
 
 export interface SettingsHeaderProps {
   /** Заголовок страницы настроек */
@@ -33,8 +37,6 @@ export interface SettingsHeaderProps {
   isTablet?: boolean;
   /** Идет ли сохранение */
   saving?: boolean;
-  /** Дата последнего сохранения */
-  lastSaved?: Date | null;
   /** Обработчик нажатия на кнопку "Назад" */
   onBack?: () => void;
   /** Обработчик сохранения */
@@ -60,10 +62,9 @@ export function SettingsHeader({
   isMobile = false,
   isTablet = false,
   saving = false,
-  lastSaved,
   onBack,
   onSave,
-   onReset,
+  onReset,
   onExport,
   onImport,
   onHelp,
@@ -88,6 +89,16 @@ export function SettingsHeader({
         <div className="flex items-center justify-between">
           {/* Левая часть */}
           <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+            {/* Кнопка назад с анимацией */}
+            {showBackButton && (
+              <button
+                onClick={onBack}
+                className="group p-2 hover:bg-blue-50 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95"
+                aria-label="Назад"
+              >
+                <ArrowLeft className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
+              </button>
+            )}
 
             {/* Иконка настроек с анимацией */}
             <div className="relative flex-shrink-0">
@@ -125,18 +136,9 @@ export function SettingsHeader({
               </div>
               
               {/* Подзаголовок и статус */}
-              {!isMobile && (subtitle || hasUnsavedChanges || saving) && (
-                <SettingsStatusIndicator
-                  hasUnsavedChanges={hasUnsavedChanges}
-                  saving={saving}
-                  lastSaved={lastSaved}
-                  className="mt-0.5"
-                />
-              )}
-              
-              {/* Мобильная версия статуса */}
-              {isMobile && (
+              {(subtitle || hasUnsavedChanges || saving) && (
                 <div className="flex items-center gap-1.5 mt-0.5">
+                  {/* Иконка статуса */}
                   {saving ? (
                     <CheckCircle className="h-3 w-3 text-blue-500 animate-spin" />
                   ) : hasUnsavedChanges ? (
@@ -149,8 +151,8 @@ export function SettingsHeader({
                     {saving 
                       ? 'Сохранение...' 
                       : hasUnsavedChanges 
-                        ? 'Есть изменения'
-                        : subtitle || 'Все сохранено'
+                        ? 'Есть несохраненные изменения'
+                        : subtitle || 'Все настройки сохранены'
                     }
                   </p>
                 </div>
@@ -174,6 +176,52 @@ export function SettingsHeader({
               ) : (
                 /* Десктопные кнопки */
                 <>
+                  {/* Кнопка справки */}
+                  {onHelp && (
+                    <button
+                      onClick={onHelp}
+                      className="group p-2.5 hover:bg-blue-50 rounded-xl transition-all duration-200 hidden lg:block transform hover:scale-105 active:scale-95 hover:shadow-lg"
+                      aria-label="Справка"
+                    >
+                      <HelpCircle className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
+                    </button>
+                  )}
+
+                  {/* Кнопка уведомлений */}
+                  {onNotifications && (
+                    <button
+                      onClick={onNotifications}
+                      className="group p-2.5 hover:bg-purple-50 rounded-xl transition-all duration-200 hidden lg:block transform hover:scale-105 active:scale-95 hover:shadow-lg"
+                      aria-label="Уведомления"
+                    >
+                      <Bell className="h-5 w-5 text-gray-600 group-hover:text-purple-600 transition-colors" />
+                    </button>
+                  )}
+
+                  {/* Кнопка экспорта */}
+                  {onExport && (
+                    <button
+                      onClick={onExport}
+                      disabled={saving}
+                      className="group p-2.5 hover:bg-green-50 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Экспорт настроек"
+                    >
+                      <Download className="h-5 w-5 text-gray-600 group-hover:text-green-600 transition-colors" />
+                    </button>
+                  )}
+
+                  {/* Кнопка импорта */}
+                  {onImport && (
+                    <button
+                      onClick={onImport}
+                      disabled={saving}
+                      className="group p-2.5 hover:bg-blue-50 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Импорт настроек"
+                    >
+                      <Upload className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
+                    </button>
+                  )}
+
                   {/* Кнопка сохранения */}
                   {onSave && hasUnsavedChanges && (
                     <button
@@ -186,15 +234,13 @@ export function SettingsHeader({
                     </button>
                   )}
 
-                  {/* Меню действий */}
-                  <SettingsHeaderActions
-                    onExport={onExport}
-                    onImport={onImport}
-                    onReset={onReset}
-                    onHelp={onHelp}
-                    onNotifications={onNotifications}
-                    disabled={saving}
-                  />
+                  {/* Кнопка меню */}
+                  <button
+                    className="group p-2.5 hover:bg-gray-100 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 hover:shadow-lg"
+                    aria-label="Меню"
+                  >
+                    <MoreVertical className="h-5 w-5 text-gray-600 group-hover:text-gray-800 transition-colors" />
+                  </button>
                 </>
               )}
             </div>
@@ -204,4 +250,3 @@ export function SettingsHeader({
     </header>
   );
 }
-

@@ -31,18 +31,11 @@ function TestimonialCard({
     <Card
       className={combineAnimations(
         "relative overflow-hidden bg-white/80 backdrop-blur-sm border-2 rounded-3xl",
-        "hover:shadow-2xl hover:shadow-blue-500/20 hover:-translate-y-2 hover:scale-[1.02]",
+        "hover:shadow-2xl hover:shadow-blue-500/20 hover:scale-[1.02]",
         "transition-all duration-700 ease-out will-change-transform",
         "group border-gray-200/50 hover:border-blue-300/50",
-        "transform",
-        isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+        "transform opacity-100"
       )}
-      style={{
-        transitionDelay: `${index * 200}ms`,
-        animation: isVisible
-          ? `floatIn 0.8s ease-out ${index * 200}ms forwards`
-          : "none",
-      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -83,12 +76,6 @@ function TestimonialCard({
                   : "text-gray-300 scale-90",
                 "hover:scale-125 hover:rotate-12"
               )}
-              style={{
-                transitionDelay: `${i * 100}ms`,
-                animation: isVisible
-                  ? `starPop 0.6s ease-out ${index * 200 + i * 100}ms forwards`
-                  : "none",
-              }}
             />
           ))}
           <span className="ml-2 text-sm font-semibold text-gray-600 bg-yellow-50 px-2 py-1 rounded-full">
@@ -98,13 +85,10 @@ function TestimonialCard({
 
         {/* Цитата с улучшенным дизайном */}
         <div className="relative mb-8">
-          <div className="absolute -top-3 -left-3 w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity duration-300">
-            <Quote className="h-6 w-6 text-white" />
-          </div>
           <Quote className="h-6 w-6 text-blue-400 absolute -top-1 -left-1 transition-all duration-300 group-hover:scale-110 will-change-transform" />
           <p className="text-gray-700 leading-relaxed pl-8 font-medium relative">
             {content}
-            <span className="absolute -bottom-1 left-8 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-purple-600 group-hover:w-full transition-all duration-700 will-change-auto" />
+            <span className="absolute -bottom-1 left-8 w-0 h-0.5 bg-gradient-to-r from-slate-400 to-gray-500 group-hover:w-full transition-all duration-700 will-change-auto" />
           </p>
         </div>
 
@@ -112,15 +96,15 @@ function TestimonialCard({
         <div className="flex items-center gap-4">
           <div
             className={combineAnimations(
-              "relative w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg",
-              "bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500",
+              "relative w-14 h-14 rounded-2xl flex items-center justify-center text-indigo-700 font-bold text-lg",
+              "bg-gradient-to-br from-indigo-100 via-blue-200 to-slate-300",
               "transition-all duration-500 will-change-transform",
               "hover:scale-110 hover:rotate-6",
               "shadow-lg group-hover:shadow-xl"
             )}
           >
             {avatar}
-            <div className="absolute inset-0 rounded-2xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute inset-0 rounded-2xl bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </div>
           <div className="flex-1">
             <h4 className="font-bold text-gray-900 text-lg group-hover:text-blue-700 transition-colors duration-300">
@@ -172,27 +156,20 @@ export default function TestimonialsSection() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-60 h-60 bg-gradient-to-br from-pink-400/5 to-blue-600/5 rounded-full blur-3xl will-change-transform" />
       </div>
 
-      {/* Заголовок с анимацией */}
-      <div
-        className={combineAnimations(
-          "text-center mb-16 relative z-10",
-          "transform transition-all duration-1000 ease-out will-change-transform",
-          isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-        )}
-      >
+      {/* Заголовок без анимации появления */}
+      <div className="text-center mb-16 relative z-10">
         <div className="flex items-center justify-center gap-4 mb-6">
           <div
             className={combineAnimations(
-              "w-16 h-16 bg-gradient-to-br from-blue-500 via-purple-600 to-pink-500",
+              "w-16 h-16 bg-gradient-to-br from-violet-200 via-purple-300 to-indigo-400",
               "rounded-2xl flex items-center justify-center relative",
               "transform transition-all duration-700 ease-out will-change-transform",
               "hover:scale-110 hover:rotate-12",
-              "shadow-xl shadow-blue-500/25",
-              isVisible ? "animate-none" : ""
+              "shadow-xl shadow-violet-200/40"
             )}
           >
-            <MessageCircle className="h-8 w-8 text-white" />
-            <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+            <MessageCircle className="h-8 w-8 text-violet-700" />
+            <div className="absolute -top-2 -right-2 w-6 h-6 bg-rose-400 rounded-full flex items-center justify-center">
               <Heart className="h-3 w-3 text-white fill-current" />
             </div>
           </div>

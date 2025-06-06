@@ -1,7 +1,7 @@
-import React, { Component, ReactNode } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import React, { Component, ReactNode } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -23,18 +23,18 @@ class ShopErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Shop Error:', error, errorInfo);
-    
+    console.error("Shop Error:", error, errorInfo);
+
     // Отправляем ошибку на сервер
     this.sendErrorToServer(error, errorInfo);
   }
 
   sendErrorToServer = async (error: Error, errorInfo: React.ErrorInfo) => {
     try {
-      await fetch('/api/errors/report', {
-        method: 'POST',
+      await fetch("/api/errors/report", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           error: {
@@ -49,7 +49,7 @@ class ShopErrorBoundary extends Component<Props, State> {
         }),
       });
     } catch (reportError) {
-      console.error('Ошибка отправки отчета об ошибке:', reportError);
+      console.error("Ошибка отправки отчета об ошибке:", reportError);
     }
   };
 
@@ -63,7 +63,7 @@ class ShopErrorBoundary extends Component<Props, State> {
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
           <Card className="w-full max-w-md">
             <CardContent className="p-8 text-center">
-                            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <AlertTriangle className="h-8 w-8 text-red-600" />
               </div>
 
@@ -72,12 +72,15 @@ class ShopErrorBoundary extends Component<Props, State> {
               </h2>
 
               <p className="text-gray-600 mb-6">
-                Произошла ошибка при загрузке магазина. Мы уже работаем над её устранением.
+                Произошла ошибка при загрузке магазина. Мы уже работаем над её
+                устранением.
               </p>
 
-              {process.env.NODE_ENV === 'development' && this.state.error && (
+              {process.env.NODE_ENV === "development" && this.state.error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-left">
-                  <h4 className="font-medium text-red-800 mb-2">Детали ошибки:</h4>
+                  <h4 className="font-medium text-red-800 mb-2">
+                    Детали ошибки:
+                  </h4>
                   <pre className="text-xs text-red-700 overflow-auto">
                     {this.state.error.message}
                   </pre>
@@ -92,7 +95,7 @@ class ShopErrorBoundary extends Component<Props, State> {
 
                 <Button
                   variant="outline"
-                  onClick={() => window.location.href = '/'}
+                  onClick={() => (window.location.href = "/")}
                   className="w-full"
                 >
                   На главную страницу
