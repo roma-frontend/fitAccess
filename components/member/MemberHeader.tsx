@@ -33,7 +33,8 @@ import {
   Clock,
   Target,
   TrendingUp,
-  Shield
+  Shield,
+  Receipt
 } from "lucide-react";
 
 interface MemberHeaderProps {
@@ -53,10 +54,10 @@ interface MemberHeaderProps {
   onLogout?: () => void;
 }
 
-export default function MemberHeader({ 
-  user, 
+export default function MemberHeader({
+  user,
   stats = { upcoming: 0, completed: 0, totalHours: 0, daysLeft: 15 },
-  onLogout 
+  onLogout
 }: MemberHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -78,6 +79,12 @@ export default function MemberHeader({
       href: "/member-dashboard/my-bookings",
       icon: Calendar,
       badge: stats.upcoming > 0 ? stats.upcoming.toString() : undefined
+    },
+    {
+      label: "История заказов",
+      href: "/member-dashboard/orders",
+      icon: Receipt,
+      badge: undefined
     },
     {
       label: "Тренеры",
@@ -143,10 +150,10 @@ export default function MemberHeader({
       <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-50 shadow-sm transition-colors duration-300">
         <div className="w-full max-w-none">
           <div className="flex items-center justify-between h-14 sm:h-16 px-3 sm:px-4 lg:px-6 xl:px-8">
-            
+
             {/* Левая часть - Логотип */}
             <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
-              <div 
+              <div
                 className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group min-w-0"
                 onClick={() => router.push('/')}
               >
@@ -167,27 +174,25 @@ export default function MemberHeader({
               {navItems.map((item) => {
                 const IconComponent = item.icon;
                 const isActive = isActivePath(item.href);
-                
+
                 return (
                   <Button
                     key={item.href}
                     variant={isActive ? "default" : "ghost"}
                     onClick={() => router.push(item.href)}
-                    className={`relative flex items-center gap-2 px-3 py-2 transition-all duration-200 ${
-                      isActive 
-                        ? "bg-blue-600 text-white shadow-md" 
-                        : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    }`}
+                    className={`relative flex items-center gap-2 px-3 py-2 transition-all duration-200 ${isActive
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
                   >
                     <IconComponent className="h-4 w-4 flex-shrink-0" />
                     <span className="font-medium whitespace-nowrap">{item.label}</span>
                     {item.badge && (
-                      <Badge 
-                        className={`ml-1 text-xs ${
-                          isActive 
-                            ? "bg-white/20 text-white" 
-                            : "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
-                        }`}
+                      <Badge
+                        className={`ml-1 text-xs ${isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                          }`}
                       >
                         {item.badge}
                       </Badge>
@@ -199,7 +204,7 @@ export default function MemberHeader({
 
             {/* Правая часть - Статистика и действия */}
             <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3">
-              
+
               {/* Статистика (только на очень больших экранах) */}
               <div className="hidden 2xl:flex items-center space-x-4 mr-4">
                 {headerStats.map((stat, index) => {
@@ -245,9 +250,9 @@ export default function MemberHeader({
               {/* Уведомления */}
               <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="relative p-1.5 sm:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 h-8 w-8 sm:h-9 sm:w-9"
                   >
                     <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-300" />
@@ -266,7 +271,7 @@ export default function MemberHeader({
                     </Badge>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
-                  
+
                   <div className="max-h-64 overflow-y-auto">
                     <DropdownMenuItem className="flex-col items-start p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
                       <div className="flex items-start justify-between w-full">
@@ -283,7 +288,7 @@ export default function MemberHeader({
                       </div>
                     </DropdownMenuItem>
                   </div>
-                  
+
                   <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
                   <DropdownMenuItem className="text-center text-blue-600 dark:text-blue-400 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
                     Посмотреть все уведомления
@@ -294,8 +299,8 @@ export default function MemberHeader({
               {/* Профиль пользователя */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors duration-200 min-w-0"
                   >
                     <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-gray-200 dark:ring-gray-700 flex-shrink-0">
@@ -308,7 +313,7 @@ export default function MemberHeader({
                       <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                         {user?.name || user?.email || 'Участник'}
                       </p>
-                                            <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1">
                         <Shield className="h-3 w-3 text-green-600 flex-shrink-0" />
                         <span className="text-xs text-green-600 truncate">Участник</span>
                       </div>
@@ -335,15 +340,20 @@ export default function MemberHeader({
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
-                  
+
                   <DropdownMenuItem onClick={() => router.push('/member-profile')} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <UserCheck className="mr-2 h-4 w-4 flex-shrink-0" />
                     <span>Мой профиль</span>
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuItem onClick={() => router.push('/member-dashboard/my-bookings')} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <Calendar className="mr-2 h-4 w-4 flex-shrink-0" />
                     <span>Мои записи</span>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem onClick={() => router.push('/member-dashboard/orders')} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <Receipt className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <span>История заказов</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuItem onClick={() => router.push('/qr-code')} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -355,9 +365,9 @@ export default function MemberHeader({
                     <CreditCard className="mr-2 h-4 w-4 flex-shrink-0" />
                     <span>Абонементы</span>
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
-                  
+
                   {/* Быстрая статистика в профиле для планшетов и мобильных */}
                   <div className="2xl:hidden">
                     <DropdownMenuLabel className="text-xs text-gray-500 dark:text-gray-400">
@@ -387,7 +397,7 @@ export default function MemberHeader({
                     </div>
                     <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
                   </div>
-                  
+
                   <DropdownMenuItem className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4 flex-shrink-0" />
                     <span>Выйти</span>
@@ -413,7 +423,7 @@ export default function MemberHeader({
       {mobileMenuOpen && (
         <div className="xl:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-lg animate-in slide-in-from-top duration-300">
           <div className="w-full px-3 sm:px-4 py-4 sm:py-6">
-            
+
             {/* Статистика для мобильных и планшетов */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
               {headerStats.map((stat, index) => {
@@ -439,20 +449,19 @@ export default function MemberHeader({
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                 Навигация
               </h3>
-              
+
               {navItems.map((item) => {
                 const IconComponent = item.icon;
                 const isActive = isActivePath(item.href);
-                
+
                 return (
                   <Button
                     key={item.href}
                     variant={isActive ? "default" : "ghost"}
-                    className={`w-full justify-start h-10 sm:h-12 ${
-                      isActive 
-                        ? "bg-blue-600 text-white" 
-                        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    }`}
+                    className={`w-full justify-start h-10 sm:h-12 ${isActive
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
                     onClick={() => {
                       router.push(item.href);
                       setMobileMenuOpen(false);
@@ -461,12 +470,11 @@ export default function MemberHeader({
                     <IconComponent className="mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                     <span className="font-medium">{item.label}</span>
                     {item.badge && (
-                      <Badge 
-                        className={`ml-auto ${
-                          isActive 
-                            ? "bg-white/20 text-white" 
-                            : "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
-                        }`}
+                      <Badge
+                        className={`ml-auto ${isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
+                          }`}
                       >
                         {item.badge}
                       </Badge>
@@ -481,7 +489,7 @@ export default function MemberHeader({
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                 Быстрые действия
               </h3>
-              
+
               <Button
                 onClick={() => {
                   router.push('/trainers');
@@ -532,6 +540,18 @@ export default function MemberHeader({
                 variant="outline"
                 className="w-full justify-start h-10 sm:h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                 onClick={() => {
+                  router.push('/member-dashboard/orders');
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <Receipt className="mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="font-medium">История заказов</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="w-full justify-start h-10 sm:h-12 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                onClick={() => {
                   router.push('/member-profile');
                   setMobileMenuOpen(false);
                 }}
@@ -565,9 +585,9 @@ export default function MemberHeader({
                     ></div>
                   </div>
                 </div>
-                
+
                 <div>
-                                    <div className="flex justify-between text-xs mb-1">
+                  <div className="flex justify-between text-xs mb-1">
                     <span className="text-gray-600 dark:text-gray-400">Абонемент</span>
                     <span className="font-medium text-gray-900 dark:text-gray-100">{stats.daysLeft} дней осталось</span>
                   </div>
@@ -581,7 +601,7 @@ export default function MemberHeader({
                   </div>
                 </div>
               </div>
-              
+
               {/* Дополнительная информация о прогрессе */}
               <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
                 <div className="grid grid-cols-2 gap-3 text-center">

@@ -75,8 +75,8 @@ export const FormField = memo(function FormField({
         />
       )}
 
-      {/* Отображение ошибок других полей */}
-      {fieldName !== "email" && validationState?.errors.length && (
+      {/* Отображение ошибок других полей - ИСПРАВЛЕНО */}
+      {fieldName !== "email" && validationState && !validationState.isValid && validationState.errors.length > 0 && (
         <div className="mt-1 space-y-1">
           {validationState.errors.map((error: string, index: number) => (
             <p

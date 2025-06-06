@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useShopStore } from '@/stores/shopStore';
-import { useAuth } from '@/hooks/useAuth'; // Добавляем импорт
+import { useAuth } from '@/hooks/useAuth';
 import OrderConfirmation from '@/components/OrderConfirmation';
 import { ArrowLeft, Home, LayoutDashboard, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -20,20 +20,21 @@ interface FormData {
 }
 
 export function useAuthForm() {
-  const [isLogin, setIsLogin] = useState<boolean>(true); // ✅ Явно указываем тип
-  const [loading, setLoading] = useState<boolean>(false); // ✅ Явно указываем тип
+  const [isLogin, setIsLogin] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
-  const [emailValid, setEmailValid] = useState<boolean>(false); // ✅ Явно указываем тип
+  const [emailValid, setEmailValid] = useState<boolean>(false);
   const [formData, setFormData] = useState<FormData>({
     email: "",
     password: "",
     name: "",
     phone: "",
   });
+  // Возвращаемся к исходному типу ValidationState
   const [validationStates, setValidationStates] = useState<
     Record<string, ValidationState>
   >({});
-  const [isValidating, setIsValidating] = useState<boolean>(false); // ✅ Явно указываем тип
+  const [isValidating, setIsValidating] = useState<boolean>(false);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -168,7 +169,7 @@ export function useAuthForm() {
   }, [formData.password, isLogin]);
 
   // Мемоизированная проверка готовности формы
-  const isFormReady = useMemo<boolean>(() => { // ✅ Явно указываем тип
+  const isFormReady = useMemo<boolean>(() => {
     if (isLogin) {
       return Boolean(formData.email && formData.password && emailValid);
     }
@@ -306,15 +307,15 @@ export function useAuthForm() {
 
   return {
     // Состояние
-    isLogin: Boolean(isLogin), // ✅ Приводим к boolean
-    loading: Boolean(loading), // ✅ Приводим к boolean
+    isLogin: Boolean(isLogin),
+    loading: Boolean(loading),
     error,
-    emailValid: Boolean(emailValid), // ✅ Приводим к boolean
+    emailValid: Boolean(emailValid),
     formData,
     validationStates,
-    isValidating: Boolean(isValidating), // ✅ Приводим к boolean
-    isFormReady: Boolean(isFormReady), // ✅ Приводим к boolean
-    
+    isValidating: Boolean(isValidating),
+    isFormReady: Boolean(isFormReady),
+
     // Действия
     handleFieldChange,
     handleSubmit,

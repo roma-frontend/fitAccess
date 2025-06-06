@@ -22,6 +22,7 @@ import {
   Heart,
   Zap,
   Home,
+  Receipt,
 } from "lucide-react";
 
 interface Workout {
@@ -44,7 +45,7 @@ interface Workout {
 export default function MemberDashboard() {
   const router = useRouter();
   const { user, loading, logout } = useAuth();
-  
+
   // Состояния для тренировок
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [workoutsLoading, setWorkoutsLoading] = useState(true);
@@ -173,8 +174,8 @@ export default function MemberDashboard() {
             Проблема с доступом
           </h1>
           <p className="text-gray-600 mb-6">
-            {!user 
-              ? "Необходима авторизация" 
+            {!user
+              ? "Необходима авторизация"
               : `Доступ запрещен. Ваша роль: ${user.role}. Эта страница только для участников.`
             }
           </p>
@@ -365,7 +366,7 @@ export default function MemberDashboard() {
                       {upcomingWorkouts[0].type}
                     </h4>
                     <div className="space-y-2 text-sm text-gray-600">
-                                            <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
                         <span>
                           {new Date(
@@ -460,6 +461,28 @@ export default function MemberDashboard() {
                     Подробный прогресс
                   </Button>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200 border-0">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Receipt className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="font-semibold text-gray-900 mb-2">
+                  История покупок
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Просматривайте чеки и повторяйте заказы
+                </p>
+                <Button
+                  onClick={() => router.push('/member-dashboard/orders')}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Receipt className="h-4 w-4 mr-2" />
+                  Мои заказы
+                </Button>
               </CardContent>
             </Card>
 

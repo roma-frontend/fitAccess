@@ -9,7 +9,9 @@ import {
   CreditCard,
   User,
   Users,
-  Settings
+  Settings,
+  Receipt,
+  ShoppingBag
 } from "lucide-react";
 
 interface QuickAction {
@@ -83,14 +85,34 @@ export default function QuickActions({
     },
     {
       id: 'shop',
+      title: 'Магазин',
+      description: 'Спортивное питание',
+      icon: ShoppingBag,
+      href: '/shop',
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-100',
+      priority: 5
+    },
+    {
+      id: 'orders-history', // ← НОВОЕ
+      title: 'История заказов',
+      description: 'Чеки и покупки',
+      icon: Receipt,
+      href: '/member-dashboard/orders',
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
+      priority: 6
+    },
+    {
+      id: 'memberships',
       title: 'Абонементы',
       description: 'Продлить или купить',
       icon: CreditCard,
-      href: '/shop',
+      href: '/memberships', // Изменил с /shop на /memberships
       color: 'text-red-600',
       bgColor: 'bg-red-100',
       badge: stats.daysLeft <= 7 ? 'Скоро истекает' : undefined,
-      priority: 5
+      priority: 7
     },
     {
       id: 'profile',
@@ -100,7 +122,7 @@ export default function QuickActions({
       href: '/member-profile',
       color: 'text-gray-600',
       bgColor: 'bg-gray-100',
-      priority: 6
+      priority: 8
     }
   ];
 
@@ -108,7 +130,7 @@ export default function QuickActions({
     .sort((a, b) => a.priority - b.priority);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
       {allActions.map((action) => {
         const IconComponent = action.icon;
         
@@ -124,7 +146,7 @@ export default function QuickActions({
               </div>
               
               <div className="relative">
-                                <h3 className="text-sm font-semibold mb-1 text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+                <h3 className="text-sm font-semibold mb-1 text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
                   {action.title}
                 </h3>
                 

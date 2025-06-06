@@ -15,7 +15,7 @@ import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 export default function MemberLoginContent() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  
+
   const {
     isLogin,
     loading,
@@ -36,7 +36,7 @@ export default function MemberLoginContent() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <ForgotPasswordForm 
+          <ForgotPasswordForm
             onBack={() => setShowForgotPassword(false)}
             initialEmail={formData.email}
           />
@@ -91,7 +91,7 @@ export default function MemberLoginContent() {
               isLogin={isLogin}
             />
 
-                        {!isLogin && (
+            {!isLogin && (
               <FormField
                 fieldName="phone"
                 label="Номер телефона"
@@ -147,4 +147,3 @@ export default function MemberLoginContent() {
     </div>
   );
 }
-

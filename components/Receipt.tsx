@@ -1,3 +1,4 @@
+// Receipt.tsx (обновленный)
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatProductPrice } from '@/hooks/useShopProducts';
@@ -30,7 +31,6 @@ interface ReceiptProps {
 }
 
 export default function Receipt({ receipt }: ReceiptProps) {
-  // ✅ Проверяем, что receipt существует
   if (!receipt) {
     return (
       <Card className="max-w-md mx-auto">
@@ -41,7 +41,6 @@ export default function Receipt({ receipt }: ReceiptProps) {
     );
   }
 
-  // ✅ Безопасное получение данных с fallback значениями
   const company = receipt.company || {};
   const customer = receipt.customer || {};
   const items = receipt.items || [];
@@ -61,7 +60,7 @@ export default function Receipt({ receipt }: ReceiptProps) {
   const paidAt = receipt.paidAt || new Date().toISOString();
 
   return (
-    <Card className="max-w-md mx-auto">
+    <Card className="max-w-md mx-auto print-receipt">
       <CardHeader className="text-center">
         <CardTitle>{companyName}</CardTitle>
         <p className="text-sm text-gray-600">{companyAddress}</p>
@@ -89,7 +88,6 @@ export default function Receipt({ receipt }: ReceiptProps) {
           <div className="space-y-2">
             {items.length > 0 ? (
               items.map((item, index) => {
-                // ✅ Безопасное получение данных для каждого товара
                 const itemName = item?.name || `Товар ${index + 1}`;
                 const itemQuantity = item?.quantity || 1;
                 const itemPrice = item?.price || 0;
