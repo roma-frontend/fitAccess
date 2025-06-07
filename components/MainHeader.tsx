@@ -33,11 +33,14 @@ export default function MainHeader({ authStatus, isLoading }: MainHeaderProps) {
 
   // Обработчик клика по магазину
   const handleShopClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+
     if (!authStatus?.authenticated) {
-      e.preventDefault();
       router.push("/member-login?redirect=" + encodeURIComponent("/shop"));
-      setIsMobileMenuOpen(false);
+    } else {
+      router.push("/shop");
     }
+    setIsMobileMenuOpen(false);
   };
 
   // ✅ Улучшенная логика для Face ID
@@ -60,7 +63,7 @@ export default function MainHeader({ authStatus, isLoading }: MainHeaderProps) {
       icon: ShoppingCart,
       requiresAuth: true,
       onClick: handleShopClick,
-      showPulse: true, // ✅ Возвращаем пульсацию к магазину
+      showPulse: true,
     },
     {
       href: "/auth/face-auth",

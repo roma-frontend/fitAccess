@@ -18,7 +18,7 @@ export function BackToHomeButton() {
         type: "spring",
         stiffness: 200
       }}
-      className="fixed bottom-8 right-8 z-50"
+      className="fixed top-10 right-8 z-50"
     >
       <Button
         onClick={() => router.push("/")}

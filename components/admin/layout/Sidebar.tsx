@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -16,7 +16,8 @@ import {
   Wifi,
   WifiOff,
   RefreshCw,
-  CheckCircle
+  CheckCircle,
+  Router
 } from "lucide-react";
 
 interface SidebarProps {
@@ -49,6 +50,7 @@ export function Sidebar({
   hints
 }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter()
   const [showHints, setShowHints] = useState(true);
   const StatusIcon = systemStatus.icon;
 
@@ -57,9 +59,9 @@ export function Sidebar({
       {/* Header */}
       <div className="p-6 border-b">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+          <Button onClick={() => router.push('/')} className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
             <Shield className="h-6 w-6 text-white" />
-          </div>
+          </Button>
           <div>
             <h2 className="font-bold text-gray-900">FitAccess</h2>
             <p className="text-sm text-gray-600">{roleTexts.dashboardTitle || 'Панель управления'}</p>
