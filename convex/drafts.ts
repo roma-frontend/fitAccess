@@ -1,4 +1,5 @@
 // convex/drafts.ts (финальная исправленная версия)
+import { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -11,7 +12,7 @@ export const list = query({
       .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
       .order("desc")
       .collect();
-    
+
     return drafts;
   },
 });
@@ -83,14 +84,14 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    
+
     const cleanUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, value]) => value !== undefined)
     );
-    
+
     // Добавляем время последнего изменения
     cleanUpdates.lastModified = Date.now();
-    
+
     await ctx.db.patch(id, cleanUpdates);
     return { success: true };
   },
@@ -117,8 +118,13 @@ export const sendDraft = mutation({
     if (!draft) {
       throw new Error("Черновик не найден");
     }
-    
-    // Создаем сообщение из черновика
+
+    let templateName = "";
+    if (draft.templateId) {
+      const template = await ctx.db.get(draft.templateId);
+      templateName = template?.name || "";
+    }
+
     const messageId = await ctx.db.insert("messages", {
       type: draft.type,
       subject: draft.subject,
@@ -133,12 +139,20 @@ export const sendDraft = mutation({
       readAt: {},
       isArchived: false,
       scheduledAt: draft.scheduledAt,
-      metadata: draft.templateId ? { templateId: draft.templateId } : undefined,
+      metadata: draft.templateId
+        ? {
+          templateInfo: {
+            templateId: draft.templateId,
+            templateName,
+            variables: {},
+            batchId: "",
+          }
+        }
+        : undefined,
     });
-    
-    // Удаляем черновик после отправки
+
     await ctx.db.delete(args.draftId);
-    
+
     return messageId;
   },
 });
@@ -157,12 +171,12 @@ export const getByType = query({
   handler: async (ctx, args) => {
     const drafts = await ctx.db
       .query("drafts")
-      .withIndex("creator_type", (q) => 
+      .withIndex("creator_type", (q) =>
         q.eq("createdBy", args.userId).eq("type", args.type)
       )
       .order("desc")
       .take(args.limit || 50);
-    
+
     return drafts;
   },
 });
@@ -192,7 +206,7 @@ export const autoSave = mutation({
   },
   handler: async (ctx, args) => {
     const { draftId, ...draftData } = args;
-    
+
     if (draftId) {
       // Обновляем существующий черновик
       await ctx.db.patch(draftId, {
@@ -223,13 +237,13 @@ export const search = query({
       .query("drafts")
       .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
       .collect();
-    
+
     const searchLower = args.searchTerm.toLowerCase();
-    const filteredDrafts = allDrafts.filter(draft => 
+    const filteredDrafts = allDrafts.filter(draft =>
       draft.content.toLowerCase().includes(searchLower) ||
       draft.subject?.toLowerCase().includes(searchLower)
     );
-    
+
     return filteredDrafts
       .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0))
       .slice(0, args.limit || 20);
@@ -247,11 +261,11 @@ export const getScheduled = query({
       .query("drafts")
       .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
       .collect();
-    
-    const scheduledDrafts = allDrafts.filter(draft => 
+
+    const scheduledDrafts = allDrafts.filter(draft =>
       draft.scheduledAt && draft.scheduledAt > Date.now()
     );
-    
+
     return scheduledDrafts
       .sort((a, b) => (a.scheduledAt || 0) - (b.scheduledAt || 0))
       .slice(0, args.limit || 50);
@@ -266,7 +280,7 @@ export const bulkDelete = mutation({
   },
   handler: async (ctx, args) => {
     let deletedCount = 0;
-    
+
     for (const draftId of args.draftIds) {
       const draft = await ctx.db.get(draftId);
       if (draft && draft.createdBy === args.userId) {
@@ -274,7 +288,7 @@ export const bulkDelete = mutation({
         deletedCount++;
       }
     }
-    
+
     return { success: true, deletedCount };
   },
 });
@@ -293,15 +307,15 @@ export const createFromTemplate = mutation({
     if (!template) {
       throw new Error("Шаблон не найден");
     }
-    
+
     if (!template.isActive) {
       throw new Error("Шаблон неактивен");
     }
-    
+
     // Подставляем переменные в контент
     let content = template.content;
     let subject = template.subject;
-    
+
     if (args.variables) {
       for (const [key, value] of Object.entries(args.variables)) {
         const placeholder = `{{${key}}}`;
@@ -309,7 +323,7 @@ export const createFromTemplate = mutation({
         subject = subject.replace(new RegExp(placeholder, 'g'), value);
       }
     }
-    
+
     // Определяем тип черновика на основе типа шаблона
     let draftType: "direct" | "group" | "announcement";
     if (template.type === "email" || template.type === "sms" || template.type === "push") {
@@ -317,7 +331,7 @@ export const createFromTemplate = mutation({
     } else {
       draftType = "announcement";
     }
-    
+
     const draftId = await ctx.db.insert("drafts", {
       type: draftType,
       subject,
@@ -329,7 +343,7 @@ export const createFromTemplate = mutation({
       templateId: args.templateId,
       lastModified: Date.now(),
     });
-    
+
     return draftId;
   },
 });
@@ -342,33 +356,33 @@ export const validateDraft = query({
     if (!draft) {
       throw new Error("Черновик не найден");
     }
-    
+
     const errors: string[] = [];
     const warnings: string[] = [];
-    
+
     // Проверка обязательных полей
     if (!draft.content.trim()) {
       errors.push("Содержание сообщения не может быть пустым");
     }
-    
+
     if (draft.recipientIds.length === 0) {
       errors.push("Необходимо указать хотя бы одного получателя");
     }
-    
+
     if (draft.type === "group" && !draft.groupId) {
       errors.push("Для группового сообщения необходимо указать группу");
     }
-    
+
     // Проверка длины контента
     if (draft.content.length > 10000) {
       warnings.push("Сообщение очень длинное, рекомендуется сократить");
     }
-    
+
     // Проверка планирования
     if (draft.scheduledAt && draft.scheduledAt <= Date.now()) {
       errors.push("Время планирования должно быть в будущем");
     }
-    
+
     // Проверка получателей (исправлена обработка undefined)
     const recipientChecks = await Promise.all(
       draft.recipientIds.map(async (id) => {
@@ -380,23 +394,23 @@ export const validateDraft = query({
         }
       })
     );
-    
+
     const invalidRecipients = recipientChecks
       .filter(({ user }) => !user)
       .map(({ id }) => id);
-    
+
     if (invalidRecipients.length > 0) {
       errors.push(`Некоторые получатели не найдены: ${invalidRecipients.join(", ")}`);
     }
-    
+
     const inactiveRecipients = recipientChecks
       .filter(({ user }) => user && !user.isActive)
       .length;
-    
+
     if (inactiveRecipients > 0) {
       warnings.push(`${inactiveRecipients} получателей неактивны`);
     }
-    
+
     return {
       isValid: errors.length === 0,
       errors,
@@ -420,11 +434,11 @@ export const convertToTemplate = mutation({
     if (!draft) {
       throw new Error("Черновик не найден");
     }
-    
+
     if (draft.createdBy !== args.userId) {
       throw new Error("Нет прав для конвертации этого черновика");
     }
-    
+
     // Определяем тип шаблона на основе типа черновика
     let templateType: "email" | "sms" | "push" | "in-app";
     switch (draft.type) {
@@ -440,7 +454,7 @@ export const convertToTemplate = mutation({
       default:
         templateType = "email";
     }
-    
+
     const templateId = await ctx.db.insert("notificationTemplates", {
       name: args.templateName,
       description: args.templateDescription,
@@ -452,7 +466,7 @@ export const convertToTemplate = mutation({
       createdBy: args.userId,
       variables: [],
     });
-    
+
     return templateId;
   },
 });
@@ -471,46 +485,46 @@ export const getPaginated = query({
   },
   handler: async (ctx, args) => {
     const limit = args.limit || 20;
-    
+
     let drafts;
-    
+
     if (args.type) {
       // Проверяем, что type не undefined перед использованием
       const draftType = args.type;
       let queryBuilder = ctx.db
         .query("drafts")
-        .withIndex("creator_type", (q) => 
+        .withIndex("creator_type", (q) =>
           q.eq("createdBy", args.userId).eq("type", draftType)
         );
-      
+
       if (args.cursor) {
-        queryBuilder = queryBuilder.filter((q) => 
+        queryBuilder = queryBuilder.filter((q) =>
           q.lt(q.field("_creationTime"), args.cursor!)
         );
       }
-      
+
       drafts = await queryBuilder.order("desc").take(limit + 1);
     } else {
       let queryBuilder = ctx.db
         .query("drafts")
         .withIndex("by_creator", (q) => q.eq("createdBy", args.userId));
-      
+
       if (args.cursor) {
-        queryBuilder = queryBuilder.filter((q) => 
+        queryBuilder = queryBuilder.filter((q) =>
           q.lt(q.field("_creationTime"), args.cursor!)
         );
       }
-      
+
       drafts = await queryBuilder.order("desc").take(limit + 1);
     }
-    
+
     const hasMore = drafts.length > limit;
     const items = hasMore ? drafts.slice(0, limit) : drafts;
-    
-    const nextCursor = hasMore && items.length > 0 
+
+    const nextCursor = hasMore && items.length > 0
       ? items[items.length - 1]._creationTime
       : null;
-    
+
     return {
       drafts: items,
       nextCursor,
@@ -539,13 +553,13 @@ export const getFiltered = query({
   },
   handler: async (ctx, args) => {
     let drafts;
-    
+
     if (args.type) {
       // Проверяем, что type не undefined
       const draftType = args.type;
       drafts = await ctx.db
         .query("drafts")
-        .withIndex("creator_type", (q) => 
+        .withIndex("creator_type", (q) =>
           q.eq("createdBy", args.userId).eq("type", draftType)
         )
         .order("desc")
@@ -557,30 +571,30 @@ export const getFiltered = query({
         .order("desc")
         .collect();
     }
-    
+
     // Применяем дополнительные фильтры
     let filteredDrafts = drafts;
-    
+
     if (args.priority) {
       const priorityFilter = args.priority;
-      filteredDrafts = filteredDrafts.filter(draft => 
+      filteredDrafts = filteredDrafts.filter(draft =>
         draft.priority === priorityFilter
       );
     }
-    
+
     if (args.hasSchedule !== undefined) {
       const scheduleFilter = args.hasSchedule;
       if (scheduleFilter) {
-        filteredDrafts = filteredDrafts.filter(draft => 
+        filteredDrafts = filteredDrafts.filter(draft =>
           draft.scheduledAt && draft.scheduledAt > Date.now()
         );
       } else {
-        filteredDrafts = filteredDrafts.filter(draft => 
+        filteredDrafts = filteredDrafts.filter(draft =>
           !draft.scheduledAt || draft.scheduledAt <= Date.now()
         );
       }
     }
-    
+
     return filteredDrafts.slice(0, args.limit || 50);
   },
 });
@@ -598,13 +612,13 @@ export const getCount = query({
   },
   handler: async (ctx, args) => {
     let drafts;
-    
+
     if (args.type) {
       // Проверяем, что type не undefined
       const draftType = args.type;
       drafts = await ctx.db
         .query("drafts")
-        .withIndex("creator_type", (q) => 
+        .withIndex("creator_type", (q) =>
           q.eq("createdBy", args.userId).eq("type", draftType)
         )
         .collect();
@@ -614,21 +628,21 @@ export const getCount = query({
         .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
         .collect();
     }
-    
+
     if (args.scheduled !== undefined) {
       const now = Date.now();
       const scheduledFilter = args.scheduled;
       if (scheduledFilter) {
-        drafts = drafts.filter(draft => 
+        drafts = drafts.filter(draft =>
           draft.scheduledAt && draft.scheduledAt > now
         );
       } else {
-        drafts = drafts.filter(draft => 
+        drafts = drafts.filter(draft =>
           !draft.scheduledAt || draft.scheduledAt <= now
         );
       }
     }
-    
+
     return drafts.length;
   },
 });
@@ -645,11 +659,11 @@ export const getByTemplate = query({
       .query("drafts")
       .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
       .collect();
-    
-    const templateDrafts = allDrafts.filter(draft => 
+
+    const templateDrafts = allDrafts.filter(draft =>
       draft.templateId === args.templateId
     );
-    
+
     return templateDrafts
       .sort((a, b) => (b.lastModified || 0) - (a.lastModified || 0))
       .slice(0, args.limit || 50);
@@ -667,10 +681,10 @@ export const bulkSchedule = mutation({
     if (args.scheduledAt <= Date.now()) {
       throw new Error("Время планирования должно быть в будущем");
     }
-    
+
     let scheduledCount = 0;
     const errors: string[] = [];
-    
+
     for (const draftId of args.draftIds) {
       try {
         const draft = await ctx.db.get(draftId);
@@ -678,12 +692,12 @@ export const bulkSchedule = mutation({
           errors.push(`Черновик ${draftId} не найден`);
           continue;
         }
-        
+
         if (draft.createdBy !== args.userId) {
           errors.push(`Нет прав для планирования черновика ${draftId}`);
           continue;
         }
-        
+
         await ctx.db.patch(draftId, {
           scheduledAt: args.scheduledAt,
           lastModified: Date.now(),
@@ -693,9 +707,9 @@ export const bulkSchedule = mutation({
         errors.push(`Ошибка при планировании черновика ${draftId}: ${error}`);
       }
     }
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       scheduledCount,
       errors: errors.length > 0 ? errors : undefined
     };
@@ -711,20 +725,20 @@ export const bulkUnschedule = mutation({
   handler: async (ctx, args) => {
     let unscheduledCount = 0;
     const errors: string[] = [];
-    
-        for (const draftId of args.draftIds) {
+
+    for (const draftId of args.draftIds) {
       try {
         const draft = await ctx.db.get(draftId);
         if (!draft) {
           errors.push(`Черновик ${draftId} не найден`);
           continue;
         }
-        
+
         if (draft.createdBy !== args.userId) {
           errors.push(`Нет прав для отмены планирования черновика ${draftId}`);
           continue;
         }
-        
+
         await ctx.db.patch(draftId, {
           scheduledAt: undefined,
           lastModified: Date.now(),
@@ -734,9 +748,9 @@ export const bulkUnschedule = mutation({
         errors.push(`Ошибка при отмене планирования черновика ${draftId}: ${error}`);
       }
     }
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       unscheduledCount,
       errors: errors.length > 0 ? errors : undefined
     };
@@ -751,7 +765,7 @@ export const getExpiredScheduled = query({
   },
   handler: async (ctx, args) => {
     let allDrafts;
-    
+
     if (args.userId) {
       // Проверяем, что userId не undefined
       const userIdFilter = args.userId;
@@ -762,12 +776,12 @@ export const getExpiredScheduled = query({
     } else {
       allDrafts = await ctx.db.query("drafts").collect();
     }
-    
+
     const now = Date.now();
-    const expiredDrafts = allDrafts.filter(draft => 
+    const expiredDrafts = allDrafts.filter(draft =>
       draft.scheduledAt && draft.scheduledAt <= now
     );
-    
+
     return expiredDrafts
       .sort((a, b) => (a.scheduledAt || 0) - (b.scheduledAt || 0))
       .slice(0, args.limit || 50);
@@ -787,11 +801,11 @@ export const copy = mutation({
     if (!sourceDraft) {
       throw new Error("Исходный черновик не найден");
     }
-    
+
     if (sourceDraft.createdBy !== args.userId) {
       throw new Error("Нет прав для копирования этого черновика");
     }
-    
+
     const newDraftId = await ctx.db.insert("drafts", {
       type: sourceDraft.type,
       subject: sourceDraft.subject,
@@ -803,7 +817,7 @@ export const copy = mutation({
       templateId: sourceDraft.templateId,
       lastModified: Date.now(),
     });
-    
+
     return newDraftId;
   },
 });
@@ -819,11 +833,11 @@ export const duplicate = mutation({
     if (!originalDraft) {
       throw new Error("Черновик не найден");
     }
-    
+
     if (originalDraft.createdBy !== args.userId) {
       throw new Error("Нет прав для дублирования этого черновика");
     }
-    
+
     const newDraftId = await ctx.db.insert("drafts", {
       type: originalDraft.type,
       subject: originalDraft.subject ? `Копия: ${originalDraft.subject}` : undefined,
@@ -836,7 +850,7 @@ export const duplicate = mutation({
       templateId: originalDraft.templateId,
       lastModified: Date.now(),
     });
-    
+
     return newDraftId;
   },
 });
@@ -853,20 +867,20 @@ export const scheduleDraft = mutation({
     if (!draft) {
       throw new Error("Черновик не найден");
     }
-    
+
     if (draft.createdBy !== args.userId) {
       throw new Error("Нет прав для изменения этого черновика");
     }
-    
+
     if (args.scheduledAt <= Date.now()) {
       throw new Error("Время планирования должно быть в будущем");
     }
-    
+
     await ctx.db.patch(args.draftId, {
       scheduledAt: args.scheduledAt,
       lastModified: Date.now(),
     });
-    
+
     return { success: true };
   },
 });
@@ -882,16 +896,16 @@ export const unscheduleDraft = mutation({
     if (!draft) {
       throw new Error("Черновик не найден");
     }
-    
+
     if (draft.createdBy !== args.userId) {
       throw new Error("Нет прав для изменения этого черновика");
     }
-    
+
     await ctx.db.patch(args.draftId, {
       scheduledAt: undefined,
       lastModified: Date.now(),
     });
-    
+
     return { success: true };
   },
 });
@@ -905,20 +919,20 @@ export const cleanupOld = mutation({
   },
   handler: async (ctx, args) => {
     const cutoffTime = Date.now() - (args.olderThanDays * 24 * 60 * 60 * 1000);
-    
+
     const allDrafts = await ctx.db
       .query("drafts")
       .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
       .collect();
-    
+
     let deletedCount = 0;
     const errors: string[] = [];
-    
+
     for (const draft of allDrafts) {
       try {
         const isOld = draft._creationTime < cutoffTime;
         const isScheduled = draft.scheduledAt && draft.scheduledAt > Date.now();
-        
+
         if (isOld && (!args.excludeScheduled || !isScheduled)) {
           await ctx.db.delete(draft._id);
           deletedCount++;
@@ -927,9 +941,9 @@ export const cleanupOld = mutation({
         errors.push(`Ошибка при удалении черновика ${draft._id}: ${error}`);
       }
     }
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       deletedCount,
       errors: errors.length > 0 ? errors : undefined
     };
@@ -947,21 +961,21 @@ export const restoreFromMessage = mutation({
     if (!message) {
       throw new Error("Сообщение не найдено");
     }
-    
-    const hasAccess = message.senderId === args.userId || 
-                     message.recipientIds.includes(args.userId);
-    
+
+    const hasAccess = message.senderId === args.userId ||
+      message.recipientIds.includes(args.userId);
+
     if (!hasAccess) {
       throw new Error("Нет доступа к сообщению");
     }
-    
+
     let draftType: "direct" | "group" | "announcement";
     if (message.type === "notification") {
       draftType = "direct";
     } else {
       draftType = message.type;
     }
-    
+
     const draftId = await ctx.db.insert("drafts", {
       type: draftType,
       subject: message.subject,
@@ -970,10 +984,11 @@ export const restoreFromMessage = mutation({
       groupId: message.groupId,
       priority: message.priority,
       createdBy: args.userId,
-      templateId: message.metadata?.templateId,
+      templateId: message.metadata?.templateInfo?.templateId as Id<"notificationTemplates"> | undefined,
+
       lastModified: Date.now(),
     });
-    
+
     return draftId;
   },
 });
@@ -992,32 +1007,32 @@ export const getWithErrorHandling = query({
         .withIndex("by_creator", (q) => q.eq("createdBy", args.userId))
         .order("desc")
         .take(args.limit || 50);
-      
+
       if (!args.includeInvalid) {
         return allDrafts;
       }
-      
+
       // Добавляем информацию о валидности каждого черновика
       const draftsWithValidation = await Promise.all(
         allDrafts.map(async (draft) => {
           const errors: string[] = [];
-          
+
           if (!draft.content.trim()) {
             errors.push("Пустое содержание");
           }
-          
+
           if (draft.recipientIds.length === 0) {
             errors.push("Нет получателей");
           }
-          
+
           if (draft.type === "group" && !draft.groupId) {
             errors.push("Не указана группа");
           }
-          
+
           if (draft.scheduledAt && draft.scheduledAt <= Date.now()) {
             errors.push("Некорректное время планирования");
           }
-          
+
           return {
             ...draft,
             isValid: errors.length === 0,
@@ -1025,7 +1040,7 @@ export const getWithErrorHandling = query({
           };
         })
       );
-      
+
       return draftsWithValidation;
     } catch (error) {
       throw new Error(`Ошибка при получении черновиков: ${error}`);
@@ -1052,31 +1067,31 @@ export const safeUpdate = mutation({
   },
   handler: async (ctx, args) => {
     const { id, userId, ...updates } = args;
-    
+
     // Проверяем существование черновика
     const draft = await ctx.db.get(id);
     if (!draft) {
       throw new Error("Черновик не найден");
     }
-    
+
     // Проверяем права доступа
     if (draft.createdBy !== userId) {
       throw new Error("Нет прав для изменения этого черновика");
     }
-    
+
     // Валидируем обновления
     if (updates.scheduledAt && updates.scheduledAt <= Date.now()) {
       throw new Error("Время планирования должно быть в будущем");
     }
-    
+
     if (updates.content !== undefined && !updates.content.trim()) {
       throw new Error("Содержание не может быть пустым");
     }
-    
+
     if (updates.recipientIds && updates.recipientIds.length === 0) {
       throw new Error("Необходимо указать хотя бы одного получателя");
     }
-    
+
     // Проверяем существование получателей
     if (updates.recipientIds) {
       const recipientChecks = await Promise.all(
@@ -1085,25 +1100,25 @@ export const safeUpdate = mutation({
           return { user, id: recipientId };
         })
       );
-      
+
       const invalidRecipients = recipientChecks
         .filter(({ user }) => !user)
         .map(({ id }) => id);
-      
+
       if (invalidRecipients.length > 0) {
         throw new Error(`Получатели не найдены: ${invalidRecipients.join(", ")}`);
       }
     }
-    
+
     // Применяем обновления
     const cleanUpdates = Object.fromEntries(
       Object.entries(updates).filter(([_, value]) => value !== undefined)
     );
-    
+
     cleanUpdates.lastModified = Date.now();
-    
+
     await ctx.db.patch(id, cleanUpdates);
-    
+
     return { success: true, updatedFields: Object.keys(cleanUpdates) };
   },
 });

@@ -51,8 +51,20 @@ export interface MessageGroup {
   name: string;
   description?: string;
   memberIds: Id<"users">[];
+  memberNames: string[];
   createdBy: Id<"users">;
   isActive: boolean;
+  groupType: "manual" | "auto" | "role-based";
+  rules?: {
+    roles?: string[];
+    departments?: string[];
+    conditions?: string[];
+  };
+  settings?: {
+    allowSelfJoin?: boolean;
+    requireApproval?: boolean;
+    maxMembers?: number;
+  };
 }
 
 export interface MessageFilter {
@@ -84,6 +96,30 @@ export interface BulkMessageOperation {
   operation: "markAsRead" | "archive" | "delete" | "updatePriority";
   userId?: Id<"users">;
   newPriority?: Message["priority"];
+}
+
+export interface NotificationTemplate {
+  _id: Id<"notificationTemplates">;
+  _creationTime: number;
+  name: string;
+  description?: string;
+  type: "email" | "sms" | "push" | "in-app";
+  subject: string;
+  content: string;
+  variables: string[];
+  isActive: boolean;
+  createdBy: Id<"users">;
+  category?: string;
+  priority: "low" | "normal" | "high" | "urgent";
+  trigger?: "manual" | "event_reminder" | "payment_due" | "membership_expiry" | "new_member";
+  settings?: {
+    allowScheduling?: boolean;
+    requireApproval?: boolean;
+    maxRecipients?: number;
+  };
+  _version?: number;
+  _lastSync?: number;
+  _isDirty?: boolean;
 }
 
 export interface MessageTemplate {

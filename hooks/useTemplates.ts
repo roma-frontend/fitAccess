@@ -30,7 +30,7 @@ function generateTestTemplates(): NotificationTemplate[] {
       createdBy: "admin" as Id<"users">,
       category: "welcome",
       priority: "normal",
-      trigger: "new_member", // Используем разрешенный тип
+      trigger: "new_member",
     },
     {
       _id: "template2" as Id<"notificationTemplates">,
@@ -45,7 +45,7 @@ function generateTestTemplates(): NotificationTemplate[] {
       createdBy: "admin" as Id<"users">,
       category: "reminder",
       priority: "high",
-      trigger: "event_reminder", // Используем разрешенный тип
+      trigger: "event_reminder",
     },
     {
       _id: "template3" as Id<"notificationTemplates">,
@@ -60,7 +60,7 @@ function generateTestTemplates(): NotificationTemplate[] {
       createdBy: "admin" as Id<"users">,
       category: "urgent",
       priority: "urgent",
-      trigger: "manual", // Используем разрешенный тип
+      trigger: "manual",
     },
     {
       _id: "template4" as Id<"notificationTemplates">,
@@ -75,7 +75,7 @@ function generateTestTemplates(): NotificationTemplate[] {
       createdBy: "admin" as Id<"users">,
       category: "membership",
       priority: "high",
-      trigger: "membership_expiry", // Используем разрешенный тип
+      trigger: "membership_expiry",
     },
     {
       _id: "template5" as Id<"notificationTemplates">,
@@ -90,7 +90,7 @@ function generateTestTemplates(): NotificationTemplate[] {
       createdBy: "admin" as Id<"users">,
       category: "payment",
       priority: "normal",
-      trigger: "payment_due", // Используем разрешенный тип
+      trigger: "payment_due",
     },
   ];
 }
