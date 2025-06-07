@@ -3,7 +3,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const getByRecipient = query({
-  args: { 
+  args: {
     recipientId: v.string(),
     recipientType: v.union(
       v.literal("user"),
@@ -35,12 +35,15 @@ export const create = mutation({
     title: v.string(),
     message: v.string(),
     type: v.union(
-      v.literal("system"),
-      v.literal("reminder"),
-      v.literal("alert"),
       v.literal("info"),
+      v.literal("warning"),
+      v.literal("error"),
+      v.literal("success"),
       v.literal("order"),
-      v.literal("payment")
+      v.literal("payment"),
+      v.literal("membership"),
+      v.literal("training"),
+      v.literal("system")
     ),
     priority: v.optional(v.union(
       v.literal("low"),
@@ -62,14 +65,14 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     console.log("🔔 Создание уведомления:", args);
-    
+
     const notificationId = await ctx.db.insert("notifications", {
       ...args,
       isRead: args.isRead || false, // ✅ Используем переданное значение или false по умолчанию
       priority: args.priority || "normal",
       createdAt: args.createdAt || Date.now(),
     });
-    
+
     console.log("✅ Уведомление создано:", notificationId);
     return notificationId;
   },
@@ -88,7 +91,7 @@ export const markAsRead = mutation({
 
 // Дополнительные полезные функции
 export const getUnreadCount = query({
-  args: { 
+  args: {
     recipientId: v.string(),
     recipientType: v.union(
       v.literal("user"),
@@ -105,13 +108,13 @@ export const getUnreadCount = query({
         q.eq(q.field("isRead"), false)
       ))
       .collect();
-    
+
     return unreadNotifications.length;
   },
 });
 
 export const markAllAsRead = mutation({
-  args: { 
+  args: {
     recipientId: v.string(),
     recipientType: v.union(
       v.literal("user"),
@@ -128,14 +131,14 @@ export const markAllAsRead = mutation({
         q.eq(q.field("isRead"), false)
       ))
       .collect();
-    
+
     const updatePromises = unreadNotifications.map(notification =>
       ctx.db.patch(notification._id, {
         isRead: true,
         readAt: Date.now(),
       })
     );
-    
+
     await Promise.all(updatePromises);
     return unreadNotifications.length;
   },
@@ -143,7 +146,7 @@ export const markAllAsRead = mutation({
 
 // Получить последние уведомления
 export const getRecent = query({
-  args: { 
+  args: {
     recipientId: v.string(),
     recipientType: v.union(
       v.literal("user"),

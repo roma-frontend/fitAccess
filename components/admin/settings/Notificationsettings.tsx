@@ -1,4 +1,4 @@
-// components/admin/settings/NotificationSettings.tsx
+// components/admin/settings/notificationSettings: ,.tsx
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

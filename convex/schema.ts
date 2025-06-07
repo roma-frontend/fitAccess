@@ -184,16 +184,16 @@ export default defineSchema({
   title: v.string(),
   message: v.string(),
   type: v.union(
-    v.literal("info"),
-    v.literal("warning"),
-    v.literal("error"),
-    v.literal("success"),
-    v.literal("order"),
-    v.literal("payment"),
-    v.literal("membership"),
-    v.literal("training"),
-    v.literal("system")
-  ),
+  v.literal("info"),
+  v.literal("warning"),
+  v.literal("error"),
+  v.literal("success"),
+  v.literal("order"),
+  v.literal("payment"),
+  v.literal("membership"),
+  v.literal("training"),
+  v.literal("system")
+),
   recipientId: v.string(),
   recipientType: v.union(
     v.literal("user"),

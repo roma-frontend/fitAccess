@@ -814,3 +814,4 @@ export function useManager() {
   return context;
 }
 
+export type { Trainer, Booking, Client, ManagerStats };
