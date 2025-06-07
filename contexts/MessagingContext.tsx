@@ -1,7 +1,7 @@
 // contexts/MessagingContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 
 interface Message {
   _id: string;
@@ -53,6 +53,8 @@ interface EventLog {
 interface MessagingContextType {
   messages: Message[];
   eventLogs: EventLog[];
+  messageQueue: Message[];
+  isProcessingMessages: boolean;
   sendMessage: (message: Omit<Message, '_id' | 'createdAt' | 'status'>) => Promise<void>;
   markAsRead: (messageId: string) => Promise<void>;
   logEvent: (eventLog: Omit<EventLog, '_id' | 'timestamp'>) => Promise<void>;
@@ -68,26 +70,127 @@ const MessagingContext = createContext<MessagingContextType | undefined>(undefin
 export function MessagingProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [eventLogs, setEventLogs] = useState<EventLog[]>([]);
+  const [messageQueue, setMessageQueue] = useState<Message[]>([]);
+  const [isProcessingMessages, setIsProcessingMessages] = useState(false);
+  const processedEventIds = useRef(new Set<string>());
 
-  // Имитация автоматических уведомлений при создании событий
+  // Синхронная обработка очереди сообщений
+  const processMessageQueue = useCallback(async () => {
+    if (messageQueue.length === 0 || isProcessingMessages) {
+      return;
+    }
+
+    setIsProcessingMessages(true);
+    console.log(`📤 Обрабатываем очередь сообщений: ${messageQueue.length} сообщений`);
+
+    try {
+      const messagesToProcess = [...messageQueue];
+      setMessageQueue([]); // Очищаем очередь
+
+      for (const message of messagesToProcess) {
+        console.log(`📤 Отправляем сообщение: ${message.subject}`);
+        
+        // Добавляем сообщение в список
+        setMessages(prev => [...prev, message]);
+
+        // Имитация доставки с задержкой
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        setMessages(prev => prev.map(msg => 
+          msg._id === message._id 
+            ? { ...msg, status: 'delivered' }
+            : msg
+        ));
+
+        console.log(`✅ Сообщение доставлено: ${message.subject}`);
+        
+        // Небольшая задержка между сообщениями
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      console.log('✅ Вся очередь сообщений обработана');
+    } catch (error) {
+      console.error('❌ Ошибка при обработке очереди сообщений:', error);
+    } finally {
+      setIsProcessingMessages(false);
+    }
+  }, [messageQueue, isProcessingMessages]);
+
+  // Эффект для обработки очереди сообщений
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Проверяем новые события и отправляем уведомления
-      eventLogs.forEach(async (eventLog) => {
-        const existingNotification = messages.find(msg => 
-          msg.relatedTo?.id === eventLog.event._id
-        );
-
-        if (!existingNotification && eventLog.action === 'created') {
-          await sendAutoNotification(eventLog);
+  let timeoutId: NodeJS.Timeout;
+  
+  const processQueue = async () => {
+    if (messageQueue.length > 0 && !isProcessingMessages) {
+      setIsProcessingMessages(true);
+      
+      try {
+        // Обрабатываем только первое сообщение за раз
+        const message = messageQueue[0];
+        await sendMessage(message);
+        
+        // Удаляем обработанное сообщение
+        setMessageQueue(prev => prev.slice(1));
+        
+        // Планируем обработку следующего сообщения через небольшую задержку
+        if (messageQueue.length > 1) {
+          timeoutId = setTimeout(() => {
+            setIsProcessingMessages(false);
+          }, 100);
+        } else {
+          setIsProcessingMessages(false);
         }
-      });
-    }, 2000);
+      } catch (error) {
+        console.error('Ошибка обработки очереди:', error);
+        setIsProcessingMessages(false);
+      }
+    }
+  };
+  
+  processQueue();
+  
+  return () => {
+    if (timeoutId) clearTimeout(timeoutId);
+  };
+}, [messageQueue.length, isProcessingMessages]);
 
-    return () => clearInterval(interval);
-  }, [eventLogs, messages]);
+  // Синхронная обработка новых событий
+  const processNewEvents = useCallback(async () => {
+    const newEvents = eventLogs.filter(eventLog => 
+      !processedEventIds.current.has(eventLog.event._id) && 
+      eventLog.action === 'created'
+    );
 
-  const sendMessage = async (messageData: Omit<Message, '_id' | 'createdAt' | 'status'>) => {
+    if (newEvents.length === 0) {
+      return;
+    }
+
+    console.log(`🔔 Обрабатываем ${newEvents.length} новых событий для уведомлений`);
+
+    for (const eventLog of newEvents) {
+      try {
+        await sendAutoNotification(eventLog);
+        processedEventIds.current.add(eventLog.event._id);
+        console.log(`✅ Уведомление создано для события: ${eventLog.event.title}`);
+        
+        // Задержка между обработкой событий
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } catch (error) {
+        console.error(`❌ Ошибка создания уведомления для события ${eventLog.event.title}:`, error);
+      }
+    }
+  }, [eventLogs]);
+
+  // Эффект для обработки новых событий
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      processNewEvents();
+    }, 1000); // Задержка для группировки событий
+
+    return () => clearTimeout(timeoutId);
+  }, [eventLogs, processNewEvents]);
+
+  const sendMessage = useCallback(async (messageData: Omit<Message, '_id' | 'createdAt' | 'status'>) => {
     const newMessage: Message = {
       ...messageData,
       _id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -95,26 +198,18 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       status: 'sent'
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    // Добавляем в очередь для синхронной обработки
+    setMessageQueue(prev => [...prev, newMessage]);
 
-    // Имитация доставки
-    setTimeout(() => {
-      setMessages(prev => prev.map(msg => 
-        msg._id === newMessage._id 
-          ? { ...msg, status: 'delivered' }
-          : msg
-      ));
-    }, 1000);
-
-    console.log('📤 Сообщение отправлено:', {
+    console.log('📝 Сообщение добавлено в очередь:', {
       от: newMessage.senderName,
       кому: newMessage.recipientNames,
       тема: newMessage.subject,
       связано_с: newMessage.relatedTo?.type
     });
-  };
+  }, []);
 
-  const sendAutoNotification = async (eventLog: EventLog) => {
+  const sendAutoNotification = useCallback(async (eventLog: EventLog) => {
     const event = eventLog.event;
     
     // Определяем получателей в зависимости от типа события
@@ -124,7 +219,7 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     if (event.type === 'personal') {
       // Персональная тренировка - уведомляем тренера и клиента
       recipientIds = [`trainer_${event.trainerId}`, `client_${event.clientId}`];
-      recipientNames = [event.trainerName, event.clientName || 'Клиент'];
+            recipientNames = [event.trainerName, event.clientName || 'Клиент'];
     } else {
       // Групповая тренировка - уведомляем всех тренеров
       recipientIds = ['trainer_1', 'trainer_2', 'trainer_3'];
@@ -173,9 +268,9 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         price: event.price
       }
     });
-  };
+  }, [sendMessage]);
 
-  const markAsRead = async (messageId: string) => {
+  const markAsRead = useCallback(async (messageId: string) => {
     setMessages(prev => prev.map(msg => 
       msg._id === messageId 
         ? { ...msg, isRead: true, status: 'read' }
@@ -183,9 +278,9 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
     ));
 
     console.log('👁️ Сообщение прочитано:', messageId);
-  };
+  }, []);
 
-  const logEvent = async (eventLogData: Omit<EventLog, '_id' | 'timestamp'>) => {
+  const logEvent = useCallback(async (eventLogData: Omit<EventLog, '_id' | 'timestamp'>) => {
     const newEventLog: EventLog = {
       ...eventLogData,
       _id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -200,9 +295,9 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
       событие: newEventLog.event.title,
       тип: newEventLog.event.type
     });
-  };
+  }, []);
 
-  const getDebugData = () => {
+  const getDebugData = useCallback(() => {
     return {
       events: eventLogs,
       notifications: messages,
@@ -214,12 +309,14 @@ export function MessagingProvider({ children }: { children: React.ReactNode }) {
         client: true
       }
     };
-  };
+  }, [eventLogs, messages]);
 
   return (
     <MessagingContext.Provider value={{
       messages,
       eventLogs,
+      messageQueue,
+      isProcessingMessages,
       sendMessage,
       markAsRead,
       logEvent,
@@ -237,3 +334,4 @@ export function useMessaging() {
   }
   return context;
 }
+

@@ -16,7 +16,7 @@ import { MessagesList } from "@/components/messages/MessagesList";
 import { MessageViewer } from "@/components/messages/MessageViewer";
 import { NewMessageModal } from "@/components/messages/NewMessageModal";
 import { MessageHeader } from "@/components/messages/MessageHeader";
-import { SimpleToast } from "@/components/ui/SimpleToast"; 
+import { SimpleToast } from "@/components/ui/SimpleToast";
 import { MessagesPageSkeleton } from "@/components/messages/MessagesPageSkeleton";
 
 // Определяем правильный тип для нового сообщения
@@ -45,7 +45,7 @@ export default function MessagesPage() {
     bulkDelete,
     bulkMarkAsRead,
     sendMessage,
-    isApiAvailable: messagesApiAvailable,
+    apiAvailable: messagesApiAvailable,
   } = useMessages(currentUserId);
 
   // Состояние UI
@@ -57,7 +57,7 @@ export default function MessagesPage() {
   const [showExport, setShowExport] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
   const [notification, setNotification] = useState<{
-    type: 'success' | 'error' | 'info';
+    type: "success" | "error" | "info";
     text: string;
   } | null>(null);
 
@@ -72,20 +72,23 @@ export default function MessagesPage() {
   });
 
   // Функция для показа уведомлений
-  const showNotification = useCallback((type: 'success' | 'error' | 'info', text: string) => {
-    setNotification({ type, text });
-    setTimeout(() => setNotification(null), 5000);
-  }, []);
+  const showNotification = useCallback(
+    (type: "success" | "error" | "info", text: string) => {
+      setNotification({ type, text });
+      setTimeout(() => setNotification(null), 5000);
+    },
+    []
+  );
 
   // Обработчики сообщений
   const handleSendMessage = useCallback(async () => {
     if (!newMessage.content.trim()) {
-      showNotification('error', "Введите текст сообщения");
+      showNotification("error", "Введите текст сообщения");
       return;
     }
 
     if (newMessage.type === "direct" && newMessage.recipientIds.length === 0) {
-      showNotification('error', "Выберите получателей для личного сообщения");
+      showNotification("error", "Выберите получателей для личного сообщения");
       return;
     }
 
@@ -114,10 +117,10 @@ export default function MessagesPage() {
       });
       setShowNewMessage(false);
 
-      showNotification('success', "Сообщение отправлено успешно!");
+      showNotification("success", "Сообщение отправлено успешно!");
     } catch (error) {
       console.error("Ошибка отправки сообщения:", error);
-      showNotification('error', "Ошибка при отправке сообщения");
+      showNotification("error", "Ошибка при отправке сообщения");
     }
   }, [newMessage, sendMessage, currentUserId, showNotification]);
 
@@ -130,51 +133,55 @@ export default function MessagesPage() {
     setSelectedMessages([]);
   }, []);
 
-  const handleBulkArchive = useCallback(
-    async () => {
-      try {
-        await bulkArchive(selectedMessages);
-        setSelectedMessages([]);
-        showNotification('success', `Архивировано сообщений: ${selectedMessages.length}`);
-      } catch (error) {
-        console.error("Ошибка архивирования:", error);
-        showNotification('error', "Ошибка при архивировании сообщений");
-      }
-    },
-    [bulkArchive, selectedMessages, showNotification]
-  );
+  const handleBulkArchive = useCallback(async () => {
+    try {
+      await bulkArchive(selectedMessages);
+      setSelectedMessages([]);
+      showNotification(
+        "success",
+        `Архивировано сообщений: ${selectedMessages.length}`
+      );
+    } catch (error) {
+      console.error("Ошибка архивирования:", error);
+      showNotification("error", "Ошибка при архивировании сообщений");
+    }
+  }, [bulkArchive, selectedMessages, showNotification]);
 
-  const handleBulkDelete = useCallback(
-    async () => {
-      if (!confirm(`Удалить ${selectedMessages.length} сообщений? Это действие нельзя отменить.`)) {
-        return;
-      }
+  const handleBulkDelete = useCallback(async () => {
+    if (
+      !confirm(
+        `Удалить ${selectedMessages.length} сообщений? Это действие нельзя отменить.`
+      )
+    ) {
+      return;
+    }
 
-      try {
-        await bulkDelete(selectedMessages);
-        setSelectedMessages([]);
-        showNotification('success', `Удалено сообщений: ${selectedMessages.length}`);
-      } catch (error) {
-        console.error("Ошибка удаления:", error);
-        showNotification('error', "Ошибка при удалении сообщений");
-      }
-    },
-    [bulkDelete, selectedMessages, showNotification]
-  );
+    try {
+      await bulkDelete(selectedMessages);
+      setSelectedMessages([]);
+      showNotification(
+        "success",
+        `Удалено сообщений: ${selectedMessages.length}`
+      );
+    } catch (error) {
+      console.error("Ошибка удаления:", error);
+      showNotification("error", "Ошибка при удалении сообщений");
+    }
+  }, [bulkDelete, selectedMessages, showNotification]);
 
-  const handleBulkMarkAsRead = useCallback(
-    async () => {
-      try {
-        await bulkMarkAsRead(selectedMessages, currentUserId);
-        setSelectedMessages([]);
-        showNotification('success', `Отмечено как прочитанное: ${selectedMessages.length} сообщений`);
-      } catch (error) {
-        console.error("Ошибка отметки как прочитанное:", error);
-        showNotification('error', "Ошибка при отметке сообщений как прочитанные");
-      }
-    },
-    [bulkMarkAsRead, selectedMessages, currentUserId, showNotification]
-  );
+  const handleBulkMarkAsRead = useCallback(async () => {
+    try {
+      await bulkMarkAsRead(selectedMessages, currentUserId);
+      setSelectedMessages([]);
+      showNotification(
+        "success",
+        `Отмечено как прочитанное: ${selectedMessages.length} сообщений`
+      );
+    } catch (error) {
+      console.error("Ошибка отметки как прочитанное:", error);
+      showNotification("error", "Ошибка при отметке сообщений как прочитанные");
+    }
+  }, [bulkMarkAsRead, selectedMessages, currentUserId, showNotification]);
 
   // Обработчики просмотра сообщений
   const handleMessageView = useCallback(
@@ -291,9 +298,11 @@ export default function MessagesPage() {
               onMessageSelect={handleMessageView}
               onMessageToggle={(messageId: string) => {
                 if (selectedMessages.includes(messageId)) {
-                  setSelectedMessages(prev => prev.filter(id => id !== messageId));
+                  setSelectedMessages((prev) =>
+                    prev.filter((id) => id !== messageId)
+                  );
                 } else {
-                  setSelectedMessages(prev => [...prev, messageId]);
+                  setSelectedMessages((prev) => [...prev, messageId]);
                 }
               }}
               onSelectAll={handleSelectAll}
@@ -343,48 +352,56 @@ export default function MessagesPage() {
       <ExportDialog
         isOpen={showExport}
         onClose={() => setShowExport(false)}
-        messages={selectedMessages.length > 0 
-          ? messages.filter(m => selectedMessages.includes(m._id))
-          : filteredMessages
+        messages={
+          selectedMessages.length > 0
+            ? messages.filter((m) => selectedMessages.includes(m._id))
+            : filteredMessages
         }
         selectedCount={selectedMessages.length}
         totalCount={messages.length}
         unreadCount={unreadCount}
-        archivedCount={messages.filter(m => m.isArchived).length}
+        archivedCount={messages.filter((m) => m.isArchived).length}
         onExport={(format: string, options: any) => {
-          const exportData = selectedMessages.length > 0 
-            ? messages.filter(m => selectedMessages.includes(m._id))
-            : filteredMessages;
-          
+          const exportData =
+            selectedMessages.length > 0
+              ? messages.filter((m) => selectedMessages.includes(m._id))
+              : filteredMessages;
+
           // Простая реализация CSV экспорта
-          if (format === 'csv') {
-            const csvData = exportData.map(msg => ({
+          if (format === "csv") {
+            const csvData = exportData.map((msg) => ({
               id: msg._id,
               type: msg.type,
-              subject: msg.subject || 'Без темы',
+              subject: msg.subject || "Без темы",
               sender: msg.senderName,
-              content: msg.content.substring(0, 100) + '...',
-              date: new Date(msg._creationTime).toLocaleString('ru'),
+              content: msg.content.substring(0, 100) + "...",
+              date: new Date(msg._creationTime).toLocaleString("ru"),
               priority: msg.priority,
-              status: msg.status
+              status: msg.status,
             }));
 
             const csvContent = [
-              'ID,Тип,Тема,Отправитель,Содержание,Дата,Приоритет,Статус',
-              ...csvData.map(row => 
-                                `"${row.id}","${row.type}","${row.subject}","${row.sender}","${row.content}","${row.date}","${row.priority}","${row.status}"`
-              )
-            ].join('\n');
+              "ID,Тип,Тема,Отправитель,Содержание,Дата,Приоритет,Статус",
+              ...csvData.map(
+                (row) =>
+                  `"${row.id}","${row.type}","${row.subject}","${row.sender}","${row.content}","${row.date}","${row.priority}","${row.status}"`
+              ),
+            ].join("\n");
 
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
+            const blob = new Blob([csvContent], {
+              type: "text/csv;charset=utf-8;",
+            });
+            const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = `messages_export_${new Date().toISOString().split('T')[0]}.csv`;
+            link.download = `messages_export_${new Date().toISOString().split("T")[0]}.csv`;
             link.click();
           }
-          
+
           setShowExport(false);
-          showNotification('success', `Экспорт в формате ${format.toUpperCase()} завершен!`);
+          showNotification(
+            "success",
+            `Экспорт в формате ${format.toUpperCase()} завершен!`
+          );
         }}
       />
 
@@ -403,7 +420,7 @@ export default function MessagesPage() {
 
       {/* Уведомления */}
       {notification && (
-       <SimpleToast
+        <SimpleToast
           type={notification.type}
           message={notification.text}
           onClose={() => setNotification(null)}
@@ -412,4 +429,3 @@ export default function MessagesPage() {
     </div>
   );
 }
-

@@ -35,6 +35,7 @@ import type * as products from "../products.js";
 import type * as programbookings from "../programbookings.js";
 import type * as purchases from "../purchases.js";
 import type * as schedule from "../schedule.js";
+import type * as sync from "../sync.js";
 import type * as trainers from "../trainers.js";
 import type * as userManagment from "../userManagment.js";
 import type * as users from "../users.js";
@@ -72,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   programbookings: typeof programbookings;
   purchases: typeof purchases;
   schedule: typeof schedule;
+  sync: typeof sync;
   trainers: typeof trainers;
   userManagment: typeof userManagment;
   users: typeof users;

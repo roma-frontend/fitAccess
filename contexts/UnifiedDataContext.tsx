@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useReducer, useCallback, useMemo, useEffect, ReactNode } from 'react';
 
-// Типы данных (оставляем как есть)
+// Типы данных (остаются как есть)
 export interface Trainer {
   id: string;
   name: string;
@@ -136,6 +136,9 @@ interface UnifiedDataState {
   syncingEvents: boolean;
   syncingProducts: boolean;
   syncingAnalytics: boolean;
+  syncQueue: string[];
+  currentSyncOperation: string | null;
+  syncInProgress: boolean;
 }
 
 // Действия для reducer
@@ -155,6 +158,11 @@ type UnifiedDataAction =
   | { type: 'SET_SYNCING_EVENTS'; payload: boolean }
   | { type: 'SET_SYNCING_PRODUCTS'; payload: boolean }
   | { type: 'SET_SYNCING_ANALYTICS'; payload: boolean }
+  | { type: 'SET_SYNC_QUEUE'; payload: string[] }
+  | { type: 'REMOVE_FROM_SYNC_QUEUE'; payload: string }
+  | { type: 'CLEAR_SYNC_QUEUE' }
+  | { type: 'SET_CURRENT_SYNC_OPERATION'; payload: string | null }
+  | { type: 'SET_SYNC_IN_PROGRESS'; payload: boolean }
   | { type: 'ADD_EVENT'; payload: ScheduleEvent }
   | { type: 'UPDATE_EVENT'; payload: { id: string; updates: Partial<ScheduleEvent> } }
   | { type: 'REMOVE_EVENT'; payload: string }
@@ -226,7 +234,8 @@ const unifiedDataReducer = (state: UnifiedDataState, action: UnifiedDataAction):
         syncingClients: false,
         syncingEvents: false,
         syncingProducts: false,
-        syncingAnalytics: false
+        syncingAnalytics: false,
+        syncInProgress: false
       };
     
     case 'SET_LAST_SYNC':
@@ -235,7 +244,8 @@ const unifiedDataReducer = (state: UnifiedDataState, action: UnifiedDataAction):
         lastSync: action.payload,
         loading: false,
         error: null,
-        retryCount: 0
+        retryCount: 0,
+        syncInProgress: false
       };
     
     case 'SET_ONLINE':
@@ -258,6 +268,29 @@ const unifiedDataReducer = (state: UnifiedDataState, action: UnifiedDataAction):
     
     case 'SET_SYNCING_ANALYTICS':
       return { ...state, syncingAnalytics: action.payload };
+    
+    case 'SET_SYNC_QUEUE':
+      return { ...state, syncQueue: action.payload };
+    
+    case 'REMOVE_FROM_SYNC_QUEUE':
+      return { 
+        ...state, 
+        syncQueue: state.syncQueue.filter(item => item !== action.payload)
+      };
+    
+    case 'CLEAR_SYNC_QUEUE':
+      return { 
+        ...state, 
+        syncQueue: [],
+        currentSyncOperation: null,
+        syncInProgress: false
+      };
+    
+    case 'SET_CURRENT_SYNC_OPERATION':
+      return { ...state, currentSyncOperation: action.payload };
+    
+    case 'SET_SYNC_IN_PROGRESS':
+      return { ...state, syncInProgress: action.payload };
     
     // События
     case 'ADD_EVENT':
@@ -381,7 +414,10 @@ const initialState: UnifiedDataState = {
   syncingClients: false,
   syncingEvents: false,
   syncingProducts: false,
-  syncingAnalytics: false
+  syncingAnalytics: false,
+  syncQueue: [],
+  currentSyncOperation: null,
+  syncInProgress: false
 };
 
 // Типы для контекста
@@ -402,6 +438,9 @@ interface UnifiedDataContextType {
   syncingEvents: boolean;
   syncingProducts: boolean;
   syncingAnalytics: boolean;
+  syncQueue: string[];
+  currentSyncOperation: string | null;
+  syncInProgress: boolean;
   
   // Действия синхронизации
   syncAllData: () => Promise<void>;
@@ -423,7 +462,7 @@ interface UnifiedDataContextType {
   
   // Локальные операции с клиентами
   addClient: (client: Client) => void;
-  updateClient: (clientId: string, updates: Partial<Client>) => void;
+    updateClient: (clientId: string, updates: Partial<Client>) => void;
   removeClient: (clientId: string) => void;
   
   // Локальные операции с продуктами
@@ -478,8 +517,8 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Мемоизированные функции синхронизации
-  const syncTrainers = useCallback(async () => {
+  // Внутренние функции синхронизации (выполняются синхронно)
+  const syncTrainersInternal = useCallback(async () => {
     try {
       dispatch({ type: 'SET_SYNCING_TRAINERS', payload: true });
       console.log('👥 Синхронизация тренеров...');
@@ -492,16 +531,14 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('👥 Тренеры синхронизированы:', trainersData?.length || 0);
+      return true;
     } catch (error) {
       console.error('❌ Ошибка синхронизации тренеров:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: `Ошибка загрузки тренеров: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
-      });
+      throw error;
     }
   }, [fetchWithRetry]);
 
-  const syncClients = useCallback(async () => {
+  const syncClientsInternal = useCallback(async () => {
     try {
       dispatch({ type: 'SET_SYNCING_CLIENTS', payload: true });
       console.log('👤 Синхронизация клиентов...');
@@ -514,16 +551,14 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('👤 Клиенты синхронизированы:', clientsData?.length || 0);
+      return true;
     } catch (error) {
       console.error('❌ Ошибка синхронизации клиентов:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: `Ошибка загрузки клиентов: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
-      });
+      throw error;
     }
   }, [fetchWithRetry]);
 
-  const syncEvents = useCallback(async () => {
+  const syncEventsInternal = useCallback(async () => {
     try {
       dispatch({ type: 'SET_SYNCING_EVENTS', payload: true });
       console.log('📅 Синхронизация событий...');
@@ -537,16 +572,14 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('📅 События синхронизированы:', eventsData?.length || 0);
+      return true;
     } catch (error) {
       console.error('❌ Ошибка синхронизации событий:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: `Ошибка загрузки событий: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
-      });
+      throw error;
     }
   }, [fetchWithRetry]);
 
-  const syncProducts = useCallback(async () => {
+  const syncProductsInternal = useCallback(async () => {
     try {
       dispatch({ type: 'SET_SYNCING_PRODUCTS', payload: true });
       console.log('📦 Синхронизация продуктов...');
@@ -560,16 +593,14 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('📦 Продукты синхронизированы:', productsData?.length || 0);
+      return true;
     } catch (error) {
       console.error('❌ Ошибка синхронизации продуктов:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: `Ошибка загрузки продуктов: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
-      });
+      throw error;
     }
   }, [fetchWithRetry]);
 
-  const syncAnalytics = useCallback(async () => {
+  const syncAnalyticsInternal = useCallback(async () => {
     try {
       dispatch({ type: 'SET_SYNCING_ANALYTICS', payload: true });
       console.log('📊 Синхронизация аналитики...');
@@ -583,14 +614,102 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
       });
 
       console.log('📊 Аналитика синхронизирована');
+      return true;
     } catch (error) {
       console.error('❌ Ошибка синхронизации аналитики:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: `Ошибка загрузки аналитики: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
-      });
+      throw error;
     }
   }, [fetchWithRetry]);
+
+  // Синхронная обработка очереди
+  const processSyncQueue = useCallback(async () => {
+    if (state.syncQueue.length === 0 || state.syncInProgress) {
+      return;
+    }
+
+    dispatch({ type: 'SET_SYNC_IN_PROGRESS', payload: true });
+    
+    const operations = [...state.syncQueue];
+    dispatch({ type: 'CLEAR_SYNC_QUEUE' });
+
+    console.log(`🔄 Обрабатываем очередь синхронизации: [${operations.join(', ')}]`);
+
+    try {
+      for (const operation of operations) {
+        dispatch({ type: 'SET_CURRENT_SYNC_OPERATION', payload: operation });
+        console.log(`🔄 Выполняем операцию: ${operation}`);
+
+        switch (operation) {
+          case 'trainers':
+            await syncTrainersInternal();
+            break;
+          case 'clients':
+            await syncClientsInternal();
+            break;
+          case 'events':
+            await syncEventsInternal();
+            break;
+          case 'products':
+            await syncProductsInternal();
+            break;
+          case 'analytics':
+            await syncAnalyticsInternal();
+            break;
+          default:
+            console.warn(`⚠️ Неизвестная операция синхронизации: ${operation}`);
+        }
+
+        console.log(`✅ Операция ${operation} завершена`);
+        
+        // Небольшая задержка между операциями для стабильности
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+      dispatch({ type: 'SET_CURRENT_SYNC_OPERATION', payload: null });
+      dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
+      console.log('✅ Вся очередь синхронизации обработана успешно');
+
+    } catch (error) {
+      console.error('❌ Ошибка при обработке очереди синхронизации:', error);
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: `Ошибка синхронизации: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
+      });
+    } finally {
+      dispatch({ type: 'SET_SYNC_IN_PROGRESS', payload: false });
+      dispatch({ type: 'SET_CURRENT_SYNC_OPERATION', payload: null });
+    }
+  }, [state.syncQueue, state.syncInProgress, syncTrainersInternal, syncClientsInternal, syncEventsInternal, syncProductsInternal, syncAnalyticsInternal]);
+
+  // Функция добавления операции в очередь
+  const addToSyncQueue = useCallback((operation: string) => {
+    if (!state.syncQueue.includes(operation)) {
+      const newQueue = [...state.syncQueue, operation];
+      dispatch({ type: 'SET_SYNC_QUEUE', payload: newQueue });
+      console.log(`➕ Добавлена операция в очередь: ${operation}`);
+    }
+  }, [state.syncQueue]);
+
+  // Публичные функции синхронизации
+  const syncTrainers = useCallback(async () => {
+    addToSyncQueue('trainers');
+  }, [addToSyncQueue]);
+
+  const syncClients = useCallback(async () => {
+    addToSyncQueue('clients');
+  }, [addToSyncQueue]);
+
+  const syncEvents = useCallback(async () => {
+    addToSyncQueue('events');
+  }, [addToSyncQueue]);
+
+  const syncProducts = useCallback(async () => {
+    addToSyncQueue('products');
+  }, [addToSyncQueue]);
+
+  const syncAnalytics = useCallback(async () => {
+    addToSyncQueue('analytics');
+  }, [addToSyncQueue]);
 
   // Полная синхронизация всех данных
   const syncAllData = useCallback(async () => {
@@ -599,32 +718,24 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'RESET_ERROR' });
 
-    try {
-      // Параллельная загрузка всех данных
-      await Promise.allSettled([
-        syncTrainers(),
-        syncClients(),
-        syncEvents(),
-        syncProducts(),
-        syncAnalytics()
-      ]);
-
-      dispatch({ type: 'SET_LAST_SYNC', payload: new Date() });
-      console.log('✅ Полная синхронизация завершена успешно');
-
-    } catch (error) {
-      console.error('❌ Ошибка полной синхронизации:', error);
-      dispatch({ 
-        type: 'SET_ERROR', 
-        payload: `Ошибка синхронизации: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}` 
-      });
-    }
-  }, [syncTrainers, syncClients, syncEvents, syncProducts, syncAnalytics]);
+    // Добавляем все операции в очередь
+    const syncOperations = ['trainers', 'clients', 'events', 'products', 'analytics'];
+    const newQueue = [...state.syncQueue];
+    
+    syncOperations.forEach(operation => {
+      if (!newQueue.includes(operation)) {
+        newQueue.push(operation);
+      }
+    });
+    
+    dispatch({ type: 'SET_SYNC_QUEUE', payload: newQueue });
+  }, [state.syncQueue]);
 
   // Принудительное обновление
   const forceRefresh = useCallback(async () => {
     console.log('🔄 Принудительное обновление данных...');
     dispatch({ type: 'RESET_RETRY' });
+    dispatch({ type: 'CLEAR_SYNC_QUEUE' });
     await syncAllData();
   }, [syncAllData]);
 
@@ -705,6 +816,13 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'RESET_ERROR' });
   }, []);
 
+  // Эффект для обработки очереди синхронизации
+  useEffect(() => {
+    if (state.syncQueue.length > 0 && !state.syncInProgress) {
+      processSyncQueue();
+    }
+  }, [state.syncQueue, state.syncInProgress, processSyncQueue]);
+
   // Проверка сетевого соединения
   useEffect(() => {
     const handleOnline = () => {
@@ -714,7 +832,7 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
       syncAllData();
     };
 
-    const handleOffline = () => {
+        const handleOffline = () => {
       dispatch({ type: 'SET_ONLINE', payload: false });
       console.log('📡 Соединение потеряно, переходим в оффлайн режим');
     };
@@ -729,9 +847,7 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
   }, [syncAllData]);
 
   // Автоматическая синхронизация при монтировании
-  useEffect(() => {
-    syncAllData();
-  }, [syncAllData]);
+  
 
   // Периодическая синхронизация каждые 5 минут
   useEffect(() => {
@@ -747,7 +863,7 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
 
   // Автоматический retry при ошибках
   useEffect(() => {
-    if (state.retryCount > 0 && state.retryCount < 5 && state.isOnline) {
+    if (state.retryCount > 0 && state.retryCount < 5 && state.isOnline && !state.syncInProgress) {
       const timeout = setTimeout(() => {
         console.log(`🔄 Автоматический retry ${state.retryCount}/5...`);
         syncAllData();
@@ -755,7 +871,7 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
 
       return () => clearTimeout(timeout);
     }
-  }, [state.retryCount, state.isOnline, syncAllData]);
+  }, [state.retryCount, state.isOnline, state.syncInProgress, syncAllData]);
 
   // Мемоизированное значение контекста
   const contextValue = useMemo<UnifiedDataContextType>(() => ({
@@ -775,6 +891,9 @@ export const UnifiedDataProvider = ({ children }: { children: ReactNode }) => {
     syncingEvents: state.syncingEvents,
     syncingProducts: state.syncingProducts,
     syncingAnalytics: state.syncingAnalytics,
+    syncQueue: state.syncQueue,
+    currentSyncOperation: state.currentSyncOperation,
+    syncInProgress: state.syncInProgress,
     
     // Действия синхронизации
     syncAllData,
@@ -948,11 +1067,14 @@ export const useSyncStatus = () => {
     syncingEvents,
     syncingProducts,
     syncingAnalytics,
+    syncQueue,
+    currentSyncOperation,
+    syncInProgress,
     clearError,
     forceRefresh
   } = useUnifiedData();
 
-  const isAnySyncing = syncingTrainers || syncingClients || syncingEvents || syncingProducts || syncingAnalytics;
+  const isAnySyncing = syncingTrainers || syncingClients || syncingEvents || syncingProducts || syncingAnalytics || syncInProgress;
   
   return {
     loading,
@@ -966,6 +1088,9 @@ export const useSyncStatus = () => {
     syncingEvents,
     syncingProducts,
     syncingAnalytics,
+    syncQueue,
+    currentSyncOperation,
+    syncInProgress,
     clearError,
     forceRefresh
   };
@@ -988,3 +1113,5 @@ export const useDataSummary = () => {
     lastUpdate: new Date().toISOString()
   }), [trainers, clients, events, products, analytics]);
 };
+
+

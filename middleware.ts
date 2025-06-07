@@ -43,7 +43,8 @@ const publicRoutes = [
   '/reset-password',
   '/forgot-password',
   '/password-reset-success',
-  '/about'
+  '/about',
+  'dashboard'
 ];
 
 const memberRoutes = [
