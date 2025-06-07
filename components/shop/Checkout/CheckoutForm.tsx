@@ -5,10 +5,9 @@ import {
   useStripe,
   useElements,
   PaymentElement,
-  AddressElement,
 } from '@stripe/react-stripe-js';
 import { Button } from '@/components/ui/button';
-import { Loader2, CreditCard, Shield } from 'lucide-react';
+import { Loader2, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface CheckoutFormProps {
@@ -24,49 +23,50 @@ export default function CheckoutForm({
 }: CheckoutFormProps) {
   const stripe = useStripe();
   const elements = useElements();
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<string>('');
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!stripe || !elements) {
+      onError('Stripe не загружен');
       return;
     }
 
-    setIsLoading(true);
-    setMessage('');
+    setLoading(true);
 
     try {
-      toast({
-        title: "Обработка платежа",
-        description: "Пожалуйста, подождите...",
-      });
+      console.log('💳 CheckoutForm: начинаем подтверждение платежа...');
 
+      // ✅ Подтверждаем платеж
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        throw new Error(submitError.message);
+        throw new Error(submitError.message || 'Ошибка при отправке формы');
       }
 
+      // ✅ Подтверждаем Payment Intent
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/shop/payment/success`,
+          return_url: `${window.location.origin}/shop/success`,
         },
         redirect: 'if_required',
       });
 
       if (error) {
-        throw new Error(error.message);
+        throw new Error(error.message || 'Ошибка при подтверждении платежа');
       }
 
       if (paymentIntent && paymentIntent.status === 'succeeded') {
+        console.log('✅ CheckoutForm: платеж успешен:', paymentIntent.id);
+
         toast({
           title: "Платеж успешен!",
-          description: "Подтверждаем заказ...",
+          description: "Обрабатываем ваш заказ...",
         });
 
+        // ✅ Подтверждаем заказ через API
         const confirmResponse = await fetch('/api/payments/confirm-payment', {
           method: 'POST',
           headers: {
@@ -74,104 +74,62 @@ export default function CheckoutForm({
           },
           body: JSON.stringify({
             paymentIntentId: paymentIntent.id,
-            orderId: paymentIntentId,
+            orderId: paymentIntentId, // Используем как временный ID
           }),
         });
 
         const confirmData = await confirmResponse.json();
 
-        if (confirmData.success) {
-          toast({
-            title: "Заказ подтвержден!",
-            description: "Перенаправляем к деталям заказа...",
-          });
-          onSuccess(confirmData.receipt);
-        } else {
-          throw new Error(confirmData.error || 'Ошибка подтверждения платежа');
+        if (!confirmResponse.ok) {
+          throw new Error(confirmData.error || 'Ошибка подтверждения заказа');
         }
+
+        console.log('✅ CheckoutForm: заказ подтвержден с данными:', confirmData);
+
+        toast({
+          title: "Заказ оформлен!",
+          description: "Переходим к подтверждению...",
+        });
+
+        // ✅ Передаем чек с полными данными
+        onSuccess(confirmData.receipt);
+      } else {
+        throw new Error('Платеж не был завершен');
       }
     } catch (err) {
-      const errorMessage = getErrorMessage(err);
-      setMessage(errorMessage);
-      onError(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      console.error('❌ CheckoutForm: ошибка:', errorMessage);
       
       toast({
         title: "Ошибка платежа",
         description: errorMessage,
         variant: "destructive",
       });
+      
+      onError(errorMessage);
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getErrorMessage = (error: any): string => {
-    if (error.type === 'card_error' || error.type === 'validation_error') {
-      return error.message;
-    }
-    
-    switch (error.code) {
-      case 'card_declined':
-        return 'Карта отклонена. Попробуйте другую карту или обратитесь в банк.';
-      case 'insufficient_funds':
-        return 'Недостаточно средств на карте.';
-      case 'expired_card':
-        return 'Срок действия карты истек.';
-      case 'incorrect_cvc':
-        return 'Неверный CVC код.';
-      case 'processing_error':
-        return 'Ошибка обработки платежа. Попробуйте еще раз.';
-      default:
-        return error.message || 'Произошла ошибка при обработке платежа';
+      setLoading(false);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium mb-4">Платежная информация</h3>
+      <div className="p-4 border rounded-lg">
         <PaymentElement 
           options={{
             layout: 'tabs',
-            defaultValues: {
-              billingDetails: {
-                name: '',
-                email: '',
-              }
-            }
+            paymentMethodOrder: ['card'],
           }}
         />
       </div>
-
-      <div>
-        <h3 className="text-lg font-medium mb-4">Адрес для выставления счета</h3>
-        <AddressElement 
-          options={{
-            mode: 'billing',
-            allowedCountries: ['RU'],
-            defaultValues: {
-              name: '',
-              address: {
-                country: 'RU',
-              }
-            }
-          }}
-        />
-      </div>
-
-      {message && (
-        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-md">
-          {message}
-        </div>
-      )}
-
+      
       <Button
         type="submit"
-        disabled={isLoading || !stripe || !elements}
+        disabled={!stripe || loading}
         className="w-full"
         size="lg"
       >
-        {isLoading ? (
+        {loading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             Обработка платежа...
@@ -183,14 +141,10 @@ export default function CheckoutForm({
           </>
         )}
       </Button>
-
-      <div className="text-sm text-gray-500 text-center space-y-2">
-        <div className="flex items-center justify-center gap-2">
-          <Shield className="w-4 h-4" />
-          <span>Ваши платежные данные защищены SSL-шифрованием</span>
-        </div>
-        <p>Платежи обрабатываются через Stripe</p>
-      </div>
+      
+      <p className="text-xs text-gray-500 text-center">
+        Нажимая "Оплатить заказ", вы соглашаетесь с условиями обслуживания
+      </p>
     </form>
   );
 }

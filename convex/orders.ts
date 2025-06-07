@@ -1,4 +1,3 @@
-// convex/orders.ts (исправленная версия)
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
@@ -6,6 +5,14 @@ export const create = mutation({
   args: {
     userId: v.optional(v.string()),
     memberId: v.optional(v.string()),
+    
+    // ✅ Добавляем все необходимые поля для данных клиента
+    customerEmail: v.optional(v.string()),
+    memberEmail: v.optional(v.string()),
+    customerName: v.optional(v.string()),
+    memberName: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    
     items: v.array(v.object({
       productId: v.union(v.id("products"), v.string()),
       productName: v.string(),
@@ -19,7 +26,6 @@ export const create = mutation({
     paymentIntentId: v.optional(v.string()),
     paymentMethod: v.optional(v.string()),
     
-    // ✅ Добавляем недостающие поля
     status: v.optional(v.union(
       v.literal("pending"),
       v.literal("confirmed"),
@@ -41,7 +47,26 @@ export const create = mutation({
     paymentId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    console.log("🛒 Создание заказа:", args);
+    console.log("🛒 Создание заказа с полными данными клиента:", {
+      userId: args.userId,
+      memberId: args.memberId,
+      customerEmail: args.customerEmail,
+      memberEmail: args.memberEmail,
+      customerName: args.customerName,
+      memberName: args.memberName,
+      customerPhone: args.customerPhone,
+      totalAmount: args.totalAmount,
+      itemsCount: args.items.length
+    });
+    
+    // ✅ Валидация обязательных данных
+    if (!args.customerEmail && !args.memberEmail) {
+      throw new Error("Email клиента обязателен");
+    }
+    
+    if (!args.customerName && !args.memberName) {
+      throw new Error("Имя клиента обязательно");
+    }
     
     // Устанавливаем значения по умолчанию, если не переданы
     const orderData = {
@@ -53,18 +78,34 @@ export const create = mutation({
     
     const orderId = await ctx.db.insert("orders", orderData);
     
-    console.log("✅ Заказ создан:", orderId);
+    console.log("✅ Заказ создан с полными реальными данными клиента:", orderId);
     
     // Создаем уведомление о заказе
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
     
     try {
+      // ✅ Определяем recipientId и recipientType корректно
+      const recipientId = args.memberId || args.userId || "anonymous";
+      const recipientEmail = args.memberEmail || args.customerEmail;
+      const recipientName = args.memberName || args.customerName;
+      
+      // ✅ Используем правильные типы для recipientType
+      let recipientType: "user" | "super-admin" | "admin" | "manager" | "trainer" | "member";
+      
+      if (args.memberId) {
+        recipientType = "member";
+      } else if (args.userId && args.userId !== "anonymous") {
+        recipientType = "user";
+      } else {
+        recipientType = "user";
+      }
+      
       await ctx.db.insert("notifications", {
         title: "Заказ принят",
         message: `Ваш заказ №${orderNumber} на сумму ${args.totalAmount} ₽ принят в обработку`,
         type: "order",
-        recipientId: args.memberId || args.userId || "anonymous",
-        recipientType: args.memberId ? "member" : "user",
+        recipientId: recipientId,
+        recipientType: recipientType,
         relatedId: orderId,
         priority: "normal",
         isRead: false,
@@ -75,17 +116,98 @@ export const create = mutation({
           data: {
             orderNumber,
             totalAmount: args.totalAmount,
+            customerEmail: recipientEmail,
+            customerName: recipientName,
+            customerPhone: args.customerPhone,
+            isGuest: !args.memberId && (!args.userId || args.userId === "anonymous"),
           }
         }
       });
       
-      console.log("✅ Уведомление о заказе создано");
+      console.log("✅ Уведомление о заказе создано с реальными данными клиента");
     } catch (notificationError) {
       console.error("❌ Ошибка создания уведомления:", notificationError);
       // Не прерываем создание заказа из-за ошибки уведомления
     }
     
     return orderId;
+  },
+});
+
+// Остальные функции остаются без изменений...
+export const getByPaymentIntentId = query({
+  args: { paymentIntentId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("orders")
+      .withIndex("by_payment_intent", (q) => q.eq("paymentIntentId", args.paymentIntentId))
+      .first();
+  },
+});
+
+export const updatePaymentStatus = mutation({
+  args: {
+    paymentIntentId: v.string(),
+    status: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("confirmed"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    )),
+    paymentStatus: v.union(
+      v.literal("pending"),
+      v.literal("paid"),
+      v.literal("failed"),
+      v.literal("refunded")
+    ),
+    paymentId: v.optional(v.string()),
+    paidAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    console.log("💳 Обновление статуса платежа:", args);
+    
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_payment_intent", (q) => q.eq("paymentIntentId", args.paymentIntentId))
+      .first();
+    
+    if (!order) {
+      throw new Error(`Заказ с paymentIntentId ${args.paymentIntentId} не найден`);
+    }
+    
+    console.log("📦 Найден заказ для обновления с реальными данными:", {
+      orderId: order._id,
+      currentStatus: order.status,
+      currentPaymentStatus: order.paymentStatus,
+      customerEmail: order.customerEmail || order.memberEmail,
+      customerName: order.customerName || order.memberName,
+      customerPhone: order.customerPhone
+    });
+    
+    const updateData: any = {
+      paymentStatus: args.paymentStatus,
+    };
+    
+    if (args.status) {
+      updateData.status = args.status;
+    }
+    
+    if (args.paymentId) {
+      updateData.paymentId = args.paymentId;
+    }
+    
+    if (args.paidAt) {
+      updateData.paidAt = args.paidAt;
+    }
+    
+    await ctx.db.patch(order._id, updateData);
+    
+    console.log("✅ Статус заказа обновлен с сохранением реальных данных клиента");
+    
+    const updatedOrder = await ctx.db.get(order._id);
+    return updatedOrder;
   },
 });
 
@@ -152,68 +274,6 @@ export const updateStatus = mutation({
   },
 });
 
-export const updatePaymentStatus = mutation({
-  args: {
-    paymentIntentId: v.string(),
-    status: v.optional(v.union(
-      v.literal("pending"),
-      v.literal("confirmed"),
-      v.literal("processing"),
-      v.literal("ready"),
-      v.literal("completed"),
-      v.literal("cancelled")
-    )),
-    paymentStatus: v.union(
-      v.literal("pending"),
-      v.literal("paid"),
-      v.literal("failed"),
-      v.literal("refunded")
-    ),
-    paymentId: v.optional(v.string()),
-    paidAt: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    console.log("💳 Обновление статуса платежа:", args);
-    
-    // Находим заказ по paymentIntentId
-    const order = await ctx.db
-      .query("orders")
-      .filter((q) => q.eq(q.field("paymentIntentId"), args.paymentIntentId))
-      .first();
-    
-    if (!order) {
-      throw new Error("Заказ не найден");
-    }
-    
-    // Подготавливаем данные для обновления
-    const updateData: any = {
-      paymentStatus: args.paymentStatus,
-    };
-    
-    if (args.status) {
-      updateData.status = args.status;
-    }
-    
-    if (args.paymentId) {
-      updateData.paymentId = args.paymentId;
-    }
-    
-    if (args.paidAt) {
-      updateData.paidAt = args.paidAt;
-    }
-    
-    // Обновляем заказ
-    await ctx.db.patch(order._id, updateData);
-    
-    console.log("✅ Статус заказа обновлен");
-    
-    // Возвращаем обновленный заказ
-    const updatedOrder = await ctx.db.get(order._id);
-    return updatedOrder;
-  },
-});
-
-// Получить все заказы (для админки)
 export const getAll = query({
   args: {
     limit: v.optional(v.number()),
@@ -234,7 +294,6 @@ export const getAll = query({
   },
 });
 
-// Получить статистику заказов
 export const getStats = query({
   handler: async (ctx) => {
     const allOrders = await ctx.db.query("orders").collect();
@@ -253,5 +312,42 @@ export const getStats = query({
     };
     
     return stats;
+  },
+});
+
+export const getGuestOrders = query({
+  args: { 
+    customerEmail: v.string(),
+    limit: v.optional(v.number())
+  },
+  handler: async (ctx, args) => {
+    const orders = await ctx.db.query("orders")
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("customerEmail"), args.customerEmail),
+          q.eq(q.field("memberEmail"), args.customerEmail)
+        )
+      )
+      .order("desc")
+      .take(args.limit || 50);
+    
+    return orders;
+  },
+});
+
+export const findOrdersByEmail = query({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const orders = await ctx.db.query("orders")
+      .filter((q) => 
+        q.or(
+          q.eq(q.field("customerEmail"), args.email),
+          q.eq(q.field("memberEmail"), args.email)
+        )
+      )
+      .order("desc")
+      .collect();
+    
+    return orders;
   },
 });

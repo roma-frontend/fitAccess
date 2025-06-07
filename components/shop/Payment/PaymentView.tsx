@@ -1,12 +1,12 @@
 import React, { memo } from 'react';
 import { useCartStoreWithDefaults } from '@/hooks/useStoreWithDefaults';
 import { useShopStore } from '@/stores/shopStore';
-import PaymentForm from '@/components/PaymentForm';
 import OrderSummary from '../Checkout/OrderSummary';
 import { cartItemToPaymentItem } from '@/utils/cartUtils';
 import { ShopPaymentItem } from '@/types/payment';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, CreditCard, Package } from 'lucide-react';
+import PaymentForm from '../PaymentForm';
 
 const PaymentView = memo(() => {
   const { items, getTotalPrice, clearCart } = useCartStoreWithDefaults();

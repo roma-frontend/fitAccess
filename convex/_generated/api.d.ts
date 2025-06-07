@@ -27,6 +27,7 @@ import type * as logs from "../logs.js";
 import type * as members from "../members.js";
 import type * as messageGroups from "../messageGroups.js";
 import type * as messages from "../messages.js";
+import type * as migrations from "../migrations.js";
 import type * as notificationTemplates from "../notificationTemplates.js";
 import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
@@ -63,6 +64,7 @@ declare const fullApi: ApiFromModules<{
   members: typeof members;
   messageGroups: typeof messageGroups;
   messages: typeof messages;
+  migrations: typeof migrations;
   notificationTemplates: typeof notificationTemplates;
   notifications: typeof notifications;
   orders: typeof orders;

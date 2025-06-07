@@ -181,50 +181,52 @@ export default defineSchema({
     .index("creator_type", ["createdBy", "type"]),
 
   notifications: defineTable({
-    recipientId: v.string(),
-    recipientType: v.union(
-      v.literal("user"),
-      v.literal("member"),
-      v.literal("trainer"),
-      v.literal("admin"),
-      v.literal("manager"),
-    v.literal("super-admin")
-    ),
-    type: v.union(
-      v.literal("system"),
-      v.literal("reminder"),
-      v.literal("alert"),
-      v.literal("info"),
-      v.literal("order"),
-      v.literal("payment"),
-    ),
-    title: v.string(),
-    message: v.string(),
-    isRead: v.boolean(),
-    priority: v.union(
-      v.literal("low"),
-      v.literal("normal"),
-      v.literal("high"),
-      v.literal("urgent")
-    ),
-    actionUrl: v.optional(v.string()),
-    relatedId: v.optional(v.string()),
-    isImportant: v.optional(v.boolean()),
-    createdAt: v.number(),
-    readAt: v.optional(v.number()),
-    metadata: v.optional(v.object({
-      sourceId: v.optional(v.string()),
-      sourceType: v.optional(v.string()),
-      data: v.optional(v.any()),
-    })),
-  })
-    .index("by_recipient", ["recipientId"])
-    .index("by_type", ["type"])
-    .index("by_read", ["isRead"])
-    .index("by_created", ["createdAt"])
-    .index("recipient_read", ["recipientId", "isRead"])
-    .index("recipient_type", ["recipientId", "type"])
-    .index("type_created", ["type", "createdAt"]),
+  title: v.string(),
+  message: v.string(),
+  type: v.union(
+    v.literal("info"),
+    v.literal("warning"),
+    v.literal("error"),
+    v.literal("success"),
+    v.literal("order"),
+    v.literal("payment"),
+    v.literal("membership"),
+    v.literal("training"),
+    v.literal("system")
+  ),
+  recipientId: v.string(),
+  recipientType: v.union(
+    v.literal("user"),
+    v.literal("super-admin"),
+    v.literal("admin"),
+    v.literal("manager"),
+    v.literal("trainer"),
+    v.literal("member")
+  ),
+  relatedId: v.optional(v.string()),
+  priority: v.union(
+    v.literal("low"),
+    v.literal("normal"),
+    v.literal("high"),
+    v.literal("urgent")
+  ),
+  isRead: v.boolean(),
+  createdAt: v.number(),
+  readAt: v.optional(v.number()),
+  metadata: v.optional(v.object({
+    sourceType: v.optional(v.string()),
+    sourceId: v.optional(v.string()),
+    data: v.optional(v.any()),
+  })),
+})
+  .index("by_recipient", ["recipientId"])
+  .index("by_type", ["type"])
+  .index("by_priority", ["priority"])
+  .index("by_read_status", ["isRead"])
+  .index("by_created_at", ["createdAt"])
+  .index("recipient_unread", ["recipientId", "isRead"])
+  .index("recipient_type", ["recipientType"])
+  .index("type_created", ["type", "createdAt"]),
 
   products: defineTable({
     name: v.string(),
@@ -262,6 +264,17 @@ export default defineSchema({
   orders: defineTable({
     userId: v.optional(v.string()),
     memberId: v.optional(v.string()),
+    
+    // ✅ Полные данные клиента
+    customerEmail: v.optional(v.string()),
+    memberEmail: v.optional(v.string()),
+    customerName: v.optional(v.string()),
+    memberName: v.optional(v.string()),
+    customerPhone: v.optional(v.string()),
+    
+    // ✅ Добавляем userRole для совместимости со старыми записями
+    userRole: v.optional(v.string()),
+    
     items: v.array(v.object({
       productId: v.union(v.id("products"), v.string()),
       productName: v.string(),
@@ -301,7 +314,8 @@ export default defineSchema({
     .index("by_payment_status", ["paymentStatus"])
     .index("user_status", ["userId", "status"])
     .index("member_status", ["memberId", "status"])
-    .index("payment_status_order", ["paymentStatus", "orderTime"]),
+    .index("payment_status_order", ["paymentStatus", "orderTime"])
+    .index("by_payment_intent", ["paymentIntentId"]),
 
   schedule_events: defineTable({
     title: v.string(),

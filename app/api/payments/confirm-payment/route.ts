@@ -1,10 +1,12 @@
-// app/api/payments/confirm-payment/route.ts (исправленная версия)
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { ConvexHttpClient } from "convex/browser";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-04-30.basil',
 });
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,64 +21,128 @@ export async function POST(request: NextRequest) {
       throw new Error('Платеж не был завершен');
     }
 
-    // Используем внутренний API для обновления заказа
-    const updateResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/orders/update-payment`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        paymentIntentId,
-        status: 'confirmed',
-        paymentStatus: 'paid',
-        paymentId: paymentIntent.id,
-        paidAt: Date.now(),
-      }),
+    console.log('💳 PaymentIntent full data:', {
+      id: paymentIntent.id,
+      amount: paymentIntent.amount,
+      currency: paymentIntent.currency,
+      receipt_email: paymentIntent.receipt_email,
+      metadata: paymentIntent.metadata,
+      shipping: paymentIntent.shipping,
+      billing_details: paymentIntent.latest_charge ? 'Available' : 'Not available'
     });
 
-    if (!updateResponse.ok) {
-      throw new Error('Ошибка обновления заказа');
+    // ✅ Получаем детали charge для дополнительной информации
+    let chargeDetails = null;
+    if (paymentIntent.latest_charge) {
+      try {
+        chargeDetails = await stripe.charges.retrieve(paymentIntent.latest_charge as string);
+        console.log('💳 Charge billing details:', chargeDetails.billing_details);
+      } catch (chargeError) {
+        console.warn('⚠️ Could not retrieve charge details:', chargeError);
+      }
     }
 
-    const { order } = await updateResponse.json();
+    // ✅ Обновляем заказ напрямую через Convex (без внутреннего API)
+    console.log('📦 Updating order status via Convex...');
+    
+    const updatedOrder = await convex.mutation("orders:updatePaymentStatus", {
+      paymentIntentId,
+      status: 'confirmed',
+      paymentStatus: 'paid',
+      paymentId: paymentIntent.id,
+      paidAt: Date.now(),
+    });
 
-    // ✅ Безопасное получение email с множественными fallback
+    console.log('✅ Order updated successfully:', updatedOrder);
+
+    // ✅ Извлекаем данные клиента из всех доступных источников
     const customerEmail = paymentIntent.receipt_email || 
                          paymentIntent.metadata?.email ||
-                         order.customerEmail ||
-                         order.memberEmail ||
-                         'customer@fitaccess.ru'; // Более подходящий fallback
+                         paymentIntent.metadata?.memberEmail ||
+                         chargeDetails?.billing_details?.email ||
+                         updatedOrder.customerEmail ||
+                         updatedOrder.memberEmail ||
+                         'customer@fitaccess.ru';
 
-    // ✅ Безопасное получение имени
     const customerName = paymentIntent.metadata?.customerName ||
-                        order.customerName ||
-                        order.memberName ||
+                        paymentIntent.metadata?.userName ||
+                        paymentIntent.shipping?.name ||
+                        chargeDetails?.billing_details?.name ||
+                        updatedOrder.customerName ||
+                        updatedOrder.memberName ||
                         'Покупатель';
 
-    // ✅ Безопасное получение userId
-    const userId = order.userId || order.memberId || 'anonymous';
+    const customerPhone = paymentIntent.metadata?.customerPhone ||
+                         paymentIntent.shipping?.phone ||
+                         chargeDetails?.billing_details?.phone ||
+                         updatedOrder.customerPhone ||
+                         '';
 
-    // Формируем чек с безопасными данными
+    const userId = paymentIntent.metadata?.userId ||
+                  paymentIntent.metadata?.memberId ||
+                  updatedOrder.userId || 
+                  updatedOrder.memberId || 
+                  'guest';
+
+    console.log('👤 Final customer data extracted:', {
+      email: customerEmail,
+      name: customerName,
+      phone: customerPhone,
+      userId: userId,
+      sources: {
+        fromPaymentIntent: {
+          receipt_email: paymentIntent.receipt_email,
+          metadata: paymentIntent.metadata,
+          shipping: paymentIntent.shipping
+        },
+        fromCharge: chargeDetails ? {
+          billing_details: chargeDetails.billing_details
+        } : null,
+        fromOrder: {
+          customerEmail: updatedOrder.customerEmail,
+          memberEmail: updatedOrder.memberEmail,
+          customerName: updatedOrder.customerName,
+          memberName: updatedOrder.memberName,
+          customerPhone: updatedOrder.customerPhone
+        }
+      }
+    });
+
+    // ✅ Проверяем качество данных
+    const isRealData = customerEmail && 
+                      customerEmail !== 'customer@fitaccess.ru' && 
+                      customerName && 
+                      customerName !== 'Покупатель';
+
+    console.log('🔍 Data quality check:', {
+      isRealData,
+      hasRealEmail: customerEmail && !customerEmail.includes('fitaccess.ru'),
+      hasRealName: customerName && customerName !== 'Покупатель',
+      hasPhone: !!customerPhone
+    });
+
+    // Формируем чек с реальными данными
     const receipt = {
       receiptId: `RCP-${Date.now()}`,
-      orderId: order._id,
+      orderId: updatedOrder._id,
       paymentId: paymentIntent.id,
       amount: paymentIntent.amount / 100,
       currency: paymentIntent.currency.toUpperCase(),
       paidAt: new Date().toISOString(),
       customer: {
-        email: customerEmail, // ✅ Гарантированно не null
-        name: customerName,   // ✅ Гарантированно не null
-        userId: userId,       // ✅ Гарантированно не null
+        email: customerEmail,
+        name: customerName,
+        phone: customerPhone,
+        userId: userId,
       },
-      items: order.items?.map((item: any) => ({
+      items: updatedOrder.items?.map((item: any) => ({
         name: item.productName || 'Товар',
         quantity: item.quantity || 1,
         price: item.price || 0,
         total: item.totalPrice || 0,
       })) || [],
-      pickupType: order.pickupType || 'pickup',
-      notes: order.notes || '',
+      pickupType: updatedOrder.pickupType || 'pickup',
+      notes: updatedOrder.notes || '',
       company: {
         name: 'FitAccess',
         address: 'г. Москва, ул. Примерная, д. 1',
@@ -84,15 +150,27 @@ export async function POST(request: NextRequest) {
         phone: '+7 (495) 123-45-67',
         email: 'info@fitaccess.ru',
       },
+      // ✅ Добавляем метаданные о качестве данных
+      dataQuality: {
+        isRealData,
+        hasRealEmail: customerEmail && !customerEmail.includes('fitaccess.ru'),
+        hasRealName: customerName && customerName !== 'Покупатель',
+        hasPhone: !!customerPhone,
+        dataSource: 'stripe_and_order'
+      }
     };
 
-    console.log('📧 Receipt generated:', receipt.receiptId);
-    console.log('👤 Customer data:', receipt.customer); // ✅ Добавляем отладку
+    console.log('📧 Receipt generated with real customer data:', {
+      receiptId: receipt.receiptId,
+      customer: receipt.customer,
+      itemsCount: receipt.items.length,
+      dataQuality: receipt.dataQuality
+    });
 
     return NextResponse.json({
       success: true,
       receipt,
-      order,
+      order: updatedOrder,
     });
 
   } catch (error) {

@@ -1,4 +1,3 @@
-// app/api/payments/create-payment-intent/route.ts (исправленная версия)
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { ConvexHttpClient } from "convex/browser";
@@ -11,24 +10,27 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
-    // ✅ Добавляем memberId в деструктуризацию
     const { 
       items, 
       totalAmount, 
       pickupType, 
       notes, 
       userId, 
-      memberId,        // ✅ Добавляем это поле
+      memberId,
       memberEmail, 
-      customerName 
+      customerName,
+      customerPhone
     } = await request.json();
 
-    console.log('💳 Creating payment intent:', {
+    console.log('💳 Creating payment intent with full user data:', {
       totalAmount,
       itemsCount: items?.length,
       pickupType,
       userId,
-      memberId,        // ✅ Добавляем в лог
+      memberId,
+      memberEmail,
+      customerName,
+      customerPhone,
       items: items?.map((item: any) => ({ 
         productId: item.productId, 
         name: item.productName || item.name 
@@ -50,24 +52,61 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Создаем Payment Intent в Stripe
+    // ✅ Валидация обязательных данных клиента
+    if (!memberEmail || !customerName) {
+      return NextResponse.json(
+        { error: 'Email и имя клиента обязательны' },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Создаем Payment Intent с полными данными клиента
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(totalAmount * 100),
       currency: 'rub',
+      
+      // ✅ Устанавливаем receipt_email
+      receipt_email: memberEmail,
+      
+      // ✅ Полные метаданные
       metadata: {
-        userId: userId || 'anonymous',
-        memberId: memberId || '',           // ✅ Добавляем memberId в metadata
+        userId: userId || 'guest',
+        memberId: memberId || userId || '',
         pickupType,
         itemsCount: items.length.toString(),
         notes: notes || '',
-        email: memberEmail || 'customer@fitaccess.ru',
-        customerName: customerName || 'Покупатель',
+        email: memberEmail,
+        memberEmail: memberEmail,
+        customerName: customerName,
+        userName: customerName,
+        customerPhone: customerPhone || '',
+        createdAt: Date.now().toString(),
+        orderType: 'shop',
+        source: 'web',
       },
-      description: `Заказ магазина - ${items.length} товаров`,
-      receipt_email: memberEmail || undefined,
+      
+      description: `Заказ магазина FitAccess - ${items.length} товаров для ${customerName}`,
+      
+            // ✅ Данные доставки/получения
+      shipping: {
+        name: customerName,
+        phone: customerPhone || undefined,
+        address: {
+          country: 'RU',
+          line1: 'Фитнес-центр FitAccess',
+          city: 'Москва',
+          state: 'Москва',
+          postal_code: '101000',
+        }
+      },
     });
 
-    console.log('✅ Payment intent created:', paymentIntent.id);
+    console.log('✅ Payment intent created with full customer data:', {
+      id: paymentIntent.id,
+      receipt_email: paymentIntent.receipt_email,
+      metadata: paymentIntent.metadata,
+      shipping: paymentIntent.shipping
+    });
 
     // Подготавливаем items для Convex
     const convexItems = items.map((item: any) => {
@@ -92,19 +131,26 @@ export async function POST(request: NextRequest) {
 
     console.log('📦 Prepared items for Convex:', convexItems);
 
-    // ✅ Создаем заказ в Convex с правильными параметрами
+    // ✅ Создаем заказ в Convex с полными данными клиента
     const orderId = await convex.mutation("orders:create", {
-      userId: userId || undefined,         // ✅ Передаем userId или undefined
-      memberId: memberId || undefined,     // ✅ Передаем memberId или undefined
+      userId: userId || undefined,
+      memberId: memberId || userId || undefined,
       items: convexItems,
       totalAmount,
       pickupType,
       notes,
       paymentIntentId: paymentIntent.id,
       paymentMethod: 'card',
+      
+      // ✅ Полные данные клиента
+      customerEmail: memberEmail,
+      memberEmail: memberEmail,
+      customerName: customerName,
+      memberName: customerName,
+      customerPhone: customerPhone,
     });
 
-    console.log('📦 Order created in Convex:', orderId);
+    console.log('📦 Order created in Convex with full customer data:', orderId);
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
